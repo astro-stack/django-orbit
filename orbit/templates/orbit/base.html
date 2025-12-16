@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Django Orbit{% endblock %}</title>
+    
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        orbit: {
+                            bg: {
+                                primary: '#020617',   /* slate-950 */
+                                secondary: '#0f172a', /* slate-900 */
+                                tertiary: '#1e293b',  /* slate-800 */
+                            },
+                            border: '#334155',        /* slate-700 */
+                            text: {
+                                primary: '#f1f5f9',   /* slate-100 */
+                                secondary: '#94a3b8', /* slate-400 */
+                                muted: '#64748b',     /* slate-500 */
+                            },
+                            accent: {
+                                cyan: '#22d3ee',
+                                amber: '#fbbf24',
+                                rose: '#fb7185',
+                                emerald: '#34d399',
+                                violet: '#a78bfa',
+                            }
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                    },
+                    keyframes: {
+                        glow: {
+                            '0%': { boxShadow: '0 0 5px rgba(34, 211, 238, 0.3)' },
+                            '100%': { boxShadow: '0 0 20px rgba(34, 211, 238, 0.6)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    
+    <!-- Alpine.js -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        /* Custom scrollbar for dark theme */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+        
+        /* Glow effects */
+        .glow-cyan {
+            box-shadow: 0 0 15px rgba(34, 211, 238, 0.4);
+        }
+        .glow-rose {
+            box-shadow: 0 0 15px rgba(251, 113, 133, 0.4);
+        }
+        .glow-amber {
+            box-shadow: 0 0 15px rgba(251, 191, 36, 0.4);
+        }
+        .glow-emerald {
+            box-shadow: 0 0 15px rgba(52, 211, 153, 0.4);
+        }
+        
+        /* Gradient text */
+        .text-gradient {
+            background: linear-gradient(135deg, #22d3ee 0%, #a78bfa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        /* Grid pattern background */
+        .bg-grid {
+            background-image: 
+                linear-gradient(rgba(51, 65, 85, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(51, 65, 85, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        
+        /* JSON syntax highlighting */
+        .json-key { color: #22d3ee; }
+        .json-string { color: #34d399; }
+        .json-number { color: #fbbf24; }
+        .json-boolean { color: #a78bfa; }
+        .json-null { color: #fb7185; }
+        
+        /* Entry row hover effect */
+        .entry-row {
+            transition: all 0.2s ease;
+        }
+        .entry-row:hover {
+            background: rgba(34, 211, 238, 0.05);
+            border-left-color: #22d3ee;
+        }
+        
+        /* Status indicator pulse */
+        .status-dot {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        /* Slide-over panel animation */
+        .slide-over-enter {
+            transform: translateX(100%);
+        }
+        .slide-over-leave {
+            transform: translateX(0);
+        }
+        
+        /* HTMX loading indicator */
+        .htmx-request .htmx-indicator {
+            opacity: 1;
+        }
+        .htmx-indicator {
+            opacity: 0;
+            transition: opacity 200ms ease-in;
+        }
+    </style>
+    
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="h-full bg-orbit-bg-primary text-orbit-text-primary font-sans antialiased">
+    {% block body %}{% endblock %}
+    
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+        
+        // Re-initialize icons after HTMX swaps
+        document.body.addEventListener('htmx:afterSwap', function(event) {
+            lucide.createIcons();
+        });
+        
+        // JSON syntax highlighting function
+        function syntaxHighlight(json) {
+            if (typeof json !== 'string') {
+                json = JSON.stringify(json, null, 2);
+            }
+            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                let cls = 'json-number';
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) {
+                        cls = 'json-key';
+                    } else {
+                        cls = 'json-string';
+                    }
+                } else if (/true|false/.test(match)) {
+                    cls = 'json-boolean';
+                } else if (/null/.test(match)) {
+                    cls = 'json-null';
+                }
+                return '<span class="' + cls + '">' + match + '</span>';
+            });
+        }
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

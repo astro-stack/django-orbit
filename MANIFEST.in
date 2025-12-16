@@ -1,0 +1,11 @@
+include LICENSE
+include README.md
+include CHANGELOG.md
+include CONTRIBUTING.md
+
+recursive-include orbit/templates *
+recursive-include orbit/static *
+
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude .DS_Store

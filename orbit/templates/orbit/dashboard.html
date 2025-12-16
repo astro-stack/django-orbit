@@ -1,0 +1,235 @@
+{% extends "orbit/base.html" %}
+
+{% block title %}Django Orbit - Mission Control{% endblock %}
+
+{% block body %}
+<div x-data="{ 
+    detailOpen: false, 
+    detailEntryId: null,
+    currentType: '{{ current_type }}',
+    isPaused: false
+}" class="h-full flex bg-grid">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="w-64 border-r border-orbit-border bg-orbit-bg-secondary flex flex-col">
+        <!-- Logo / Header -->
+        <div class="p-6 border-b border-orbit-border">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-violet-500 flex items-center justify-center glow-cyan">
+                    <i data-lucide="orbit" class="w-6 h-6 text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-semibold text-gradient">Django Orbit</h1>
+                    <p class="text-xs text-orbit-text-muted">Mission Control</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Navigation Links -->
+        <nav class="flex-1 p-4 space-y-1">
+            <a href="?type=all" 
+               hx-get="{% url 'orbit:feed' %}?type=all"
+               hx-target="#feed-container"
+               hx-swap="innerHTML"
+               @click="currentType = 'all'"
+               :class="currentType === 'all' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
+               class="flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group">
+                <i data-lucide="layers" class="w-4 h-4"></i>
+                <span class="flex-1">All Events</span>
+                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.all }}</span>
+            </a>
+            
+            <a href="?type=request"
+               hx-get="{% url 'orbit:feed' %}?type=request"
+               hx-target="#feed-container"
+               hx-swap="innerHTML"
+               @click="currentType = 'request'"
+               :class="currentType === 'request' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
+               class="flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group">
+                <i data-lucide="globe" class="w-4 h-4 text-cyan-400"></i>
+                <span class="flex-1">Requests</span>
+                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.request }}</span>
+            </a>
+            
+            <a href="?type=query"
+               hx-get="{% url 'orbit:feed' %}?type=query"
+               hx-target="#feed-container"
+               hx-swap="innerHTML"
+               @click="currentType = 'query'"
+               :class="currentType === 'query' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
+               class="flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group">
+                <i data-lucide="database" class="w-4 h-4 text-emerald-400"></i>
+                <span class="flex-1">Queries</span>
+                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.query }}</span>
+            </a>
+            
+            <a href="?type=log"
+               hx-get="{% url 'orbit:feed' %}?type=log"
+               hx-target="#feed-container"
+               hx-swap="innerHTML"
+               @click="currentType = 'log'"
+               :class="currentType === 'log' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
+               class="flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group">
+                <i data-lucide="file-text" class="w-4 h-4 text-slate-400"></i>
+                <span class="flex-1">Logs</span>
+                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.log }}</span>
+            </a>
+            
+            <a href="?type=exception"
+               hx-get="{% url 'orbit:feed' %}?type=exception"
+               hx-target="#feed-container"
+               hx-swap="innerHTML"
+               @click="currentType = 'exception'"
+               :class="currentType === 'exception' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
+               class="flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group">
+                <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-400"></i>
+                <span class="flex-1">Exceptions</span>
+                {% if error_count > 0 %}
+                <span class="text-xs bg-rose-500/20 text-rose-400 px-2 py-0.5 rounded-full">{{ error_count }}</span>
+                {% else %}
+                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.exception }}</span>
+                {% endif %}
+            </a>
+            
+            <a href="?type=job"
+               hx-get="{% url 'orbit:feed' %}?type=job"
+               hx-target="#feed-container"
+               hx-swap="innerHTML"
+               @click="currentType = 'job'"
+               :class="currentType === 'job' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
+               class="flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group">
+                <i data-lucide="clock" class="w-4 h-4 text-amber-400"></i>
+                <span class="flex-1">Jobs</span>
+                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.job }}</span>
+            </a>
+        </nav>
+        
+        <!-- Sidebar Footer -->
+        <div class="p-4 border-t border-orbit-border">
+            <!-- Status Indicator -->
+            <div class="flex items-center gap-2 mb-4 px-2">
+                <div class="w-2 h-2 rounded-full bg-emerald-400 status-dot"></div>
+                <span class="text-xs text-orbit-text-muted">Recording Active</span>
+            </div>
+            
+            <!-- Clear Button -->
+            <button 
+                hx-post="{% url 'orbit:clear' %}"
+                hx-confirm="Clear all Orbit entries?"
+                hx-target="#feed-container"
+                hx-swap="innerHTML"
+                class="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-orbit-text-secondary hover:text-rose-400 bg-orbit-bg-tertiary/50 hover:bg-rose-500/10 rounded-lg transition-all">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                <span>Clear All</span>
+            </button>
+        </div>
+    </aside>
+    
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+        <!-- Top Bar -->
+        <header class="h-14 border-b border-orbit-border bg-orbit-bg-secondary/50 backdrop-blur flex items-center justify-between px-6">
+            <div class="flex items-center gap-4">
+                <h2 class="text-lg font-medium">
+                    <span x-text="currentType === 'all' ? 'All Events' : currentType.charAt(0).toUpperCase() + currentType.slice(1) + 's'"></span>
+                </h2>
+                
+                <!-- Live Indicator -->
+                <div x-show="!isPaused" class="flex items-center gap-2 text-xs text-emerald-400">
+                    <div class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
+                    <span>Live</span>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <!-- Pause/Resume Button -->
+                <button 
+                    @click="isPaused = !isPaused"
+                    :class="isPaused ? 'text-amber-400 bg-amber-500/10' : 'text-orbit-text-secondary hover:text-orbit-text-primary'"
+                    class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-all">
+                    <i :data-lucide="isPaused ? 'play' : 'pause'" class="w-4 h-4"></i>
+                    <span x-text="isPaused ? 'Resume' : 'Pause'"></span>
+                </button>
+                
+                <!-- Refresh Button -->
+                <button 
+                    hx-get="{% url 'orbit:feed' %}?type={{ current_type }}"
+                    hx-target="#feed-container"
+                    hx-swap="innerHTML"
+                    class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-orbit-text-secondary hover:text-orbit-text-primary transition-all">
+                    <i data-lucide="refresh-cw" class="w-4 h-4 htmx-indicator"></i>
+                    <span>Refresh</span>
+                </button>
+            </div>
+        </header>
+        
+        <!-- Feed Container (HTMX updates this) -->
+        <div class="flex-1 overflow-hidden flex">
+            <!-- Feed List -->
+            <div id="feed-container" 
+                 class="flex-1 overflow-y-auto"
+                 hx-get="{% url 'orbit:feed' %}?type={{ current_type }}"
+                 hx-trigger="load, every 3s[!isPaused]"
+                 hx-swap="innerHTML">
+                <!-- Initial content loaded via HTMX -->
+                <div class="flex items-center justify-center h-full text-orbit-text-muted">
+                    <div class="text-center">
+                        <i data-lucide="loader-2" class="w-8 h-8 mx-auto mb-3 animate-spin"></i>
+                        <p>Loading telemetry data...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Detail Panel (Slide-over) -->
+            <div 
+                x-show="detailOpen"
+                x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="translate-x-full"
+                x-transition:enter-end="translate-x-0"
+                x-transition:leave="transition ease-in duration-200"
+                x-transition:leave-start="translate-x-0"
+                x-transition:leave-end="translate-x-full"
+                class="w-[600px] border-l border-orbit-border bg-orbit-bg-secondary overflow-hidden flex flex-col"
+                @click.away="detailOpen = false">
+                
+                <!-- Detail Header -->
+                <div class="h-14 border-b border-orbit-border flex items-center justify-between px-4">
+                    <h3 class="text-sm font-medium text-orbit-text-secondary">Entry Details</h3>
+                    <button @click="detailOpen = false" class="p-1 hover:bg-orbit-bg-tertiary rounded transition-colors">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                
+                <!-- Detail Content (HTMX loads here) -->
+                <div id="detail-container" class="flex-1 overflow-y-auto p-4">
+                    <!-- Content loaded via HTMX -->
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+    // Handle entry row clicks to open detail panel
+    document.body.addEventListener('click', function(e) {
+        const row = e.target.closest('[data-entry-id]');
+        if (row) {
+            const entryId = row.dataset.entryId;
+            const alpineData = Alpine.$data(document.querySelector('[x-data]'));
+            
+            alpineData.detailEntryId = entryId;
+            alpineData.detailOpen = true;
+            
+            // Load detail content via HTMX
+            htmx.ajax('GET', '/orbit/detail/' + entryId + '/', '#detail-container');
+        }
+    });
+    
+    // Update icons after Alpine initializes
+    document.addEventListener('alpine:init', () => {
+        Alpine.nextTick(() => {
+            lucide.createIcons();
+        });
+    });
+</script>
+{% endblock %}
