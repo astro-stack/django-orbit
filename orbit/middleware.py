@@ -59,6 +59,9 @@ class OrbitMiddleware:
         # Generate family hash for this request
         family_hash = generate_family_hash()
         
+        # Store family_hash on request for process_exception hook
+        request._orbit_family_hash = family_hash
+        
         # Clear any previous context
         clear_current_context()
         
@@ -264,3 +267,44 @@ class OrbitMiddleware:
         import random
         if random.random() < 0.1:
             OrbitEntry.objects.cleanup_old_entries(limit=limit)
+    
+    def process_exception(self, request: HttpRequest, exception: Exception) -> None:
+        """
+        Called by Django when a view raises an exception.
+        
+        This is called BEFORE the exception is handled by Django's debug
+        error page, so we can capture it here even in DEBUG mode.
+        """
+        config = get_config()
+        
+        if not config.get("ENABLED", True):
+            return None
+        
+        if should_ignore_path(request.path):
+            return None
+        
+        if not config.get("RECORD_EXCEPTIONS", True):
+            return None
+        
+        # Get family_hash from request if available
+        family_hash = getattr(request, '_orbit_family_hash', None)
+        if not family_hash:
+            family_hash = generate_family_hash()
+        
+        # Extract minimal request data
+        request_data = {
+            "method": request.method,
+            "path": request.path,
+            "host": request.get_host() if hasattr(request, 'get_host') else '',
+        }
+        
+        # Save the exception
+        try:
+            self._save_exception(exception, family_hash, request_data)
+        except Exception:
+            # Don't let Orbit errors break the app
+            pass
+        
+        # Return None to let Django continue handling the exception
+        return None
+

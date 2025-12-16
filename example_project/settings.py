@@ -98,15 +98,24 @@ LOGGING = {
         'console': {
             'class': 'logging.StreamHandler',
         },
+        'orbit': {
+            'class': 'orbit.handlers.OrbitLogHandler',
+            'level': 'DEBUG',
+        },
     },
     'root': {
-        'handlers': ['console'],
+        'handlers': ['console', 'orbit'],
         'level': 'DEBUG',
     },
     'loggers': {
         'django': {
             'handlers': ['console'],
             'level': 'INFO',
+            'propagate': False,
+        },
+        'example_project': {
+            'handlers': ['console', 'orbit'],
+            'level': 'DEBUG',
             'propagate': False,
         },
     },

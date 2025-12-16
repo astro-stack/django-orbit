@@ -3,12 +3,7 @@
 {% block title %}Django Orbit - Mission Control{% endblock %}
 
 {% block body %}
-<div x-data="{ 
-    detailOpen: false, 
-    detailEntryId: null,
-    currentType: '{{ current_type }}',
-    isPaused: false
-}" class="h-full flex bg-grid">
+<div x-data="orbitDashboard()" x-init="init()" class="h-full flex bg-grid">
     
     <!-- Sidebar Navigation -->
     <aside class="w-64 border-r border-orbit-border bg-orbit-bg-secondary flex flex-col">
@@ -27,97 +22,76 @@
         
         <!-- Navigation Links -->
         <nav class="flex-1 p-4 space-y-1">
-            <a href="?type=all" 
-               hx-get="{% url 'orbit:feed' %}?type=all"
-               hx-target="#feed-container"
-               hx-swap="innerHTML"
-               @click="currentType = 'all'"
+            <button 
+               @click="setType('all')"
                :class="currentType === 'all' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
-               class="flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group">
+               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
                 <i data-lucide="layers" class="w-4 h-4"></i>
                 <span class="flex-1">All Events</span>
                 <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.all }}</span>
-            </a>
+            </button>
             
-            <a href="?type=request"
-               hx-get="{% url 'orbit:feed' %}?type=request"
-               hx-target="#feed-container"
-               hx-swap="innerHTML"
-               @click="currentType = 'request'"
+            <button
+               @click="setType('request')"
                :class="currentType === 'request' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
-               class="flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group">
+               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
                 <i data-lucide="globe" class="w-4 h-4 text-cyan-400"></i>
                 <span class="flex-1">Requests</span>
                 <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.request }}</span>
-            </a>
+            </button>
             
-            <a href="?type=query"
-               hx-get="{% url 'orbit:feed' %}?type=query"
-               hx-target="#feed-container"
-               hx-swap="innerHTML"
-               @click="currentType = 'query'"
+            <button
+               @click="setType('query')"
                :class="currentType === 'query' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
-               class="flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group">
+               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
                 <i data-lucide="database" class="w-4 h-4 text-emerald-400"></i>
                 <span class="flex-1">Queries</span>
                 <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.query }}</span>
-            </a>
+            </button>
             
-            <a href="?type=log"
-               hx-get="{% url 'orbit:feed' %}?type=log"
-               hx-target="#feed-container"
-               hx-swap="innerHTML"
-               @click="currentType = 'log'"
+            <button
+               @click="setType('log')"
                :class="currentType === 'log' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
-               class="flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group">
+               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
                 <i data-lucide="file-text" class="w-4 h-4 text-slate-400"></i>
                 <span class="flex-1">Logs</span>
                 <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.log }}</span>
-            </a>
+            </button>
             
-            <a href="?type=exception"
-               hx-get="{% url 'orbit:feed' %}?type=exception"
-               hx-target="#feed-container"
-               hx-swap="innerHTML"
-               @click="currentType = 'exception'"
+            <button
+               @click="setType('exception')"
                :class="currentType === 'exception' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
-               class="flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group">
+               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
                 <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-400"></i>
                 <span class="flex-1">Exceptions</span>
-                {% if error_count > 0 %}
-                <span class="text-xs bg-rose-500/20 text-rose-400 px-2 py-0.5 rounded-full">{{ error_count }}</span>
+                {% if counts.exception > 0 %}
+                <span class="text-xs bg-rose-500/20 text-rose-400 px-2 py-0.5 rounded-full">{{ counts.exception }}</span>
                 {% else %}
-                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.exception }}</span>
+                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">0</span>
                 {% endif %}
-            </a>
+            </button>
             
-            <a href="?type=job"
-               hx-get="{% url 'orbit:feed' %}?type=job"
-               hx-target="#feed-container"
-               hx-swap="innerHTML"
-               @click="currentType = 'job'"
+            <button
+               @click="setType('job')"
                :class="currentType === 'job' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
-               class="flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group">
+               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
                 <i data-lucide="clock" class="w-4 h-4 text-amber-400"></i>
                 <span class="flex-1">Jobs</span>
                 <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.job }}</span>
-            </a>
+            </button>
         </nav>
         
         <!-- Sidebar Footer -->
         <div class="p-4 border-t border-orbit-border">
             <!-- Status Indicator -->
             <div class="flex items-center gap-2 mb-4 px-2">
-                <div class="w-2 h-2 rounded-full bg-emerald-400 status-dot"></div>
-                <span class="text-xs text-orbit-text-muted">Recording Active</span>
+                <div class="w-2 h-2 rounded-full status-dot" :class="isPaused ? 'bg-amber-400' : 'bg-emerald-400'"></div>
+                <span class="text-xs text-orbit-text-muted" x-text="isPaused ? 'Paused' : 'Recording Active'"></span>
             </div>
             
             <!-- Clear Button -->
             <button 
-                hx-post="{% url 'orbit:clear' %}"
-                hx-confirm="Clear all Orbit entries?"
-                hx-target="#feed-container"
-                hx-swap="innerHTML"
+                @click="clearAll()"
                 class="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-orbit-text-secondary hover:text-rose-400 bg-orbit-bg-tertiary/50 hover:bg-rose-500/10 rounded-lg transition-all">
                 <i data-lucide="trash-2" class="w-4 h-4"></i>
                 <span>Clear All</span>
@@ -131,7 +105,7 @@
         <header class="h-14 border-b border-orbit-border bg-orbit-bg-secondary/50 backdrop-blur flex items-center justify-between px-6">
             <div class="flex items-center gap-4">
                 <h2 class="text-lg font-medium">
-                    <span x-text="currentType === 'all' ? 'All Events' : currentType.charAt(0).toUpperCase() + currentType.slice(1) + 's'"></span>
+                    <span x-text="getTypeLabel()"></span>
                 </h2>
                 
                 <!-- Live Indicator -->
@@ -144,7 +118,7 @@
             <div class="flex items-center gap-3">
                 <!-- Pause/Resume Button -->
                 <button 
-                    @click="isPaused = !isPaused"
+                    @click="togglePause()"
                     :class="isPaused ? 'text-amber-400 bg-amber-500/10' : 'text-orbit-text-secondary hover:text-orbit-text-primary'"
                     class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-all">
                     <i :data-lucide="isPaused ? 'play' : 'pause'" class="w-4 h-4"></i>
@@ -153,25 +127,19 @@
                 
                 <!-- Refresh Button -->
                 <button 
-                    hx-get="{% url 'orbit:feed' %}?type={{ current_type }}"
-                    hx-target="#feed-container"
-                    hx-swap="innerHTML"
+                    @click="refreshFeed()"
                     class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-orbit-text-secondary hover:text-orbit-text-primary transition-all">
-                    <i data-lucide="refresh-cw" class="w-4 h-4 htmx-indicator"></i>
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
                     <span>Refresh</span>
                 </button>
             </div>
         </header>
         
-        <!-- Feed Container (HTMX updates this) -->
+        <!-- Feed Container -->
         <div class="flex-1 overflow-hidden flex">
             <!-- Feed List -->
-            <div id="feed-container" 
-                 class="flex-1 overflow-y-auto"
-                 hx-get="{% url 'orbit:feed' %}?type={{ current_type }}"
-                 hx-trigger="load, every 3s[!isPaused]"
-                 hx-swap="innerHTML">
-                <!-- Initial content loaded via HTMX -->
+            <div id="feed-container" class="flex-1 overflow-y-auto">
+                <!-- Initial loading state -->
                 <div class="flex items-center justify-center h-full text-orbit-text-muted">
                     <div class="text-center">
                         <i data-lucide="loader-2" class="w-8 h-8 mx-auto mb-3 animate-spin"></i>
@@ -200,9 +168,9 @@
                     </button>
                 </div>
                 
-                <!-- Detail Content (HTMX loads here) -->
+                <!-- Detail Content -->
                 <div id="detail-container" class="flex-1 overflow-y-auto p-4">
-                    <!-- Content loaded via HTMX -->
+                    <!-- Content loaded via fetch -->
                 </div>
             </div>
         </div>
@@ -210,26 +178,136 @@
 </div>
 
 <script>
-    // Handle entry row clicks to open detail panel
-    document.body.addEventListener('click', function(e) {
-        const row = e.target.closest('[data-entry-id]');
-        if (row) {
-            const entryId = row.dataset.entryId;
-            const alpineData = Alpine.$data(document.querySelector('[x-data]'));
+function orbitDashboard() {
+    return {
+        currentType: '{{ current_type }}',
+        isPaused: false,
+        detailOpen: false,
+        detailEntryId: null,
+        pollingInterval: null,
+        
+        init() {
+            // Initial load
+            this.refreshFeed();
             
-            alpineData.detailEntryId = entryId;
-            alpineData.detailOpen = true;
+            // Start polling
+            this.startPolling();
             
-            // Load detail content via HTMX
-            htmx.ajax('GET', '/orbit/detail/' + entryId + '/', '#detail-container');
+            // Handle entry clicks
+            document.addEventListener('click', (e) => {
+                const row = e.target.closest('[data-entry-id]');
+                if (row) {
+                    this.openDetail(row.dataset.entryId);
+                }
+            });
+        },
+        
+        startPolling() {
+            // Clear existing interval
+            if (this.pollingInterval) {
+                clearInterval(this.pollingInterval);
+            }
+            
+            // Poll every 3 seconds
+            this.pollingInterval = setInterval(() => {
+                if (!this.isPaused) {
+                    this.refreshFeed();
+                }
+            }, 3000);
+        },
+        
+        setType(type) {
+            this.currentType = type;
+            this.refreshFeed();
+        },
+        
+        getTypeLabel() {
+            const labels = {
+                'all': 'All Events',
+                'request': 'Requests',
+                'query': 'Queries',
+                'log': 'Logs',
+                'exception': 'Exceptions',
+                'job': 'Jobs'
+            };
+            return labels[this.currentType] || 'Events';
+        },
+        
+        togglePause() {
+            this.isPaused = !this.isPaused;
+            // Reinitialize icons for the button
+            this.$nextTick(() => lucide.createIcons());
+        },
+        
+        async refreshFeed() {
+            const container = document.getElementById('feed-container');
+            
+            try {
+                const response = await fetch(`/orbit/feed/?type=${this.currentType}`);
+                if (response.ok) {
+                    container.innerHTML = await response.text();
+                    lucide.createIcons();
+                }
+            } catch (error) {
+                console.error('Failed to refresh feed:', error);
+            }
+        },
+        
+        async openDetail(entryId) {
+            this.detailEntryId = entryId;
+            this.detailOpen = true;
+            
+            const container = document.getElementById('detail-container');
+            
+            try {
+                const response = await fetch(`/orbit/detail/${entryId}/`);
+                if (response.ok) {
+                    container.innerHTML = await response.text();
+                    lucide.createIcons();
+                    
+                    // Apply syntax highlighting to JSON
+                    const jsonEl = document.getElementById('json-payload');
+                    if (jsonEl) {
+                        jsonEl.innerHTML = syntaxHighlight(jsonEl.textContent);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load detail:', error);
+                container.innerHTML = '<p class="text-rose-400">Failed to load details</p>';
+            }
+        },
+        
+        async clearAll() {
+            if (!confirm('Clear all Orbit entries?')) return;
+            
+            try {
+                const response = await fetch('/orbit/clear/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': this.getCSRFToken()
+                    }
+                });
+                
+                if (response.ok) {
+                    this.refreshFeed();
+                }
+            } catch (error) {
+                console.error('Failed to clear entries:', error);
+            }
+        },
+        
+        getCSRFToken() {
+            // Try to get from cookie
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                const [name, value] = cookie.trim().split('=');
+                if (name === 'csrftoken') {
+                    return value;
+                }
+            }
+            return '';
         }
-    });
-    
-    // Update icons after Alpine initializes
-    document.addEventListener('alpine:init', () => {
-        Alpine.nextTick(() => {
-            lucide.createIcons();
-        });
-    });
+    };
+}
 </script>
 {% endblock %}

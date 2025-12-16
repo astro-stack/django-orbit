@@ -62,11 +62,11 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/your-org/django-orbit"
-Documentation = "https://github.com/your-org/django-orbit#readme"
-Repository = "https://github.com/your-org/django-orbit"
-Changelog = "https://github.com/your-org/django-orbit/blob/main/CHANGELOG.md"
-"Bug Tracker" = "https://github.com/your-org/django-orbit/issues"
+Homepage = "https://github.com/astro-stack/django-orbit"
+Documentation = "https://github.com/astro-stack/django-orbit#readme"
+Repository = "https://github.com/astro-stack/django-orbit"
+Changelog = "https://github.com/astro-stack/django-orbit/blob/main/CHANGELOG.md"
+"Bug Tracker" = "https://github.com/astro-stack/django-orbit/issues"
 
 [tool.setuptools]
 packages = ["orbit", "orbit.templatetags"]

@@ -24,86 +24,247 @@ def home(request):
     <html>
     <head>
         <title>Django Orbit Demo</title>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
         <style>
+            * { box-sizing: border-box; }
             body { 
-                font-family: system-ui, -apple-system, sans-serif;
-                max-width: 800px;
-                margin: 50px auto;
-                padding: 20px;
-                background: #0f172a;
+                font-family: 'Inter', system-ui, sans-serif;
+                max-width: 900px;
+                margin: 0 auto;
+                padding: 40px 20px;
+                background: #020617;
                 color: #f1f5f9;
+                line-height: 1.6;
             }
-            h1 { color: #22d3ee; }
+            h1 { 
+                color: #22d3ee; 
+                font-size: 2.5rem;
+                margin-bottom: 0.5rem;
+            }
+            h2 { 
+                color: #f1f5f9;
+                margin-top: 2rem;
+                font-size: 1.25rem;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            .subtitle {
+                color: #94a3b8;
+                font-size: 1.1rem;
+                margin-bottom: 1.5rem;
+            }
             a { color: #22d3ee; text-decoration: none; }
             a:hover { text-decoration: underline; }
-            .endpoint { 
-                background: #1e293b;
-                padding: 15px;
-                margin: 10px 0;
+            
+            .quick-start {
+                background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+                border: 1px solid #334155;
+                border-radius: 12px;
+                padding: 24px;
+                margin: 24px 0;
+            }
+            .quick-start h3 {
+                margin: 0 0 12px 0;
+                color: #22d3ee;
+                font-size: 1rem;
+            }
+            .quick-start code {
+                display: block;
+                background: #020617;
+                padding: 16px;
                 border-radius: 8px;
-                border-left: 3px solid #22d3ee;
+                font-family: 'JetBrains Mono', monospace;
+                font-size: 0.9rem;
+                color: #a5f3fc;
+                margin: 8px 0;
+                border: 1px solid #1e293b;
             }
-            .endpoint h3 { margin: 0 0 10px 0; }
-            .endpoint p { margin: 0; color: #94a3b8; }
-            code { 
-                background: #334155;
-                padding: 2px 6px;
-                border-radius: 4px;
-                font-size: 0.9em;
+            .quick-start .comment { color: #64748b; }
+            .quick-start .highlight { color: #fbbf24; }
+            
+            .buttons {
+                display: flex;
+                gap: 12px;
+                margin: 24px 0;
             }
-            .orbit-link {
-                display: inline-block;
-                background: linear-gradient(135deg, #22d3ee, #a78bfa);
-                color: #020617;
+            .btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
                 padding: 12px 24px;
                 border-radius: 8px;
                 font-weight: 600;
-                margin-top: 20px;
+                font-size: 0.95rem;
+                transition: all 0.2s;
+            }
+            .btn-primary {
+                background: linear-gradient(135deg, #22d3ee, #a78bfa);
+                color: #020617;
+            }
+            .btn-primary:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 20px rgba(34, 211, 238, 0.3);
+                text-decoration: none;
+            }
+            .btn-secondary {
+                background: #1e293b;
+                color: #f1f5f9;
+                border: 1px solid #334155;
+            }
+            .btn-secondary:hover {
+                background: #334155;
+                text-decoration: none;
+            }
+            
+            .endpoints {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                gap: 12px;
+            }
+            .endpoint { 
+                background: #0f172a;
+                padding: 16px;
+                border-radius: 8px;
+                border: 1px solid #1e293b;
+                transition: all 0.2s;
+            }
+            .endpoint:hover {
+                border-color: #22d3ee;
+                background: #1e293b;
+            }
+            .endpoint h3 { 
+                margin: 0 0 6px 0; 
+                font-size: 0.95rem;
+            }
+            .endpoint p { 
+                margin: 0; 
+                color: #64748b; 
+                font-size: 0.85rem;
+            }
+            .badge {
+                display: inline-block;
+                padding: 2px 8px;
+                border-radius: 4px;
+                font-size: 0.7rem;
+                font-weight: 600;
+                margin-left: 8px;
+            }
+            .badge-get { background: #22d3ee20; color: #22d3ee; }
+            .badge-post { background: #a78bfa20; color: #a78bfa; }
+            
+            .features {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 16px;
+                margin: 24px 0;
+            }
+            .feature {
+                text-align: center;
+                padding: 16px;
+            }
+            .feature-icon {
+                font-size: 1.5rem;
+                margin-bottom: 8px;
+            }
+            .feature-title {
+                font-weight: 600;
+                color: #f1f5f9;
+                font-size: 0.9rem;
+            }
+            .feature-desc {
+                color: #64748b;
+                font-size: 0.8rem;
+            }
+            
+            footer {
+                margin-top: 48px;
+                padding-top: 24px;
+                border-top: 1px solid #1e293b;
+                color: #64748b;
+                font-size: 0.85rem;
+                text-align: center;
             }
         </style>
     </head>
     <body>
-        <h1>🛰️ Django Orbit Demo</h1>
-        <p>Welcome to the Django Orbit demo project. Use these endpoints to generate events.</p>
+        <h1>🛰️ Django Orbit</h1>
+        <p class="subtitle">Satellite Observability for Django — Debug without touching your DOM</p>
         
-        <a href="/orbit/" class="orbit-link">Open Orbit Dashboard →</a>
-        
-        <h2>Test Endpoints</h2>
-        
-        <div class="endpoint">
-            <h3><a href="/books/">GET /books/</a></h3>
-            <p>List all books (generates SQL queries)</p>
+        <div class="features">
+            <div class="feature">
+                <div class="feature-icon">🌐</div>
+                <div class="feature-title">Request Tracking</div>
+                <div class="feature-desc">Every HTTP request logged</div>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🗄️</div>
+                <div class="feature-title">SQL Recording</div>
+                <div class="feature-desc">N+1 & slow query detection</div>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🚨</div>
+                <div class="feature-title">Exception Capture</div>
+                <div class="feature-desc">Full traceback history</div>
+            </div>
         </div>
         
-        <div class="endpoint">
-            <h3><a href="/books/create/">GET /books/create/</a></h3>
-            <p>Create a random book (generates INSERT query)</p>
+        <div class="buttons">
+            <a href="/orbit/" class="btn btn-primary">🛰️ Open Orbit Dashboard</a>
+            <a href="https://github.com/astro-stack/django-orbit" class="btn btn-secondary" target="_blank">⭐ GitHub</a>
         </div>
         
-        <div class="endpoint">
-            <h3><a href="/slow/">GET /slow/</a></h3>
-            <p>Slow endpoint (demonstrates duration tracking)</p>
+        <div class="quick-start">
+            <h3>⚡ Try it in 30 seconds</h3>
+            <code>
+<span class="comment"># Clone and run</span>
+git clone https://github.com/astro-stack/django-orbit.git
+cd django-orbit
+<span class="highlight">python demo.py setup</span>    <span class="comment"># Creates sample data</span>
+python manage.py runserver
+
+<span class="comment"># Then open: http://localhost:8000/orbit/</span>
+            </code>
         </div>
         
-        <div class="endpoint">
-            <h3><a href="/log/">GET /log/</a></h3>
-            <p>Generate log messages (demonstrates log capture)</p>
+        <h2>🧪 Test Endpoints</h2>
+        <p style="color: #64748b; margin-bottom: 16px;">Click these to generate different types of events in Orbit:</p>
+        
+        <div class="endpoints">
+            <div class="endpoint">
+                <h3><a href="/books/">📚 /books/</a><span class="badge badge-get">GET</span></h3>
+                <p>List books — generates SQL queries</p>
+            </div>
+            
+            <div class="endpoint">
+                <h3><a href="/books/create/">➕ /books/create/</a><span class="badge badge-get">GET</span></h3>
+                <p>Create book — INSERT query + log</p>
+            </div>
+            
+            <div class="endpoint">
+                <h3><a href="/slow/">🐢 /slow/</a><span class="badge badge-get">GET</span></h3>
+                <p>Slow endpoint — 1 second delay</p>
+            </div>
+            
+            <div class="endpoint">
+                <h3><a href="/log/">📝 /log/</a><span class="badge badge-get">GET</span></h3>
+                <p>Generate logs — all levels</p>
+            </div>
+            
+            <div class="endpoint">
+                <h3><a href="/error/">💥 /error/</a><span class="badge badge-get">GET</span></h3>
+                <p>Trigger exception — with traceback</p>
+            </div>
+            
+            <div class="endpoint">
+                <h3><a href="/duplicate-queries/">🔄 /duplicate-queries/</a><span class="badge badge-get">GET</span></h3>
+                <p>N+1 problem — duplicate detection</p>
+            </div>
         </div>
         
-        <div class="endpoint">
-            <h3><a href="/error/">GET /error/</a></h3>
-            <p>Trigger an exception (demonstrates exception capture)</p>
-        </div>
-        
-        <div class="endpoint">
-            <h3><a href="/duplicate-queries/">GET /duplicate-queries/</a></h3>
-            <p>Generate duplicate queries (demonstrates N+1 detection)</p>
-        </div>
-        
-        <div class="endpoint">
-            <h3>POST /api/data/</h3>
-            <p>Submit JSON data: <code>curl -X POST -H "Content-Type: application/json" -d '{"name":"test"}' http://localhost:8000/api/data/</code></p>
-        </div>
+        <footer>
+            Django Orbit v0.1.0 • MIT License • Made with ❤️ by <a href="https://astro-stack.github.io">Astro Stack</a>
+        </footer>
     </body>
     </html>
     """
