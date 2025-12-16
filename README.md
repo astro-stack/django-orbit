@@ -43,7 +43,7 @@ Unlike Django Debug Toolbar which injects HTML into your templates, Django Orbit
 
 ## 📦 Installation
 
-### From PyPI (coming soon)
+### From PyPI
 
 ```bash
 pip install django-orbit
