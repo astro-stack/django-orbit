@@ -29,8 +29,7 @@ theme:
     - content.code.annotate
   icon:
     repo: fontawesome/brands/github
-  logo: assets/logo.svg
-  favicon: assets/favicon.ico
+    logo: material/satellite-variant
 
 nav:
   - Home: index.md
