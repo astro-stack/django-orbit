@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "django-orbit"
-version = "0.1.1"
+version = "0.1.2"
 description = "Satellite Observability for Django - A modern debugging and observability tool"
 readme = "README.md"
 license = {text = "MIT"}
@@ -69,7 +69,7 @@ Changelog = "https://github.com/astro-stack/django-orbit/blob/main/CHANGELOG.md"
 "Bug Tracker" = "https://github.com/astro-stack/django-orbit/issues"
 
 [tool.setuptools]
-packages = ["orbit", "orbit.templatetags"]
+packages = ["orbit", "orbit.templatetags", "orbit.migrations"]
 include-package-data = true
 
 [tool.setuptools.package-data]

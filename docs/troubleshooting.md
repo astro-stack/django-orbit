@@ -52,6 +52,28 @@ LOGGING = {
 python manage.py collectstatic
 ```
 
+### "Failed to load details" error in dashboard
+
+**Possible causes:**
+
+1. **Custom URL prefix** - If you mounted Orbit URLs at a custom path (not `/orbit/`), make sure you're using the latest version of Django Orbit which uses dynamic URLs.
+
+2. **CSRF issues in Docker/containerized environments** - Ensure your Django `CSRF_TRUSTED_ORIGINS` includes your container's hostname:
+
+```python
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    'http://your-container-name:8000',
+]
+```
+
+3. **Database migrations not applied** - Run migrations inside your container:
+
+```bash
+docker-compose exec web python manage.py migrate
+```
+
 ---
 
 *Still stuck? [Open an issue](https://github.com/astro-stack/django-orbit/issues)!*

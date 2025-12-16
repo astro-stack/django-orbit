@@ -181,6 +181,13 @@
 
 <script>
 function orbitDashboard() {
+    // Dynamic base URLs from Django template tags
+    const URLS = {
+        feed: '{% url "orbit:feed" %}',
+        detail: '{% url "orbit:detail" "00000000-0000-0000-0000-000000000000" %}'.replace('00000000-0000-0000-0000-000000000000', ''),
+        clear: '{% url "orbit:clear" %}'
+    };
+
     return {
         currentType: '{{ current_type }}',
         isPaused: false,
@@ -245,7 +252,7 @@ function orbitDashboard() {
             const container = document.getElementById('feed-container');
             
             try {
-                const response = await fetch(`/orbit/feed/?type=${this.currentType}`);
+                const response = await fetch(`${URLS.feed}?type=${this.currentType}`);
                 if (response.ok) {
                     container.innerHTML = await response.text();
                     lucide.createIcons();
@@ -262,7 +269,7 @@ function orbitDashboard() {
             const container = document.getElementById('detail-container');
             
             try {
-                const response = await fetch(`/orbit/detail/${entryId}/`);
+                const response = await fetch(`${URLS.detail}${entryId}/`);
                 if (response.ok) {
                     container.innerHTML = await response.text();
                     lucide.createIcons();
@@ -283,7 +290,7 @@ function orbitDashboard() {
             if (!confirm('Clear all Orbit entries?')) return;
             
             try {
-                const response = await fetch('/orbit/clear/', {
+                const response = await fetch(URLS.clear, {
                     method: 'POST',
                     headers: {
                         'X-CSRFToken': this.getCSRFToken()

@@ -89,6 +89,11 @@ python manage.py migrate orbit
 
 This creates the `orbit_orbitentry` table for storing telemetry data.
 
+!!! note "Migrations are included"
+    Django Orbit includes its migrations in the package. You only need to run `migrate`, not `makemigrations`.
+    
+    If you see an error like `relation "orbit_orbitentry" does not exist`, ensure you've run the migration command above.
+
 ### 5. Verify Installation
 
 1. Start your development server:
