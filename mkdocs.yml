@@ -1,0 +1,87 @@
+site_name: Django Orbit
+site_description: Satellite Observability for Django - A modern debugging and telemetry tool
+site_url: https://astro-stack.github.io/django-orbit
+repo_url: https://github.com/astro-stack/django-orbit
+repo_name: astro-stack/django-orbit
+
+theme:
+  name: material
+  palette:
+    - scheme: slate
+      primary: cyan
+      accent: purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    - scheme: default
+      primary: cyan
+      accent: purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.expand
+    - toc.follow
+    - content.code.copy
+    - content.code.annotate
+  icon:
+    repo: fontawesome/brands/github
+  logo: assets/logo.svg
+  favicon: assets/favicon.ico
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: installation.md
+    - Quick Start: quickstart.md
+    - Configuration: configuration.md
+  - User Guide:
+    - Dashboard: dashboard.md
+    - Running Demo: running-demo.md
+  - Reference:
+    - API: api.md
+    - Customization: customization.md
+  - Development:
+    - Contributing: contributing.md
+    - Publishing: publishing.md
+    - Security: security.md
+    - Troubleshooting: troubleshooting.md
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - pymdownx.details
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+  - minify:
+      minify_html: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/astro-stack/django-orbit
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/django-orbit/
+  generator: false
+
+extra_css:
+  - stylesheets/extra.css
+
+copyright: Copyright &copy; 2024 Astro Stack

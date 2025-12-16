@@ -7,11 +7,12 @@ Welcome to the Django Orbit documentation. This guide covers installation, confi
 1. [Installation](installation.md)
 2. [Quick Start](quickstart.md)
 3. [Configuration](configuration.md)
-4. [Dashboard Guide](dashboard.md)
-5. [API Reference](api.md)
-6. [Customization](customization.md)
-7. [Security](security.md)
-8. [Troubleshooting](troubleshooting.md)
+4. [Running the Demo](running-demo.md)
+5. [Dashboard Guide](dashboard.md)
+6. [API Reference](api.md)
+7. [Customization](customization.md)
+8. [Security](security.md)
+9. [Troubleshooting](troubleshooting.md)
 
 ## What is Django Orbit?
 
