@@ -16,7 +16,7 @@ pip install django-orbit
 For the latest development version:
 
 ```bash
-git clone https://github.com/your-org/django-orbit.git
+git clone https://github.com/astro-stack/django-orbit.git
 cd django-orbit
 pip install -e .
 ```

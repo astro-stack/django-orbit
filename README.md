@@ -52,7 +52,7 @@ pip install django-orbit
 ### From Source
 
 ```bash
-git clone https://github.com/your-org/django-orbit.git
+git clone https://github.com/astro-stack/django-orbit.git
 cd django-orbit
 pip install -e .
 ```
@@ -368,6 +368,6 @@ Inspired by:
 
 **Built with ❤️ for the Django community**
 
-[⭐ Star us on GitHub](https://github.com/your-org/django-orbit)
+[⭐ Star us on GitHub](https://github.com/astro-stack/django-orbit)
 
 </div>

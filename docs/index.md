@@ -38,6 +38,6 @@ Django Orbit is a debugging and observability tool for Django applications. Unli
 
 ## Getting Help
 
-- [GitHub Issues](https://github.com/your-org/django-orbit/issues)
-- [GitHub Discussions](https://github.com/your-org/django-orbit/discussions)
+- [GitHub Issues](https://github.com/astro-stack/django-orbit/issues)
+- [GitHub Discussions](https://github.com/astro-stack/django-orbit/discussions)
 - [Contributing Guide](../CONTRIBUTING.md)

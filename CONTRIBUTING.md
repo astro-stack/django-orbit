@@ -15,7 +15,7 @@ Thank you for your interest in contributing to Django Orbit! This document provi
 1. **Fork and clone the repository**
 
 ```bash
-git clone https://github.com/your-username/django-orbit.git
+git clone https://github.com/astro-stack/django-orbit.git
 cd django-orbit
 ```
 
