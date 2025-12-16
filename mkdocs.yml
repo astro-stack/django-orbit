@@ -83,4 +83,4 @@ extra:
 extra_css:
   - stylesheets/extra.css
 
-copyright: Copyright &copy; 2024 Astro Stack
+copyright: Copyright &copy; 2025 <a href="https://github.com/astro-stack/django-orbit">Django Orbit</a>
