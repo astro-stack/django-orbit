@@ -2,8 +2,6 @@
 
 <div align="center">
 
-![Django Orbit Logo](https://via.placeholder.com/150x150/020617/22d3ee?text=🛰️)
-
 **Satellite Observability for Django**
 
 *A modern debugging and observability tool that orbits your Django application without touching it.*
