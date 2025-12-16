@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "django-orbit"
-version = "0.1.0"
+version = "0.1.1"
 description = "Satellite Observability for Django - A modern debugging and observability tool"
 readme = "README.md"
 license = {text = "MIT"}
