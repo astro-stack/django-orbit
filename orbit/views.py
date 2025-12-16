@@ -57,6 +57,13 @@ class OrbitDashboardView(TemplateView):
         
         context["current_type"] = entry_type
         
+        from django.urls import reverse
+        context["orbit_urls"] = {
+            "feed": reverse("orbit:feed"),
+            "detail_base": reverse("orbit:dashboard") + "detail/",  # Base path for details
+            "clear": reverse("orbit:clear"),
+        }
+        
         return context
 
 

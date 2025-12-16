@@ -181,11 +181,11 @@
 
 <script>
 function orbitDashboard() {
-    // Dynamic base URLs from Django template tags
+    // URLs passed from Django view context
     const URLS = {
-        feed: '{% url "orbit:feed" %}',
-        detail: '{% url "orbit:detail" "00000000-0000-0000-0000-000000000000" %}'.replace('00000000-0000-0000-0000-000000000000', ''),
-        clear: '{% url "orbit:clear" %}'
+        feed: '{{ orbit_urls.feed }}',
+        detail: '{{ orbit_urls.detail_base }}',
+        clear: '{{ orbit_urls.clear }}'
     };
 
     return {
