@@ -55,6 +55,33 @@ cd django-orbit
 pip install -e .
 ```
 
+
+## 🎮 Try the Demo
+
+The fastest way to see Django Orbit in action:
+
+```bash
+git clone https://github.com/astro-stack/django-orbit.git
+cd django-orbit
+pip install -e .
+python demo.py setup    # Creates database and sample data
+python manage.py runserver
+```
+
+Then visit:
+- **Demo app**: http://localhost:8000/
+- **Orbit Dashboard**: http://localhost:8000/orbit/
+
+### Demo Script Commands
+
+```bash
+python demo.py setup     # Initialize database with sample data
+python demo.py fill      # Add more sample data
+python demo.py simulate  # Generate live events automatically
+python demo.py clear     # Clear all Orbit entries
+python demo.py status    # Show current statistics
+```
+
 ## 🚀 Quick Start
 
 ### 1. Add to Installed Apps
