@@ -218,12 +218,12 @@ def home(request):
             <h3>⚡ Try it in 30 seconds</h3>
             <code>
 <span class="comment"># Clone and run</span>
-git clone https://github.com/astro-stack/django-orbit.git
-cd django-orbit
-<span class="highlight">python demo.py setup</span>    <span class="comment"># Creates sample data</span>
-python manage.py runserver
+<br/>git clone https://github.com/astro-stack/django-orbit.git
+<br/>cd django-orbit
+<br/><span class="highlight">python demo.py setup</span>    <span class="comment"># Creates sample data</span>
+<br/>python manage.py runserver
 
-<span class="comment"># Then open: http://localhost:8000/orbit/</span>
+<br/><span class="comment"># Then open: http://localhost:8000/orbit/</span>
             </code>
         </div>
         
