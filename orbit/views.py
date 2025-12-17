@@ -45,6 +45,7 @@ class OrbitDashboardView(TemplateView):
             "cache": OrbitEntry.objects.cache_ops().count(),
             "model": OrbitEntry.objects.models().count(),
             "http_client": OrbitEntry.objects.http_client().count(),
+            "dump": OrbitEntry.objects.dumps().count(),
         }
         
         # Get error and warning counts for alerts
@@ -83,10 +84,9 @@ class OrbitFeedPartial(View):
     def get(self, request: HttpRequest) -> HttpResponse:
         # Get filter parameters
         entry_type = request.GET.get("type", "all")
-        limit = int(request.GET.get("limit", 50))
-        offset = int(request.GET.get("offset", 0))
+        per_page = int(request.GET.get("per_page", 25))
+        page = int(request.GET.get("page", 1))
         family_hash = request.GET.get("family")
-        is_append = request.GET.get("append") == "1"
         
         # Build queryset
         queryset = OrbitEntry.objects.all()
@@ -99,22 +99,28 @@ class OrbitFeedPartial(View):
         if family_hash:
             queryset = queryset.filter(family_hash=family_hash)
         
-        # Order and limit
-        entries = queryset.order_by("-created_at")[offset:offset + limit]
+        # Calculate pagination
+        total_count = queryset.count()
+        total_pages = (total_count + per_page - 1) // per_page  # Ceiling division
+        page = max(1, min(page, total_pages)) if total_pages > 0 else 1
         
-        # Choose template based on append mode
-        template = "orbit/partials/feed_rows.html" if is_append else "orbit/partials/feed.html"
+        # Get entries for current page
+        offset = (page - 1) * per_page
+        entries = queryset.order_by("-created_at")[offset:offset + per_page]
         
         # Render partial
         return TemplateResponse(
             request,
-            template,
+            "orbit/partials/feed.html",
             {
                 "entries": entries,
                 "current_type": entry_type,
-                "has_more": queryset.count() > offset + limit,
-                "offset": offset,
-                "limit": limit,
+                "page": page,
+                "per_page": per_page,
+                "total_pages": total_pages,
+                "total_count": total_count,
+                "has_prev": page > 1,
+                "has_next": page < total_pages,
             }
         )
 

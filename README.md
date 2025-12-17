@@ -366,11 +366,11 @@ Configure additional fields to hide via `HIDE_REQUEST_HEADERS` and `HIDE_REQUEST
 - [ ] Authentication/Authorization for dashboard
 - [ ] Redis/external storage backend
 - [ ] Background job tracking (Celery, RQ, etc.)
-- [ ] Email capture
-- [ ] Cache operations tracking
-- [ ] Custom event types
+- [ ] Email/Notifications capture
+- [ ] Events/Signals tracking
+- [ ] Scheduled tasks monitoring
 - [ ] Export/import functionality
-- [ ] Filtering and search
+- [ ] Advanced filtering and search
 - [ ] Performance insights and recommendations
 
 ## 🤝 Contributing

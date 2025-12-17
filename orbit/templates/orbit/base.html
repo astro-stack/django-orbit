@@ -189,6 +189,11 @@
                 return '<span class="' + cls + '">' + match + '</span>';
             });
         }
+        
+        // Reinitialize Lucide icons after HTMX swaps
+        document.body.addEventListener('htmx:afterSwap', function(event) {
+            lucide.createIcons();
+        });
     </script>
     
     {% block extra_js %}{% endblock %}

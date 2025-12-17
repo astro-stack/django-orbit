@@ -9,8 +9,8 @@
     <!-- Open Graph -->
     <meta property="og:title" content="Django Orbit — Satellite Observability for Django">
     <meta property="og:description" content="Track requests, queries, logs, and exceptions without touching your templates.">
-    <meta property="og:image" content="https://astro-stack.github.io/django-orbit/og-image.png">
-    <meta property="og:url" content="https://astro-stack.github.io/django-orbit">
+    <meta property="og:image" content="https://labs.wearehik.com/django-orbit/og-image.png">
+    <meta property="og:url" content="https://labs.wearehik.com/django-orbit">
     
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
@@ -541,7 +541,7 @@
                 <a href="#comparison">Comparison</a>
                 <a href="#install">Install</a>
                 <a href="https://github.com/astro-stack/django-orbit" target="_blank">GitHub</a>
-                <a href="https://astro-stack.github.io/django-orbit/" class="btn btn-secondary">Documentation</a>
+                <a href="https://labs.wearehik.com/django-orbit/" class="btn btn-secondary">Documentation</a>
             </div>
         </div>
     </nav>
@@ -675,42 +675,45 @@
         </div>
     </section>
     
-    <!-- Code Example -->
+    <!-- Installation -->
     <section class="code-section" id="install">
         <div class="container">
             <div class="section-header">
-                <h2>5 Minutes to Production</h2>
-                <p>Add Django Orbit to your existing project in three simple steps.</p>
+                <h2>Installation</h2>
+                <p>Up and running in less than 5 minutes. Just add the package and a few lines of config.</p>
             </div>
             <div class="code-block">
                 <div class="code-header">
                     <span class="code-dot red"></span>
                     <span class="code-dot yellow"></span>
                     <span class="code-dot green"></span>
-                    <span class="code-filename">settings.py</span>
+                    <span class="code-filename">Quick Start</span>
                 </div>
                 <div class="code-content">
-<span class="comment"># 1. Install</span>
-<span class="comment"># pip install django-orbit</span>
+<span class="comment"># Step 1: Install the package</span>
+<br/>pip install django-orbit
 
-<br/><br/><span class="comment"># 2. Add to INSTALLED_APPS</span>
+<br/><br/><span class="comment"># Step 2: Add to INSTALLED_APPS (settings.py)</span>
 <br/>INSTALLED_APPS = [
     <span class="string">'orbit'</span>,
     ...
 ]
 
-<br/><br/><span class="comment"># 3. Add middleware (first position)</span>
+<br/><br/><span class="comment"># Step 3: Add middleware first (settings.py)</span>
 <br/>MIDDLEWARE = [
     <span class="string">'orbit.middleware.OrbitMiddleware'</span>,
     ...
 ]
 
-<br/><br/><span class="comment"># 4. Add URL (urls.py)</span>
+<br/><br/><span class="comment"># Step 4: Include URLs (urls.py)</span>
 <br/>urlpatterns = [
     <span class="function">path</span>(<span class="string">'orbit/'</span>, <span class="function">include</span>(<span class="string">'orbit.urls'</span>)),
 ]
 
-<br/><br/><span class="comment"># Done! Visit /orbit/ to see your dashboard</span>
+<br/><br/><span class="comment"># Step 5: Run migrations</span>
+<br/>python manage.py migrate orbit
+
+<br/><br/><span class="comment"># 🚀 Done! Visit http://localhost:8000/orbit/</span>
                 </div>
             </div>
         </div>
@@ -725,7 +728,7 @@
                 <a href="https://github.com/astro-stack/django-orbit" class="btn btn-primary btn-large">
                     🚀 Get Started Free
                 </a>
-                <a href="https://astro-stack.github.io/django-orbit/" class="btn btn-secondary btn-large">
+                <a href="https://labs.wearehik.com/django-orbit/" class="btn btn-secondary btn-large">
                     📖 Read the Docs
                 </a>
             </div>
