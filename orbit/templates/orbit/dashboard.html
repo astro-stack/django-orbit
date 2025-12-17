@@ -81,6 +81,45 @@
                 <span class="flex-1">Jobs</span>
                 <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.job }}</span>
             </button>
+            
+            <!-- Divider -->
+            <div class="my-2 border-t border-orbit-border/50"></div>
+            
+            <button
+               @click="setType('command')"
+               :class="currentType === 'command' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
+               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
+                <i data-lucide="terminal" class="w-4 h-4 text-violet-400"></i>
+                <span class="flex-1">Commands</span>
+                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.command }}</span>
+            </button>
+            
+            <button
+               @click="setType('cache')"
+               :class="currentType === 'cache' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
+               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
+                <i data-lucide="hard-drive" class="w-4 h-4 text-orange-400"></i>
+                <span class="flex-1">Cache</span>
+                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.cache }}</span>
+            </button>
+            
+            <button
+               @click="setType('model')"
+               :class="currentType === 'model' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
+               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
+                <i data-lucide="box" class="w-4 h-4 text-blue-400"></i>
+                <span class="flex-1">Models</span>
+                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.model }}</span>
+            </button>
+            
+            <button
+               @click="setType('http_client')"
+               :class="currentType === 'http_client' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
+               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
+                <i data-lucide="send" class="w-4 h-4 text-pink-400"></i>
+                <span class="flex-1">HTTP Client</span>
+                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.http_client }}</span>
+            </button>
         </nav>
         
         <!-- Sidebar Footer -->

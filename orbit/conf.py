@@ -15,10 +15,19 @@ DEFAULTS = {
     "HIDE_REQUEST_BODY_KEYS": ["password", "token", "secret", "api_key"],
     "MAX_BODY_SIZE": 65536,  # 64KB
     "STORAGE_LIMIT": 1000,  # Max entries to keep
+    # Original watchers
     "RECORD_REQUESTS": True,
     "RECORD_QUERIES": True,
     "RECORD_LOGS": True,
     "RECORD_EXCEPTIONS": True,
+    # Phase 1 watchers
+    "RECORD_COMMANDS": True,
+    "RECORD_CACHE": True,
+    "RECORD_MODELS": True,
+    "RECORD_HTTP_CLIENT": True,
+    # Command watcher settings
+    "IGNORE_COMMANDS": ["runserver", "shell", "dbshell", "showmigrations"],
+    "MAX_COMMAND_OUTPUT": 5000,
 }
 
 

@@ -31,6 +31,22 @@ class OrbitEntryManager(models.Manager):
         """Get all job/task entries."""
         return self.filter(type=OrbitEntry.TYPE_JOB)
     
+    def commands(self):
+        """Get all management command entries."""
+        return self.filter(type=OrbitEntry.TYPE_COMMAND)
+    
+    def cache_ops(self):
+        """Get all cache operation entries."""
+        return self.filter(type=OrbitEntry.TYPE_CACHE)
+    
+    def models(self):
+        """Get all model event entries."""
+        return self.filter(type=OrbitEntry.TYPE_MODEL)
+    
+    def http_client(self):
+        """Get all outgoing HTTP request entries."""
+        return self.filter(type=OrbitEntry.TYPE_HTTP_CLIENT)
+    
     def slow_queries(self):
         """Get all slow queries (marked in payload)."""
         return self.filter(
@@ -72,6 +88,11 @@ class OrbitEntry(models.Model):
     TYPE_LOG = "log"
     TYPE_EXCEPTION = "exception"
     TYPE_JOB = "job"
+    # Phase 1 types
+    TYPE_COMMAND = "command"
+    TYPE_CACHE = "cache"
+    TYPE_MODEL = "model"
+    TYPE_HTTP_CLIENT = "http_client"
     
     TYPE_CHOICES = [
         (TYPE_REQUEST, "HTTP Request"),
@@ -79,6 +100,10 @@ class OrbitEntry(models.Model):
         (TYPE_LOG, "Log Entry"),
         (TYPE_EXCEPTION, "Exception"),
         (TYPE_JOB, "Background Job"),
+        (TYPE_COMMAND, "Command"),
+        (TYPE_CACHE, "Cache"),
+        (TYPE_MODEL, "Model Event"),
+        (TYPE_HTTP_CLIENT, "HTTP Client"),
     ]
     
     # Type to icon mapping for UI
@@ -88,6 +113,10 @@ class OrbitEntry(models.Model):
         TYPE_LOG: "file-text",
         TYPE_EXCEPTION: "alert-triangle",
         TYPE_JOB: "clock",
+        TYPE_COMMAND: "terminal",
+        TYPE_CACHE: "hard-drive",
+        TYPE_MODEL: "box",
+        TYPE_HTTP_CLIENT: "send",
     }
     
     # Type to color mapping for UI
@@ -97,6 +126,10 @@ class OrbitEntry(models.Model):
         TYPE_LOG: "slate",
         TYPE_EXCEPTION: "rose",
         TYPE_JOB: "amber",
+        TYPE_COMMAND: "violet",
+        TYPE_CACHE: "orange",
+        TYPE_MODEL: "blue",
+        TYPE_HTTP_CLIENT: "pink",
     }
     
     # Primary key
@@ -205,6 +238,34 @@ class OrbitEntry(models.Model):
             name = payload.get("name", "Unknown Job")
             status = payload.get("status", "?")
             return f"{name} ({status})"
+        
+        elif self.type == self.TYPE_COMMAND:
+            command = payload.get("command", "unknown")
+            exit_code = payload.get("exit_code", "?")
+            return f"{command} → exit {exit_code}"
+        
+        elif self.type == self.TYPE_CACHE:
+            operation = payload.get("operation", "?")
+            key = payload.get("key", "")
+            if len(key) > 40:
+                key = key[:37] + "..."
+            hit = payload.get("hit")
+            hit_str = " (hit)" if hit else " (miss)" if hit is False else ""
+            return f"{operation.upper()} {key}{hit_str}"
+        
+        elif self.type == self.TYPE_MODEL:
+            model = payload.get("model", "?")
+            action = payload.get("action", "?")
+            pk = payload.get("pk", "?")
+            return f"{model} {action} (pk={pk})"
+        
+        elif self.type == self.TYPE_HTTP_CLIENT:
+            method = payload.get("method", "?")
+            url = payload.get("url", "?")
+            if len(url) > 50:
+                url = url[:47] + "..."
+            status = payload.get("status_code", "?")
+            return f"{method} {url} → {status}"
         
         return str(self.id)[:8]
     

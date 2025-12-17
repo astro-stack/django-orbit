@@ -66,7 +66,7 @@ The fastest way to see Django Orbit in action:
 git clone https://github.com/astro-stack/django-orbit.git
 cd django-orbit
 pip install -e .
-python demo.py setup    # Creates database and sample data
+python demo.py setup    # Creates sample data with ALL entry types
 python manage.py runserver
 ```
 
@@ -76,13 +76,13 @@ Then visit:
 
 ### Demo Script Commands
 
-```bash
-python demo.py setup     # Initialize database with sample data
-python demo.py fill      # Add more sample data
-python demo.py simulate  # Generate live events automatically
-python demo.py clear     # Clear all Orbit entries
-python demo.py status    # Show current statistics
-```
+| Command | Description |
+|---------|-------------|
+| `python demo.py setup` | Creates sample data: books, reviews + 40+ Orbit entries (all 9 types) |
+| `python demo.py fill` | Tests live watchers by making HTTP requests (requires server) |
+| `python demo.py simulate` | Simulates continuous traffic for load testing |
+| `python demo.py status` | Shows current entry counts |
+| `python demo.py clear` | Clears all Orbit entries |
 
 ## 🚀 Quick Start
 

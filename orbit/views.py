@@ -40,6 +40,11 @@ class OrbitDashboardView(TemplateView):
             "log": OrbitEntry.objects.logs().count(),
             "exception": OrbitEntry.objects.exceptions().count(),
             "job": OrbitEntry.objects.jobs().count(),
+            # Phase 1 types
+            "command": OrbitEntry.objects.commands().count(),
+            "cache": OrbitEntry.objects.cache_ops().count(),
+            "model": OrbitEntry.objects.models().count(),
+            "http_client": OrbitEntry.objects.http_client().count(),
         }
         
         # Get error and warning counts for alerts

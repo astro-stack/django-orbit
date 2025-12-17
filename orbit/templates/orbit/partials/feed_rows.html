@@ -13,6 +13,10 @@
             {% elif entry.type == 'log' %}bg-slate-500/10 text-slate-400
             {% elif entry.type == 'exception' %}bg-rose-500/10 text-rose-400
             {% elif entry.type == 'job' %}bg-amber-500/10 text-amber-400
+            {% elif entry.type == 'command' %}bg-violet-500/10 text-violet-400
+            {% elif entry.type == 'cache' %}bg-orange-500/10 text-orange-400
+            {% elif entry.type == 'model' %}bg-blue-500/10 text-blue-400
+            {% elif entry.type == 'http_client' %}bg-pink-500/10 text-pink-400
             {% endif %}">
             {% if entry.type == 'request' %}
             <i data-lucide="globe" class="w-4 h-4"></i>
@@ -24,6 +28,14 @@
             <i data-lucide="alert-triangle" class="w-4 h-4"></i>
             {% elif entry.type == 'job' %}
             <i data-lucide="clock" class="w-4 h-4"></i>
+            {% elif entry.type == 'command' %}
+            <i data-lucide="terminal" class="w-4 h-4"></i>
+            {% elif entry.type == 'cache' %}
+            <i data-lucide="hard-drive" class="w-4 h-4"></i>
+            {% elif entry.type == 'model' %}
+            <i data-lucide="box" class="w-4 h-4"></i>
+            {% elif entry.type == 'http_client' %}
+            <i data-lucide="send" class="w-4 h-4"></i>
             {% endif %}
         </div>
     </td>

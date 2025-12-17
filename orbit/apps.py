@@ -16,7 +16,7 @@ class OrbitConfig(AppConfig):
     def ready(self):
         """
         Called when Django starts. Sets up the Orbit logging handler
-        to capture all Python logs automatically.
+        and installs all watchers.
         """
         from orbit.handlers import OrbitLogHandler
         from orbit.conf import get_config
@@ -36,3 +36,8 @@ class OrbitConfig(AppConfig):
                 orbit_handler = OrbitLogHandler()
                 orbit_handler.setLevel(logging.DEBUG)
                 root_logger.addHandler(orbit_handler)
+            
+            # Install Phase 1 watchers
+            from orbit.watchers import install_all_watchers
+            install_all_watchers()
+
