@@ -22,8 +22,8 @@ Orbit v0.3.0+ includes built-in support for access control via configuration.
 # settings.py
 ORBIT_CONFIG = {
     'ENABLED': True,
-    # Path to a function that takes 'request' and returns True/False
-    'AUTH_CHECK': 'django.contrib.admin.views.decorators.staff_member_required',
+    # Callable that takes 'request' and returns True/False
+    'AUTH_CHECK': lambda request: request.user.is_staff,
     # Or for simple uses:
     # 'AUTH_CHECK': 'orbit.utils.is_superuser', 
 }
