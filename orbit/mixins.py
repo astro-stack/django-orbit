@@ -40,3 +40,20 @@ class OrbitProtectedView(UserPassesTestMixin):
 
         # Fallback deny
         return False
+
+    def handle_no_permission(self):
+        from django.shortcuts import render
+        from django.conf import settings
+        from django.contrib.auth import REDIRECT_FIELD_NAME
+
+        login_url = getattr(settings, "LOGIN_URL", "/admin/login/")
+        
+        return render(
+            self.request, 
+            "orbit/locked.html", 
+            {
+                "login_url": login_url,
+                "redirect_field_name": REDIRECT_FIELD_NAME
+            },
+            status=403
+        )
