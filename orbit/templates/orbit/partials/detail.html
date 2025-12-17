@@ -9,6 +9,11 @@
             {% elif entry.type == 'log' %}bg-slate-500/10 text-slate-400
             {% elif entry.type == 'exception' %}bg-rose-500/10 text-rose-400
             {% elif entry.type == 'job' %}bg-amber-500/10 text-amber-400
+            {% elif entry.type == 'command' %}bg-violet-500/10 text-violet-400
+            {% elif entry.type == 'cache' %}bg-orange-500/10 text-orange-400
+            {% elif entry.type == 'model' %}bg-blue-500/10 text-blue-400
+            {% elif entry.type == 'http_client' %}bg-pink-500/10 text-pink-400
+            {% elif entry.type == 'dump' %}bg-lime-500/10 text-lime-400
             {% endif %}">
             {% if entry.type == 'request' %}
             <i data-lucide="globe" class="w-6 h-6"></i>
@@ -20,6 +25,16 @@
             <i data-lucide="alert-triangle" class="w-6 h-6"></i>
             {% elif entry.type == 'job' %}
             <i data-lucide="clock" class="w-6 h-6"></i>
+            {% elif entry.type == 'command' %}
+            <i data-lucide="terminal" class="w-6 h-6"></i>
+            {% elif entry.type == 'cache' %}
+            <i data-lucide="hard-drive" class="w-6 h-6"></i>
+            {% elif entry.type == 'model' %}
+            <i data-lucide="box" class="w-6 h-6"></i>
+            {% elif entry.type == 'http_client' %}
+            <i data-lucide="send" class="w-6 h-6"></i>
+            {% elif entry.type == 'dump' %}
+            <i data-lucide="bug" class="w-6 h-6"></i>
             {% endif %}
         </div>
         <div class="flex-1 min-w-0">
@@ -175,6 +190,11 @@
                     {% elif related.type == 'log' %}bg-slate-500/10 text-slate-400
                     {% elif related.type == 'exception' %}bg-rose-500/10 text-rose-400
                     {% elif related.type == 'job' %}bg-amber-500/10 text-amber-400
+                    {% elif related.type == 'command' %}bg-violet-500/10 text-violet-400
+                    {% elif related.type == 'cache' %}bg-orange-500/10 text-orange-400
+                    {% elif related.type == 'model' %}bg-blue-500/10 text-blue-400
+                    {% elif related.type == 'http_client' %}bg-pink-500/10 text-pink-400
+                    {% elif related.type == 'dump' %}bg-lime-500/10 text-lime-400
                     {% endif %}">
                     {% if related.type == 'request' %}
                     <i data-lucide="globe" class="w-3 h-3"></i>
@@ -186,6 +206,16 @@
                     <i data-lucide="alert-triangle" class="w-3 h-3"></i>
                     {% elif related.type == 'job' %}
                     <i data-lucide="clock" class="w-3 h-3"></i>
+                    {% elif related.type == 'command' %}
+                    <i data-lucide="terminal" class="w-3 h-3"></i>
+                    {% elif related.type == 'cache' %}
+                    <i data-lucide="hard-drive" class="w-3 h-3"></i>
+                    {% elif related.type == 'model' %}
+                    <i data-lucide="box" class="w-3 h-3"></i>
+                    {% elif related.type == 'http_client' %}
+                    <i data-lucide="send" class="w-3 h-3"></i>
+                    {% elif related.type == 'dump' %}
+                    <i data-lucide="bug" class="w-3 h-3"></i>
                     {% endif %}
                 </div>
                 <span class="text-xs font-mono text-orbit-text-secondary truncate flex-1">{{ related.summary }}</span>
