@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed pagination state persistence during auto-refresh
 - Sidebar ordering (alphabetical)
 - "Load More" button issues on long lists
+- Accurate cache hit/miss detection using sentinel object
 
 ## [0.1.0] - 2024-12-01
 
