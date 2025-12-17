@@ -16,17 +16,19 @@ ORBIT = {
 
 ### 2. Restrict Access
 
-Use Django's authentication to protect the dashboard:
+Orbit v0.3.0+ includes built-in support for access control via configuration.
 
 ```python
-# urls.py
-from django.contrib.admin.views.decorators import staff_member_required
-from django.urls import path, include
-
-urlpatterns = [
-    path('orbit/', staff_member_required(include('orbit.urls'))),
-]
+# settings.py
+ORBIT_CONFIG = {
+    'ENABLED': True,
+    'AUTH_CHECK': lambda request: request.user.is_staff,
+    # Or strict superuser check:
+    # 'AUTH_CHECK': lambda request: request.user.is_superuser, 
+}
 ```
+
+This is safer and easier than wrapping URLs manually.
 
 ### 3. Sensitive Data
 

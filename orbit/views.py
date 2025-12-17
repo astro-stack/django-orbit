@@ -13,10 +13,20 @@ from django.template.response import TemplateResponse
 from django.views import View
 from django.views.generic import TemplateView
 
+__all__ = [
+    "OrbitDashboardView",
+    "OrbitFeedPartial",
+    "OrbitDetailPartial",
+    "OrbitClearView",
+    "OrbitStatsView",
+    "OrbitExportView",
+]
+
 from orbit.models import OrbitEntry
+from orbit.mixins import OrbitProtectedView
 
 
-class OrbitDashboardView(TemplateView):
+class OrbitDashboardView(OrbitProtectedView, TemplateView):
     """
     Main dashboard view that renders the shell interface.
 
@@ -69,12 +79,13 @@ class OrbitDashboardView(TemplateView):
             "detail_base": reverse("orbit:dashboard")
             + "detail/",  # Base path for details
             "clear": reverse("orbit:clear"),
+            "export_all": reverse("orbit:export_all"),
         }
 
         return context
 
 
-class OrbitFeedPartial(View):
+class OrbitFeedPartial(OrbitProtectedView, View):
     """
     Partial view that returns the feed table content.
 
@@ -99,6 +110,27 @@ class OrbitFeedPartial(View):
         # Filter by family
         if family_hash:
             queryset = queryset.filter(family_hash=family_hash)
+
+        # Filter by search query "q"
+        query = request.GET.get("q")
+        if query:
+            import uuid
+            try:
+                # Try explicit UUID search
+                uuid_obj = uuid.UUID(query)
+                queryset = queryset.filter(id=uuid_obj)
+            except ValueError:
+                # Text search on payload using generic "contains"
+                # For SQLite/Postgres JSONField, we can use __icontains
+                # Ideally we cast to text for better compatibility if needed, 
+                # but let's try direct first as it handles some string casting implicitly in Django 4.2+
+                from django.db.models import TextField
+                from django.db.models.functions import Cast
+                
+                # Cast payload to text to search inside keys and values
+                queryset = queryset.annotate(
+                    payload_text=Cast("payload", TextField())
+                ).filter(payload_text__icontains=query)
 
         # Calculate pagination
         total_count = queryset.count()
@@ -126,7 +158,7 @@ class OrbitFeedPartial(View):
         )
 
 
-class OrbitDetailPartial(View):
+class OrbitDetailPartial(OrbitProtectedView, View):
     """
     Partial view that returns the detail panel for a specific entry.
 
@@ -163,7 +195,7 @@ class OrbitDetailPartial(View):
         )
 
 
-class OrbitClearView(View):
+class OrbitClearView(OrbitProtectedView, View):
     """
     View to clear all Orbit entries.
     """
@@ -180,7 +212,7 @@ class OrbitClearView(View):
         )
 
 
-class OrbitStatsView(View):
+class OrbitStatsView(OrbitProtectedView, View):
     """
     View that returns stats/metrics as JSON.
     """
@@ -223,3 +255,101 @@ class OrbitStatsView(View):
                 "time_range": "1h",
             }
         )
+
+
+class OrbitExportView(OrbitProtectedView, View):
+    """
+    View to export one or many entries as JSON.
+    """
+
+    def get(self, request: HttpRequest, entry_id: str = None) -> HttpResponse:
+        # Single Entry Export
+        if entry_id:
+            entry = get_object_or_404(OrbitEntry, id=entry_id)
+            
+            data = {
+                "entry": {
+                    "id": str(entry.id),
+                    "type": entry.type,
+                    "created_at": entry.created_at.isoformat(),
+                    "payload": entry.payload,
+                    "duration_ms": entry.duration_ms,
+                    "family_hash": entry.family_hash,
+                },
+                "related": [],
+            }
+
+            if entry.family_hash:
+                related_qs = (
+                    OrbitEntry.objects.filter(family_hash=entry.family_hash)
+                    .exclude(id=entry.id)
+                    .order_by("created_at")
+                )
+                
+                for rel in related_qs:
+                    data["related"].append({
+                        "id": str(rel.id),
+                        "type": rel.type,
+                        "created_at": rel.created_at.isoformat(),
+                        "payload": rel.payload,
+                        "duration_ms": rel.duration_ms,
+                    })
+            
+            response = JsonResponse(data, json_dumps_params={"indent": 2})
+            response["Content-Disposition"] = f'attachment; filename="orbit_entry_{entry.id}.json"'
+            return response
+
+        # Bulk Export (Streaming)
+        from django.http import StreamingHttpResponse
+        
+        # 1. Reuse filtering logic from OrbitFeedPartial
+        queryset = OrbitEntry.objects.all().order_by("-created_at")
+        
+        entry_type = request.GET.get("type", "all")
+        if entry_type and entry_type != "all":
+            queryset = queryset.filter(type=entry_type)
+
+        family_hash = request.GET.get("family")
+        if family_hash:
+            queryset = queryset.filter(family_hash=family_hash)
+
+        query = request.GET.get("q")
+        if query:
+            import uuid
+            try:
+                uuid_obj = uuid.UUID(query)
+                queryset = queryset.filter(id=uuid_obj)
+            except ValueError:
+                from django.db.models import TextField
+                from django.db.models.functions import Cast
+                queryset = queryset.annotate(
+                    payload_text=Cast("payload", TextField())
+                ).filter(payload_text__icontains=query)
+
+        # 2. Generator function
+        def stream_generator():
+            yield "[\n"
+            first = True
+            for entry in queryset.iterator(chunk_size=500):
+                if not first:
+                    yield ",\n"
+                first = False
+                
+                # Manual JSON serialization for speed/simplicity in generator
+                # using json.dumps for the dict is safest
+                yield json.dumps({
+                    "id": str(entry.id),
+                    "type": entry.type,
+                    "created_at": entry.created_at.isoformat(),
+                    "payload": entry.payload,
+                    "duration_ms": entry.duration_ms,
+                    "family_hash": entry.family_hash,
+                }, default=str)
+            yield "\n]"
+
+        response = StreamingHttpResponse(
+            stream_generator(), 
+            content_type="application/json"
+        )
+        response["Content-Disposition"] = 'attachment; filename="orbit_export_all.json"'
+        return response

@@ -39,6 +39,7 @@ nav:
     - Configuration: configuration.md
   - User Guide:
     - Dashboard: dashboard.md
+    - Scheduled Cleanup: scheduling.md
     - Running Demo: running-demo.md
   - Reference:
     - API: api.md

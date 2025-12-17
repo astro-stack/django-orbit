@@ -9,6 +9,8 @@ from django.conf import settings
 # Default configuration
 DEFAULTS = {
     "ENABLED": True,
+    # Authentication check (callable or path to function)
+    "AUTH_CHECK": None,
     "SLOW_QUERY_THRESHOLD_MS": 500,
     "IGNORE_PATHS": ["/orbit/", "/static/", "/admin/jsi18n/", "/favicon.ico"],
     "HIDE_REQUEST_HEADERS": ["Authorization", "Cookie", "X-CSRFToken"],
