@@ -344,9 +344,7 @@ ORBIT_CONFIG = {
 ```python
 # settings.py
 ORBIT_CONFIG = {
-    # Path to a function that returns True if user is allowed
-    'AUTH_CHECK': 'orbit.utils.check_is_staff',
-    # OR a callable directly
+    # Callable that takes 'request' and returns True/False
     'AUTH_CHECK': lambda request: request.user.is_staff,
 }
 ```

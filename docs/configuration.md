@@ -76,6 +76,26 @@ ORBIT_CONFIG = {
 
 Orbit automatically cleans up old entries when this limit is exceeded.
 
+#### `AUTH_CHECK`
+- **Type**: `callable` or `str` (dotted path to callable)
+- **Default**: `None`
+- **Description**: Function that controls dashboard access. Receives the `request` object and must return `True` (allow) or `False` (deny).
+
+```python
+# Using a lambda (recommended for simple checks)
+ORBIT_CONFIG = {
+    'AUTH_CHECK': lambda request: request.user.is_staff,
+}
+
+# Using a dotted path to a custom function
+# myapp/auth.py: def can_access_orbit(request): return request.user.is_superuser
+ORBIT_CONFIG = {
+    'AUTH_CHECK': 'myapp.auth.can_access_orbit',
+}
+```
+
+When `AUTH_CHECK` returns `False`, users see a styled "Access Denied" page instead of a generic 403 error.
+
 ### Recording Settings
 
 #### `RECORD_REQUESTS`
