@@ -35,7 +35,7 @@ DEFAULTS = {
 def get_config():
     """
     Get the Orbit configuration, merging defaults with user settings.
-    
+
     Returns:
         dict: Complete configuration dictionary
     """
@@ -53,16 +53,16 @@ def is_enabled():
 def should_ignore_path(path):
     """
     Check if a path should be ignored by Orbit.
-    
+
     Args:
         path: The request path to check
-        
+
     Returns:
         bool: True if path should be ignored
     """
     config = get_config()
     ignore_paths = config.get("IGNORE_PATHS", [])
-    
+
     for ignore_path in ignore_paths:
         if path.startswith(ignore_path):
             return True

@@ -11,7 +11,7 @@ register = template.Library()
 def get_item(dictionary, key):
     """
     Get an item from a dictionary using bracket notation in templates.
-    
+
     Usage: {{ mydict|get_item:key }}
     """
     if dictionary is None:
@@ -26,9 +26,9 @@ def status_class(status_code):
     """
     if status_code is None:
         return "text-slate-400"
-    
+
     status_code = int(status_code)
-    
+
     if status_code >= 500:
         return "text-rose-400"
     elif status_code >= 400:
@@ -61,7 +61,7 @@ def duration_class(duration_ms):
     """
     if duration_ms is None:
         return "text-slate-400"
-    
+
     if duration_ms > 500:
         return "text-rose-400"
     elif duration_ms > 100:

@@ -15,4 +15,3 @@ default_app_config = "orbit.apps.OrbitConfig"
 from orbit.helpers import dump, log
 
 __all__ = ["dump", "log"]
-
