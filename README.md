@@ -339,15 +339,16 @@ ORBIT_CONFIG = {
 }
 ```
 
-2. **Use authentication** (coming soon):
+2. **Use authentication**:
 
 ```python
-# urls.py
-from django.contrib.admin.views.decorators import staff_member_required
-
-urlpatterns = [
-    path('orbit/', staff_member_required(include('orbit.urls'))),
-]
+# settings.py
+ORBIT_CONFIG = {
+    # Path to a function that returns True if user is allowed
+    'AUTH_CHECK': 'orbit.utils.check_is_staff',
+    # OR a callable directly
+    'AUTH_CHECK': lambda request: request.user.is_staff,
+}
 ```
 
 ### Sensitive Data
@@ -374,12 +375,12 @@ Configure additional fields to hide via `HIDE_REQUEST_HEADERS` and `HIDE_REQUEST
 - [x] **Model Events** - ORM create/update/delete auditing
 - [x] **HTTP Client** - Outgoing API request monitoring
 - [x] **Debug Dumps** - `orbit_dump()` for variable inspection
-
-### Coming Soon 🚧
-- [x] **Data Security** - Dashboard authentication/authorization
+- [x] **Data Security** - Dashboard authentication (AUTH_CHECK)
 - [x] **Data Cleanup** - Pruning management command
 - [x] **Search & Filter** - Search by UUID or content
-- [x] **Export** - Download entries as JSON
+- [x] **Export** - Download entries as JSON (Single & Bulk)
+
+### Coming Soon 🚧
 - [ ] **Email Capture** - Track sent emails
 - [ ] **Django Signals** - Event dispatch monitoring
 

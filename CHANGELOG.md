@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Added direct UUID lookup.
 - **Export**:
     - Added "Export JSON" button to entry details.
-    - Implemented `/orbit/export/<uuid>/` endpoint. old data.
+    - Implemented `/orbit/export/<uuid>/` endpoint.
 
 ## [0.2.0] - 2025-12-16
 
