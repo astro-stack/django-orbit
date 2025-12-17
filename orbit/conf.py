@@ -25,6 +25,7 @@ DEFAULTS = {
     "RECORD_CACHE": True,
     "RECORD_MODELS": True,
     "RECORD_HTTP_CLIENT": True,
+    "RECORD_DUMPS": True,
     # Command watcher settings
     "IGNORE_COMMANDS": ["runserver", "shell", "dbshell", "showmigrations"],
     "MAX_COMMAND_OUTPUT": 5000,
