@@ -84,11 +84,14 @@ def record_command(
         "output": output,
     }
 
-    OrbitEntry.objects.create(
-        type=OrbitEntry.TYPE_COMMAND,
-        payload=payload,
-        duration_ms=duration_ms,
-    )
+    try:
+        OrbitEntry.objects.create(
+            type=OrbitEntry.TYPE_COMMAND,
+            payload=payload,
+            duration_ms=duration_ms,
+        )
+    except Exception:
+        pass
 
 
 def install_command_watcher():
@@ -210,10 +213,13 @@ def record_cache_operation(
     if ttl is not None:
         payload["ttl"] = ttl
 
-    OrbitEntry.objects.create(
-        type=OrbitEntry.TYPE_CACHE,
-        payload=payload,
-    )
+    try:
+        OrbitEntry.objects.create(
+            type=OrbitEntry.TYPE_CACHE,
+            payload=payload,
+        )
+    except Exception:
+        pass
 
 
 def install_cache_watcher():
@@ -333,10 +339,13 @@ def record_model_event(sender, instance, action: str, changes: Optional[Dict] = 
     except Exception:
         pass
 
-    OrbitEntry.objects.create(
-        type=OrbitEntry.TYPE_MODEL,
-        payload=payload,
-    )
+    try:
+        OrbitEntry.objects.create(
+            type=OrbitEntry.TYPE_MODEL,
+            payload=payload,
+        )
+    except Exception:
+        pass
 
 
 def _on_pre_save(sender, instance, raw, using, update_fields, **kwargs):
@@ -469,11 +478,14 @@ def record_http_client_request(
     if error:
         payload["error"] = error
 
-    OrbitEntry.objects.create(
-        type=OrbitEntry.TYPE_HTTP_CLIENT,
-        payload=payload,
-        duration_ms=duration_ms,
-    )
+    try:
+        OrbitEntry.objects.create(
+            type=OrbitEntry.TYPE_HTTP_CLIENT,
+            payload=payload,
+            duration_ms=duration_ms,
+        )
+    except Exception:
+        pass
 
 
 def install_http_client_watcher():

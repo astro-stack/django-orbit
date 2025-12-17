@@ -13,6 +13,15 @@ from django.template.response import TemplateResponse
 from django.views import View
 from django.views.generic import TemplateView
 
+__all__ = [
+    "OrbitDashboardView",
+    "OrbitFeedPartial",
+    "OrbitDetailPartial",
+    "OrbitClearView",
+    "OrbitStatsView",
+    "OrbitExportView",
+]
+
 from orbit.models import OrbitEntry
 from orbit.mixins import OrbitProtectedView
 
@@ -245,3 +254,25 @@ class OrbitStatsView(OrbitProtectedView, View):
                 "time_range": "1h",
             }
         )
+
+
+class OrbitExportView(OrbitProtectedView, View):
+    """
+    View to export a single entry as JSON.
+    """
+
+    def get(self, request: HttpRequest, entry_id: str) -> HttpResponse:
+        entry = get_object_or_404(OrbitEntry, id=entry_id)
+        
+        data = {
+            "id": str(entry.id),
+            "type": entry.type,
+            "created_at": entry.created_at.isoformat(),
+            "payload": entry.payload,
+            "duration_ms": entry.duration_ms,
+            "family_hash": entry.family_hash,
+        }
+        
+        response = JsonResponse(data, json_dumps_params={"indent": 2})
+        response["Content-Disposition"] = f'attachment; filename="orbit_entry_{entry.id}.json"'
+        return response
