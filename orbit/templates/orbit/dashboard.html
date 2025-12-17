@@ -136,6 +136,14 @@
                 <span class="text-xs text-orbit-text-muted" x-text="isPaused ? 'Paused' : 'Recording Active'"></span>
             </div>
             
+            <!-- Export All Button -->
+            <button 
+                @click="exportAll()"
+                class="w-full flex items-center justify-center gap-2 px-4 py-2 mb-2 text-sm text-orbit-text-secondary hover:text-orbit-accent-cyan bg-orbit-bg-tertiary/50 hover:bg-orbit-accent-cyan/10 rounded-lg transition-all">
+                <i data-lucide="download" class="w-4 h-4"></i>
+                <span>Export Filtered</span>
+            </button>
+            
             <!-- Clear Button -->
             <button 
                 @click="clearAll()"
@@ -244,7 +252,8 @@ function orbitDashboard() {
     const URLS = {
         feed: '{{ orbit_urls.feed }}',
         detail: '{{ orbit_urls.detail_base }}',
-        clear: '{{ orbit_urls.clear }}'
+        clear: '{{ orbit_urls.clear }}',
+        export_all: '{{ orbit_urls.export_all }}'
     };
 
     return {
@@ -398,6 +407,14 @@ function orbitDashboard() {
             } catch (error) {
                 console.error('Failed to clear entries:', error);
             }
+        },
+        
+        exportAll() {
+            const queryParams = new URLSearchParams({
+                type: this.currentType,
+                q: this.searchQuery
+            });
+            window.location.href = `${URLS.export_all}?${queryParams}`;
         },
         
         getCSRFToken() {

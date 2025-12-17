@@ -79,6 +79,7 @@ class OrbitDashboardView(OrbitProtectedView, TemplateView):
             "detail_base": reverse("orbit:dashboard")
             + "detail/",  # Base path for details
             "clear": reverse("orbit:clear"),
+            "export_all": reverse("orbit:export_all"),
         }
 
         return context
