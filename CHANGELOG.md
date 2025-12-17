@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Dashboard Security**: Built-in `AUTH_CHECK` configuration to restrict access.
+- **Data Management**: New `orbit_prune` management command for cleaning old data.
+
 ## [0.2.0] - 2025-12-16
 
 ### Added

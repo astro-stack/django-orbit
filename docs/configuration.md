@@ -10,7 +10,10 @@ Django Orbit is configured through the `ORBIT_CONFIG` dictionary in your Django 
 ORBIT_CONFIG = {
     # Core Settings
     'ENABLED': True,
+    # Authentication check (callable or path to function)
+    'AUTH_CHECK': None,
     'STORAGE_LIMIT': 1000,
+    
     
     # Recording Settings
     'RECORD_REQUESTS': True,
