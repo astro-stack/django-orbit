@@ -7,7 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.0] - 2024-XX-XX
+## [0.2.0] - 2025-12-16
+
+### Added
+- **New Watchers**:
+  - `Commands`: Track management commands execution
+  - `Cache`: Monitor cache operations (get, set, delete)
+  - `Models`: Track model signals (save, delete) and lifecycle
+  - `HTTP Client`: Capture outgoing HTTP requests (httpx, requests)
+- **Helpers**:
+  - `dump()`: Helper for manual variable inspection (Laravel Telescope style)
+  - `log()`: Helper for direct logging to Orbit
+- **Dashboard**:
+  - Complete pagination system (25 entries/page)
+  - New entry types support with distinct icons and colors
+  - "Dumps" section in sidebar
+- **Configuration**:
+  - Added `RECORD_*` settings for new watchers
+  - Added `RECORD_DUMPS`
+
+### Fixed
+- Fixed HTMX processing for dynamic content loading
+- Fixed pagination state persistence during auto-refresh
+- Sidebar ordering (alphabetical)
+- "Load More" button issues on long lists
+
+## [0.1.0] - 2024-12-01
 
 ### Added
 - Initial release of Django Orbit
