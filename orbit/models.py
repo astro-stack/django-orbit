@@ -47,6 +47,11 @@ class OrbitEntryManager(models.Manager):
         """Get all outgoing HTTP request entries."""
         return self.filter(type=OrbitEntry.TYPE_HTTP_CLIENT)
     
+    def dumps(self):
+        """Get all dump entries."""
+        return self.filter(type=OrbitEntry.TYPE_DUMP)
+    
+    
     def slow_queries(self):
         """Get all slow queries (marked in payload)."""
         return self.filter(
@@ -93,6 +98,7 @@ class OrbitEntry(models.Model):
     TYPE_CACHE = "cache"
     TYPE_MODEL = "model"
     TYPE_HTTP_CLIENT = "http_client"
+    TYPE_DUMP = "dump"
     
     TYPE_CHOICES = [
         (TYPE_REQUEST, "HTTP Request"),
@@ -104,6 +110,7 @@ class OrbitEntry(models.Model):
         (TYPE_CACHE, "Cache"),
         (TYPE_MODEL, "Model Event"),
         (TYPE_HTTP_CLIENT, "HTTP Client"),
+        (TYPE_DUMP, "Dump"),
     ]
     
     # Type to icon mapping for UI
@@ -117,6 +124,7 @@ class OrbitEntry(models.Model):
         TYPE_CACHE: "hard-drive",
         TYPE_MODEL: "box",
         TYPE_HTTP_CLIENT: "send",
+        TYPE_DUMP: "bug",
     }
     
     # Type to color mapping for UI
@@ -130,6 +138,7 @@ class OrbitEntry(models.Model):
         TYPE_CACHE: "orange",
         TYPE_MODEL: "blue",
         TYPE_HTTP_CLIENT: "pink",
+        TYPE_DUMP: "lime",
     }
     
     # Primary key
@@ -266,6 +275,12 @@ class OrbitEntry(models.Model):
                 url = url[:47] + "..."
             status = payload.get("status_code", "?")
             return f"{method} {url} → {status}"
+        
+        elif self.type == self.TYPE_DUMP:
+            count = payload.get("count", 1)
+            caller = payload.get("caller", {})
+            func = caller.get("function", "unknown")
+            return f"dump() in {func} ({count} value{'s' if count > 1 else ''})"
         
         return str(self.id)[:8]
     
