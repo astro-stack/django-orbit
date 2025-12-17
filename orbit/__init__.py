@@ -6,7 +6,13 @@ without touching it. Unlike Django Debug Toolbar, Orbit lives in its own
 isolated URL with a completely separate, reactive interface.
 """
 
-__version__ = "0.1.1"
+__version__ = "0.2.0"
 __author__ = "Django Orbit Contributors"
 
 default_app_config = "orbit.apps.OrbitConfig"
+
+# User-facing helpers
+from orbit.helpers import dump, log
+
+__all__ = ["dump", "log"]
+
