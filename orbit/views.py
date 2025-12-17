@@ -81,6 +81,7 @@ class OrbitFeedPartial(View):
         limit = int(request.GET.get("limit", 50))
         offset = int(request.GET.get("offset", 0))
         family_hash = request.GET.get("family")
+        is_append = request.GET.get("append") == "1"
         
         # Build queryset
         queryset = OrbitEntry.objects.all()
@@ -96,10 +97,13 @@ class OrbitFeedPartial(View):
         # Order and limit
         entries = queryset.order_by("-created_at")[offset:offset + limit]
         
+        # Choose template based on append mode
+        template = "orbit/partials/feed_rows.html" if is_append else "orbit/partials/feed.html"
+        
         # Render partial
         return TemplateResponse(
             request,
-            "orbit/partials/feed.html",
+            template,
             {
                 "entries": entries,
                 "current_type": entry_type,

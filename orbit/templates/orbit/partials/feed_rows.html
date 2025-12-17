@@ -1,0 +1,117 @@
+{% load orbit_tags %}
+
+{% for entry in entries %}
+<tr 
+    data-entry-id="{{ entry.id }}"
+    class="entry-row cursor-pointer border-l-2 border-transparent hover:border-orbit-accent-cyan transition-all {% if entry.is_error %}bg-rose-500/5{% elif entry.is_warning %}bg-amber-500/5{% endif %}">
+    
+    <!-- Type Icon -->
+    <td class="px-4 py-3">
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center 
+            {% if entry.type == 'request' %}bg-cyan-500/10 text-cyan-400
+            {% elif entry.type == 'query' %}bg-emerald-500/10 text-emerald-400
+            {% elif entry.type == 'log' %}bg-slate-500/10 text-slate-400
+            {% elif entry.type == 'exception' %}bg-rose-500/10 text-rose-400
+            {% elif entry.type == 'job' %}bg-amber-500/10 text-amber-400
+            {% endif %}">
+            {% if entry.type == 'request' %}
+            <i data-lucide="globe" class="w-4 h-4"></i>
+            {% elif entry.type == 'query' %}
+            <i data-lucide="database" class="w-4 h-4"></i>
+            {% elif entry.type == 'log' %}
+            <i data-lucide="file-text" class="w-4 h-4"></i>
+            {% elif entry.type == 'exception' %}
+            <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+            {% elif entry.type == 'job' %}
+            <i data-lucide="clock" class="w-4 h-4"></i>
+            {% endif %}
+        </div>
+    </td>
+    
+    <!-- Summary -->
+    <td class="px-4 py-3">
+        <div class="flex items-center gap-3">
+            <!-- Status/Level Badge for specific types -->
+            {% if entry.type == 'request' %}
+                {% with status=entry.payload.status_code %}
+                <span class="text-xs font-mono px-2 py-0.5 rounded 
+                    {% if status >= 500 %}bg-rose-500/20 text-rose-400
+                    {% elif status >= 400 %}bg-amber-500/20 text-amber-400
+                    {% elif status >= 300 %}bg-blue-500/20 text-blue-400
+                    {% else %}bg-emerald-500/20 text-emerald-400
+                    {% endif %}">{{ status }}</span>
+                {% endwith %}
+                <span class="text-xs font-medium text-orbit-accent-cyan">{{ entry.payload.method }}</span>
+            {% elif entry.type == 'log' %}
+                {% with level=entry.payload.level %}
+                <span class="text-xs font-mono px-2 py-0.5 rounded 
+                    {% if level == 'ERROR' or level == 'CRITICAL' %}bg-rose-500/20 text-rose-400
+                    {% elif level == 'WARNING' %}bg-amber-500/20 text-amber-400
+                    {% elif level == 'DEBUG' %}bg-slate-500/20 text-slate-400
+                    {% else %}bg-cyan-500/20 text-cyan-400
+                    {% endif %}">{{ level }}</span>
+                {% endwith %}
+            {% elif entry.type == 'query' %}
+                {% if entry.payload.is_slow %}
+                <span class="text-xs font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-400">SLOW</span>
+                {% endif %}
+                {% if entry.payload.is_duplicate %}
+                <span class="text-xs font-mono px-2 py-0.5 rounded bg-violet-500/20 text-violet-400">DUP</span>
+                {% endif %}
+            {% endif %}
+            
+            <!-- Main Summary Text -->
+            <span class="text-sm text-orbit-text-primary font-mono truncate flex-1">
+                {{ entry.summary }}
+            </span>
+        </div>
+        
+        <!-- Additional context -->
+        {% if entry.type == 'query' and entry.payload.caller.filename %}
+        <div class="mt-1 text-xs text-orbit-text-muted font-mono truncate">
+            {{ entry.payload.caller.filename }}:{{ entry.payload.caller.lineno }}
+        </div>
+        {% elif entry.type == 'log' %}
+        <div class="mt-1 text-xs text-orbit-text-muted">
+            {{ entry.payload.logger }}
+        </div>
+        {% endif %}
+    </td>
+    
+    <!-- Duration -->
+    <td class="px-4 py-3 text-right">
+        {% if entry.duration_ms %}
+        <span class="text-sm font-mono 
+            {% if entry.duration_ms > 500 %}text-rose-400
+            {% elif entry.duration_ms > 100 %}text-amber-400
+            {% else %}text-orbit-text-secondary
+            {% endif %}">
+            {{ entry.duration_ms|floatformat:1 }}ms
+        </span>
+        {% else %}
+        <span class="text-orbit-text-muted">-</span>
+        {% endif %}
+    </td>
+    
+    <!-- Timestamp -->
+    <td class="px-4 py-3 text-right">
+        <span class="text-xs text-orbit-text-muted font-mono">
+            {{ entry.created_at|time:"H:i:s" }}
+        </span>
+    </td>
+</tr>
+{% endfor %}
+
+{% if has_more %}
+<tr id="load-more-row">
+    <td colspan="4" class="p-4 text-center border-t border-orbit-border/50">
+        <button 
+            hx-get="{% url 'orbit:feed' %}?type={{ current_type }}&offset={{ offset|add:limit }}&append=1"
+            hx-target="#load-more-row"
+            hx-swap="outerHTML"
+            class="px-4 py-2 text-sm text-orbit-text-secondary hover:text-orbit-text-primary bg-orbit-bg-tertiary hover:bg-orbit-bg-tertiary/80 rounded-lg transition-all">
+            Load More
+        </button>
+    </td>
+</tr>
+{% endif %}

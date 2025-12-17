@@ -72,7 +72,7 @@
                     {% endif %}
                     
                     <!-- Main Summary Text -->
-                    <span class="text-sm text-orbit-text-primary font-mono truncate max-w-md">
+                    <span class="text-sm text-orbit-text-primary font-mono truncate flex-1">
                         {{ entry.summary }}
                     </span>
                 </div>
@@ -116,11 +116,12 @@
 </table>
 
 {% if has_more %}
-<div class="p-4 text-center">
+<div class="p-4 text-center border-t border-orbit-border/50" id="load-more-container">
     <button 
-        hx-get="{% url 'orbit:feed' %}?type={{ current_type }}&offset={{ offset|add:limit }}"
-        hx-target="closest table tbody"
+        hx-get="{% url 'orbit:feed' %}?type={{ current_type }}&offset={{ offset|add:limit }}&append=1"
+        hx-target="#feed-container tbody"
         hx-swap="beforeend"
+        hx-on::after-request="this.parentElement.remove()"
         class="px-4 py-2 text-sm text-orbit-text-secondary hover:text-orbit-text-primary bg-orbit-bg-tertiary hover:bg-orbit-bg-tertiary/80 rounded-lg transition-all">
         Load More
     </button>
