@@ -162,6 +162,20 @@
                 </div>
             </div>
             
+            <!-- Search Bar -->
+            <div class="flex-1 max-w-xl px-8">
+                <div class="relative">
+                    <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-orbit-text-muted"></i>
+                    <input 
+                        type="search" 
+                        x-model="searchQuery"
+                        @input.debounce.300ms="search()"
+                        placeholder="Search entries (UUID or text content)..."
+                        class="w-full bg-orbit-bg-primary border border-orbit-border rounded-lg pl-9 pr-4 py-1.5 text-sm text-orbit-text-primary placeholder-orbit-text-muted focus:outline-none focus:border-orbit-accent-cyan transition-colors"
+                    >
+                </div>
+            </div>
+
             <div class="flex items-center gap-3">
                 <!-- Pause/Resume Button -->
                 <button 
@@ -239,7 +253,18 @@ function orbitDashboard() {
         detailOpen: false,
         detailEntryId: null,
         pollingInterval: null,
+        currentType: '{{ current_type }}',
+        isPaused: false,
+        detailOpen: false,
+        detailEntryId: null,
+        pollingInterval: null,
         currentPage: 1,
+        searchQuery: '',
+        
+        search() {
+            this.currentPage = 1;
+            this.refreshFeed();
+        },
         
         init() {
             // Initial load
@@ -300,7 +325,12 @@ function orbitDashboard() {
             const page = preservePage ? this.currentPage : 1;
             
             try {
-                const response = await fetch(`${URLS.feed}?type=${this.currentType}&page=${page}`);
+                const queryParams = new URLSearchParams({
+                    type: this.currentType,
+                    page: page,
+                    q: this.searchQuery
+                });
+                const response = await fetch(`${URLS.feed}?${queryParams}`);
                 if (response.ok) {
                     container.innerHTML = await response.text();
                     htmx.process(container);  // Process HTMX attributes on new content

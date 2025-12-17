@@ -101,6 +101,27 @@ class OrbitFeedPartial(OrbitProtectedView, View):
         if family_hash:
             queryset = queryset.filter(family_hash=family_hash)
 
+        # Filter by search query "q"
+        query = request.GET.get("q")
+        if query:
+            import uuid
+            try:
+                # Try explicit UUID search
+                uuid_obj = uuid.UUID(query)
+                queryset = queryset.filter(id=uuid_obj)
+            except ValueError:
+                # Text search on payload using generic "contains"
+                # For SQLite/Postgres JSONField, we can use __icontains
+                # Ideally we cast to text for better compatibility if needed, 
+                # but let's try direct first as it handles some string casting implicitly in Django 4.2+
+                from django.db.models import TextField
+                from django.db.models.functions import Cast
+                
+                # Cast payload to text to search inside keys and values
+                queryset = queryset.annotate(
+                    payload_text=Cast("payload", TextField())
+                ).filter(payload_text__icontains=query)
+
         # Calculate pagination
         total_count = queryset.count()
         total_pages = (total_count + per_page - 1) // per_page  # Ceiling division
