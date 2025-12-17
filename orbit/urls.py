@@ -25,6 +25,7 @@ urlpatterns = [
     path("detail/<uuid:entry_id>/", OrbitDetailPartial.as_view(), name="detail"),
     # Actions
     path("clear/", OrbitClearView.as_view(), name="clear"),
+    path("export/", OrbitExportView.as_view(), name="export_all"),
     path("export/<uuid:entry_id>/", OrbitExportView.as_view(), name="export"),
     # API/Stats
     path("stats/", OrbitStatsView.as_view(), name="stats"),

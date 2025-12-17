@@ -258,41 +258,97 @@ class OrbitStatsView(OrbitProtectedView, View):
 
 class OrbitExportView(OrbitProtectedView, View):
     """
-    View to export a single entry as JSON.
+    View to export one or many entries as JSON.
     """
 
-    def get(self, request: HttpRequest, entry_id: str) -> HttpResponse:
-        entry = get_object_or_404(OrbitEntry, id=entry_id)
-        
-        data = {
-            "entry": {
-                "id": str(entry.id),
-                "type": entry.type,
-                "created_at": entry.created_at.isoformat(),
-                "payload": entry.payload,
-                "duration_ms": entry.duration_ms,
-                "family_hash": entry.family_hash,
-            },
-            "related": [],
-        }
-
-        # Fetch related entries if they share a family hash
-        if entry.family_hash:
-            related_qs = (
-                OrbitEntry.objects.filter(family_hash=entry.family_hash)
-                .exclude(id=entry.id)
-                .order_by("created_at")
-            )
+    def get(self, request: HttpRequest, entry_id: str = None) -> HttpResponse:
+        # Single Entry Export
+        if entry_id:
+            entry = get_object_or_404(OrbitEntry, id=entry_id)
             
-            for rel in related_qs:
-                data["related"].append({
-                    "id": str(rel.id),
-                    "type": rel.type,
-                    "created_at": rel.created_at.isoformat(),
-                    "payload": rel.payload,
-                    "duration_ms": rel.duration_ms,
-                })
+            data = {
+                "entry": {
+                    "id": str(entry.id),
+                    "type": entry.type,
+                    "created_at": entry.created_at.isoformat(),
+                    "payload": entry.payload,
+                    "duration_ms": entry.duration_ms,
+                    "family_hash": entry.family_hash,
+                },
+                "related": [],
+            }
+
+            if entry.family_hash:
+                related_qs = (
+                    OrbitEntry.objects.filter(family_hash=entry.family_hash)
+                    .exclude(id=entry.id)
+                    .order_by("created_at")
+                )
+                
+                for rel in related_qs:
+                    data["related"].append({
+                        "id": str(rel.id),
+                        "type": rel.type,
+                        "created_at": rel.created_at.isoformat(),
+                        "payload": rel.payload,
+                        "duration_ms": rel.duration_ms,
+                    })
+            
+            response = JsonResponse(data, json_dumps_params={"indent": 2})
+            response["Content-Disposition"] = f'attachment; filename="orbit_entry_{entry.id}.json"'
+            return response
+
+        # Bulk Export (Streaming)
+        from django.http import StreamingHttpResponse
         
-        response = JsonResponse(data, json_dumps_params={"indent": 2})
-        response["Content-Disposition"] = f'attachment; filename="orbit_entry_{entry.id}.json"'
+        # 1. Reuse filtering logic from OrbitFeedPartial
+        queryset = OrbitEntry.objects.all().order_by("-created_at")
+        
+        entry_type = request.GET.get("type", "all")
+        if entry_type and entry_type != "all":
+            queryset = queryset.filter(type=entry_type)
+
+        family_hash = request.GET.get("family")
+        if family_hash:
+            queryset = queryset.filter(family_hash=family_hash)
+
+        query = request.GET.get("q")
+        if query:
+            import uuid
+            try:
+                uuid_obj = uuid.UUID(query)
+                queryset = queryset.filter(id=uuid_obj)
+            except ValueError:
+                from django.db.models import TextField
+                from django.db.models.functions import Cast
+                queryset = queryset.annotate(
+                    payload_text=Cast("payload", TextField())
+                ).filter(payload_text__icontains=query)
+
+        # 2. Generator function
+        def stream_generator():
+            yield "[\n"
+            first = True
+            for entry in queryset.iterator(chunk_size=500):
+                if not first:
+                    yield ",\n"
+                first = False
+                
+                # Manual JSON serialization for speed/simplicity in generator
+                # using json.dumps for the dict is safest
+                yield json.dumps({
+                    "id": str(entry.id),
+                    "type": entry.type,
+                    "created_at": entry.created_at.isoformat(),
+                    "payload": entry.payload,
+                    "duration_ms": entry.duration_ms,
+                    "family_hash": entry.family_hash,
+                }, default=str)
+            yield "\n]"
+
+        response = StreamingHttpResponse(
+            stream_generator(), 
+            content_type="application/json"
+        )
+        response["Content-Disposition"] = 'attachment; filename="orbit_export_all.json"'
         return response
