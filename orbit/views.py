@@ -265,13 +265,33 @@ class OrbitExportView(OrbitProtectedView, View):
         entry = get_object_or_404(OrbitEntry, id=entry_id)
         
         data = {
-            "id": str(entry.id),
-            "type": entry.type,
-            "created_at": entry.created_at.isoformat(),
-            "payload": entry.payload,
-            "duration_ms": entry.duration_ms,
-            "family_hash": entry.family_hash,
+            "entry": {
+                "id": str(entry.id),
+                "type": entry.type,
+                "created_at": entry.created_at.isoformat(),
+                "payload": entry.payload,
+                "duration_ms": entry.duration_ms,
+                "family_hash": entry.family_hash,
+            },
+            "related": [],
         }
+
+        # Fetch related entries if they share a family hash
+        if entry.family_hash:
+            related_qs = (
+                OrbitEntry.objects.filter(family_hash=entry.family_hash)
+                .exclude(id=entry.id)
+                .order_by("created_at")
+            )
+            
+            for rel in related_qs:
+                data["related"].append({
+                    "id": str(rel.id),
+                    "type": rel.type,
+                    "created_at": rel.created_at.isoformat(),
+                    "payload": rel.payload,
+                    "duration_ms": rel.duration_ms,
+                })
         
         response = JsonResponse(data, json_dumps_params={"indent": 2})
         response["Content-Disposition"] = f'attachment; filename="orbit_entry_{entry.id}.json"'

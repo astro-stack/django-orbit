@@ -24,9 +24,56 @@ def test_export_single_entry(client):
     
     # Check content
     data = json.loads(response.content)
-    assert data["type"] == OrbitEntry.TYPE_REQUEST
-    assert data["payload"]["foo"] == "bar"
-    assert data["id"] == str(entry.id)
+    
+    # New structure: {"entry": {...}, "related": [...]}
+    assert "entry" in data
+    assert "related" in data
+    assert isinstance(data["related"], list)
+    
+    # Check entry data
+    assert data["entry"]["type"] == OrbitEntry.TYPE_REQUEST
+    assert data["entry"]["payload"]["foo"] == "bar"
+    assert data["entry"]["id"] == str(entry.id)
+
+@pytest.mark.django_db
+def test_export_related_entries(client):
+    """Test that related entries (same family_hash) are included."""
+    family_hash = "test_family_123"
+    
+    # Parent (Request)
+    parent = OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_REQUEST,
+        family_hash=family_hash,
+        payload={"url": "/test"}
+    )
+    
+    # Child (Query)
+    child = OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_QUERY,
+        family_hash=family_hash,
+        payload={"sql": "SELECT *"}
+    )
+    
+    # Unrelated
+    OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_REQUEST,
+        family_hash="other_family",
+        payload={}
+    )
+    
+    url = reverse("orbit:export", args=[parent.id])
+    response = client.get(url)
+    assert response.status_code == 200
+    
+    data = json.loads(response.content)
+    
+    # Check parent
+    assert data["entry"]["id"] == str(parent.id)
+    
+    # Check related
+    assert len(data["related"]) == 1
+    assert data["related"][0]["id"] == str(child.id)
+    assert data["related"][0]["type"] == OrbitEntry.TYPE_QUERY
 
 @pytest.mark.django_db
 def test_export_not_found(client):
