@@ -231,10 +231,18 @@ def _patch_cache_backend(cache, alias: str):
     original_set = cache.set
     original_delete = cache.delete
     
+    _miss_sentinel = object()
+
     @functools.wraps(original_get)
     def patched_get(key, default=None, version=None):
-        result = original_get(key, default=default, version=version)
-        hit = result is not default
+        result = original_get(key, default=_miss_sentinel, version=version)
+        
+        if result is _miss_sentinel:
+            hit = False
+            result = default
+        else:
+            hit = True
+            
         try:
             record_cache_operation("get", key, hit=hit, backend=alias)
         except Exception:
