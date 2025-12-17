@@ -7,9 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- **Dashboard Security**: Built-in `AUTH_CHECK` configuration to restrict access.
-- **Data Management**: New `orbit_prune` management command for cleaning old data.
+### Unreleased (v0.3.0) - Reliability & Security
+- **Dashboard Security**: Added configurable `AUTH_CHECK` to restrict access.
+- **Data Management**: Added `orbit_prune` management command with age/importance filtering.
+- **Search & Filtering**:
+    - Added search bar to Dashboard.
+    - Implemented full-text search for entry payloads.
+    - Added direct UUID lookup.
+- **Export**:
+    - Added "Export JSON" button to entry details.
+    - Implemented `/orbit/export/<uuid>/` endpoint. old data.
 
 ## [0.2.0] - 2025-12-16
 

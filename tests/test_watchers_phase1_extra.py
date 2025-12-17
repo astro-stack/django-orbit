@@ -19,8 +19,7 @@ def test_model_watcher_lifecycle():
     # 1. Create
     book = Book.objects.create(
         title="Test Book", 
-        author="Test Author", 
-        description="A test book"
+        author="Test Author",
     )
     
     assert OrbitEntry.objects.filter(type=OrbitEntry.TYPE_MODEL).count() == 1
@@ -64,6 +63,12 @@ def test_http_client_watcher():
     adapter = requests.adapters.HTTPAdapter()
     adapter.send = MagicMock()
     
+    # Force install watcher to be sure it's active in this test process context
+    # (Since pytest might reuse process where it was patched then unpatched or flag set)
+    import orbit.watchers
+    orbit.watchers._requests_patched = False
+    install_http_client_watcher()
+    
     # Create a dummy response
     mock_response = requests.Response()
     mock_response.status_code = 201
@@ -78,6 +83,7 @@ def test_http_client_watcher():
     
     # Verify Orbit entry
     entry = OrbitEntry.objects.filter(type=OrbitEntry.TYPE_HTTP_CLIENT).first()
+            
     assert entry is not None
     assert entry.payload['method'] == 'POST'
     assert entry.payload['url'] == 'https://api.example.com/users'

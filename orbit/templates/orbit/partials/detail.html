@@ -41,6 +41,11 @@
             <h3 class="text-lg font-medium text-orbit-text-primary capitalize">{{ entry.type }}</h3>
             <p class="text-sm text-orbit-text-muted font-mono">{{ entry.id }}</p>
         </div>
+        <a href="{% url 'orbit:export' entry.id %}" 
+           class="p-2 hover:bg-orbit-bg-tertiary rounded-lg transition-colors text-orbit-text-secondary hover:text-orbit-text-primary group" 
+           title="Export JSON">
+            <i data-lucide="download" class="w-5 h-5 group-hover:text-orbit-accent-cyan"></i>
+        </a>
     </div>
     
     <!-- Quick Stats -->

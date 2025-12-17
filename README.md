@@ -376,7 +376,10 @@ Configure additional fields to hide via `HIDE_REQUEST_HEADERS` and `HIDE_REQUEST
 - [x] **Debug Dumps** - `orbit_dump()` for variable inspection
 
 ### Coming Soon 🚧
-- [/] **Data Security** - Dashboard authentication/authorization (Implemented, pending release)
+- [x] **Data Security** - Dashboard authentication/authorization
+- [x] **Data Cleanup** - Pruning management command
+- [x] **Search & Filter** - Search by UUID or content
+- [x] **Export** - Download entries as JSON
 - [ ] **Email Capture** - Track sent emails
 - [ ] **Django Signals** - Event dispatch monitoring
 

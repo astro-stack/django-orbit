@@ -16,27 +16,39 @@ def test_search_by_uuid(client):
     response = client.get(reverse("orbit:feed"), {"q": str(entry1.id)})
     
     assert response.status_code == 200
+    if hasattr(response, 'render'):
+        response.render()
+    
     assert str(entry1.id) in response.content.decode()
     assert str(entry2.id) not in response.content.decode()
 
 @pytest.mark.django_db
 def test_search_by_text_content(client):
     # Create entries
-    OrbitEntry.objects.create(payload={"message": "Hello World", "user": "alice"})
-    OrbitEntry.objects.create(payload={"message": "Foo Bar", "user": "bob"})
+    OrbitEntry.objects.create(type=OrbitEntry.TYPE_LOG, payload={"message": "Hello World", "user": "alice"})
+    OrbitEntry.objects.create(type=OrbitEntry.TYPE_LOG, payload={"message": "Foo Bar", "user": "bob"})
     
     # Search for "World"
     response = client.get(reverse("orbit:feed"), {"q": "World"})
     assert response.status_code == 200
-    assert "Hello World" in response.content.decode()
-    assert "Foo Bar" not in response.content.decode()
+    if hasattr(response, 'render'):
+        response.render()
+        
+    content = response.content.decode()
+        
+    assert "Hello World" in content
+    assert "Foo Bar" not in content
     
     # Search for "bob"
     response = client.get(reverse("orbit:feed"), {"q": "bob"})
     assert response.status_code == 200
+    if hasattr(response, 'render'):
+        response.render()
     assert "Foo Bar" in response.content.decode()
     
     # Search case insensitive "world"
     response = client.get(reverse("orbit:feed"), {"q": "world"})
+    if hasattr(response, 'render'):
+        response.render()
     assert "Hello World" in response.content.decode()
 
