@@ -14,9 +14,10 @@ from django.views import View
 from django.views.generic import TemplateView
 
 from orbit.models import OrbitEntry
+from orbit.mixins import OrbitProtectedView
 
 
-class OrbitDashboardView(TemplateView):
+class OrbitDashboardView(OrbitProtectedView, TemplateView):
     """
     Main dashboard view that renders the shell interface.
 
@@ -74,7 +75,7 @@ class OrbitDashboardView(TemplateView):
         return context
 
 
-class OrbitFeedPartial(View):
+class OrbitFeedPartial(OrbitProtectedView, View):
     """
     Partial view that returns the feed table content.
 
@@ -126,7 +127,7 @@ class OrbitFeedPartial(View):
         )
 
 
-class OrbitDetailPartial(View):
+class OrbitDetailPartial(OrbitProtectedView, View):
     """
     Partial view that returns the detail panel for a specific entry.
 
@@ -163,7 +164,7 @@ class OrbitDetailPartial(View):
         )
 
 
-class OrbitClearView(View):
+class OrbitClearView(OrbitProtectedView, View):
     """
     View to clear all Orbit entries.
     """
@@ -180,7 +181,7 @@ class OrbitClearView(View):
         )
 
 
-class OrbitStatsView(View):
+class OrbitStatsView(OrbitProtectedView, View):
     """
     View that returns stats/metrics as JSON.
     """
