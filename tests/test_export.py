@@ -83,3 +83,32 @@ def test_export_not_found(client):
     
     response = client.get(url)
     assert response.status_code == 404
+
+@pytest.mark.django_db
+def test_export_all_streaming(client):
+    """Test bulk export streaming."""
+    # Create mix of entries
+    OrbitEntry.objects.create(type=OrbitEntry.TYPE_REQUEST, payload={"a": 1})
+    OrbitEntry.objects.create(type=OrbitEntry.TYPE_QUERY, payload={"b": 2})
+    
+    url = reverse("orbit:export_all")
+    response = client.get(url)
+    assert response.status_code == 200
+    assert response["Content-Type"] == "application/json"
+    assert "orbit_export_all.json" in response["Content-Disposition"]
+    
+    # Consume stream
+    content = b"".join(response.streaming_content).decode('utf-8')
+    data = json.loads(content)
+    
+    assert isinstance(data, list)
+    assert len(data) == 2
+    
+    # Test Filtering
+    url_filtered = reverse("orbit:export_all") + f"?type={OrbitEntry.TYPE_REQUEST}"
+    response_filtered = client.get(url_filtered)
+    content_filtered = b"".join(response_filtered.streaming_content).decode('utf-8')
+    data_filtered = json.loads(content_filtered)
+    
+    assert len(data_filtered) == 1
+    assert data_filtered[0]["type"] == OrbitEntry.TYPE_REQUEST
