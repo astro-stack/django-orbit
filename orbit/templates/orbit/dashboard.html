@@ -34,30 +34,30 @@
             </button>
             
             <button
-               @click="setType('request')"
-               :class="currentType === 'request' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
+               @click="setType('cache')"
+               :class="currentType === 'cache' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
                class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
-                <i data-lucide="globe" class="w-4 h-4 text-cyan-400"></i>
-                <span class="flex-1">Requests</span>
-                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.request }}</span>
+                <i data-lucide="hard-drive" class="w-4 h-4 text-orange-400"></i>
+                <span class="flex-1">Cache</span>
+                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.cache }}</span>
             </button>
             
             <button
-               @click="setType('query')"
-               :class="currentType === 'query' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
+               @click="setType('command')"
+               :class="currentType === 'command' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
                class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
-                <i data-lucide="database" class="w-4 h-4 text-emerald-400"></i>
-                <span class="flex-1">Queries</span>
-                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.query }}</span>
+                <i data-lucide="terminal" class="w-4 h-4 text-violet-400"></i>
+                <span class="flex-1">Commands</span>
+                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.command }}</span>
             </button>
             
             <button
-               @click="setType('log')"
-               :class="currentType === 'log' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
+               @click="setType('dump')"
+               :class="currentType === 'dump' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
                class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
-                <i data-lucide="file-text" class="w-4 h-4 text-slate-400"></i>
-                <span class="flex-1">Logs</span>
-                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.log }}</span>
+                <i data-lucide="bug" class="w-4 h-4 text-lime-400"></i>
+                <span class="flex-1">Dumps</span>
+                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.dump }}</span>
             </button>
             
             <button
@@ -74,6 +74,15 @@
             </button>
             
             <button
+               @click="setType('http_client')"
+               :class="currentType === 'http_client' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
+               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
+                <i data-lucide="send" class="w-4 h-4 text-pink-400"></i>
+                <span class="flex-1">HTTP Client</span>
+                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.http_client }}</span>
+            </button>
+            
+            <button
                @click="setType('job')"
                :class="currentType === 'job' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
                class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
@@ -82,25 +91,13 @@
                 <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.job }}</span>
             </button>
             
-            <!-- Divider -->
-            <div class="my-2 border-t border-orbit-border/50"></div>
-            
             <button
-               @click="setType('command')"
-               :class="currentType === 'command' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
+               @click="setType('log')"
+               :class="currentType === 'log' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
                class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
-                <i data-lucide="terminal" class="w-4 h-4 text-violet-400"></i>
-                <span class="flex-1">Commands</span>
-                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.command }}</span>
-            </button>
-            
-            <button
-               @click="setType('cache')"
-               :class="currentType === 'cache' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
-               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
-                <i data-lucide="hard-drive" class="w-4 h-4 text-orange-400"></i>
-                <span class="flex-1">Cache</span>
-                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.cache }}</span>
+                <i data-lucide="file-text" class="w-4 h-4 text-slate-400"></i>
+                <span class="flex-1">Logs</span>
+                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.log }}</span>
             </button>
             
             <button
@@ -113,12 +110,21 @@
             </button>
             
             <button
-               @click="setType('http_client')"
-               :class="currentType === 'http_client' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
+               @click="setType('query')"
+               :class="currentType === 'query' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
                class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
-                <i data-lucide="send" class="w-4 h-4 text-pink-400"></i>
-                <span class="flex-1">HTTP Client</span>
-                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.http_client }}</span>
+                <i data-lucide="database" class="w-4 h-4 text-emerald-400"></i>
+                <span class="flex-1">Queries</span>
+                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.query }}</span>
+            </button>
+            
+            <button
+               @click="setType('request')"
+               :class="currentType === 'request' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
+               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
+                <i data-lucide="globe" class="w-4 h-4 text-cyan-400"></i>
+                <span class="flex-1">Requests</span>
+                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.request }}</span>
             </button>
         </nav>
         
@@ -233,6 +239,7 @@ function orbitDashboard() {
         detailOpen: false,
         detailEntryId: null,
         pollingInterval: null,
+        currentPage: 1,
         
         init() {
             // Initial load
@@ -266,6 +273,7 @@ function orbitDashboard() {
         
         setType(type) {
             this.currentType = type;
+            this.currentPage = 1;  // Reset to page 1 when changing type
             this.refreshFeed();
         },
         
@@ -287,18 +295,36 @@ function orbitDashboard() {
             this.$nextTick(() => lucide.createIcons());
         },
         
-        async refreshFeed() {
+        async refreshFeed(preservePage = true) {
             const container = document.getElementById('feed-container');
+            const page = preservePage ? this.currentPage : 1;
             
             try {
-                const response = await fetch(`${URLS.feed}?type=${this.currentType}`);
+                const response = await fetch(`${URLS.feed}?type=${this.currentType}&page=${page}`);
                 if (response.ok) {
                     container.innerHTML = await response.text();
+                    htmx.process(container);  // Process HTMX attributes on new content
                     lucide.createIcons();
+                    
+                    // Update current page from response (listen for page changes via HTMX)
+                    this.setupPageTracking();
                 }
             } catch (error) {
                 console.error('Failed to refresh feed:', error);
             }
+        },
+        
+        setupPageTracking() {
+            // Track page changes from pagination buttons
+            document.querySelectorAll('#feed-container [hx-get]').forEach(el => {
+                el.addEventListener('htmx:afterRequest', (e) => {
+                    const url = new URL(e.detail.pathInfo.requestPath, window.location.origin);
+                    const page = url.searchParams.get('page');
+                    if (page) {
+                        this.currentPage = parseInt(page);
+                    }
+                });
+            });
         },
         
         async openDetail(entryId) {
