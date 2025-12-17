@@ -17,6 +17,7 @@ ORBIT_CONFIG = {
     'RECORD_QUERIES': True,
     'RECORD_LOGS': True,
     'RECORD_EXCEPTIONS': True,
+    'RECORD_DUMPS': True,
     
     # Performance Settings
     'SLOW_QUERY_THRESHOLD_MS': 500,
@@ -89,10 +90,16 @@ Orbit automatically cleans up old entries when this limit is exceeded.
 - **Default**: `True`
 - **Description**: Capture Python logging output
 
+    
 #### `RECORD_EXCEPTIONS`
 - **Type**: `bool`
 - **Default**: `True`
 - **Description**: Capture unhandled exceptions
+
+#### `RECORD_DUMPS`
+- **Type**: `bool`
+- **Default**: `True`
+- **Description**: Capture debug dumps from `orbit.dump()`
 
 ### Performance Settings
 

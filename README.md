@@ -363,11 +363,26 @@ Configure additional fields to hide via `HIDE_REQUEST_HEADERS` and `HIDE_REQUEST
 
 ## 🗺️ Roadmap
 
-- [ ] Authentication/Authorization for dashboard
+### Already Implemented ✅
+- [x] Request tracking
+- [x] SQL query recording with slow/duplicate detection
+- [x] Log aggregation
+- [x] Exception capture with tracebacks
+- [x] Event correlation (family_hash grouping)
+- [x] **Management Commands** - Track `python manage.py` commands
+- [x] **Cache Operations** - Hit/miss/set/delete tracking
+- [x] **Model Events** - ORM create/update/delete auditing
+- [x] **HTTP Client** - Outgoing API request monitoring
+- [x] **Debug Dumps** - `orbit_dump()` for variable inspection
+
+### Coming Soon 🚧
+- [ ] **Data Security** - Dashboard authentication/authorization
+- [ ] **Email Capture** - Track sent emails
+- [ ] **Django Signals** - Event dispatch monitoring
+
+### Future Plans 🔮
 - [ ] Redis/external storage backend
 - [ ] Background job tracking (Celery, RQ, etc.)
-- [ ] Email/Notifications capture
-- [ ] Events/Signals tracking
 - [ ] Scheduled tasks monitoring
 - [ ] Export/import functionality
 - [ ] Advanced filtering and search
