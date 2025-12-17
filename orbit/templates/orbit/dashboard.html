@@ -136,6 +136,14 @@
                 <span class="text-xs text-orbit-text-muted" x-text="isPaused ? 'Paused' : 'Recording Active'"></span>
             </div>
             
+            <!-- Export All Button -->
+            <button 
+                @click="exportAll()"
+                class="w-full flex items-center justify-center gap-2 px-4 py-2 mb-2 text-sm text-orbit-text-secondary hover:text-orbit-accent-cyan bg-orbit-bg-tertiary/50 hover:bg-orbit-accent-cyan/10 rounded-lg transition-all">
+                <i data-lucide="download" class="w-4 h-4"></i>
+                <span>Export Filtered</span>
+            </button>
+            
             <!-- Clear Button -->
             <button 
                 @click="clearAll()"
@@ -162,6 +170,20 @@
                 </div>
             </div>
             
+            <!-- Search Bar -->
+            <div class="flex-1 px-6">
+                <div class="relative">
+                    <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-orbit-text-muted"></i>
+                    <input 
+                        type="search" 
+                        x-model="searchQuery"
+                        @input.debounce.300ms="search()"
+                        placeholder="Search entries (UUID or text content)..."
+                        class="w-full bg-orbit-bg-primary border border-orbit-border rounded-lg pl-9 pr-4 py-1.5 text-sm text-orbit-text-primary placeholder-orbit-text-muted focus:outline-none focus:border-orbit-accent-cyan transition-colors"
+                    >
+                </div>
+            </div>
+
             <div class="flex items-center gap-3">
                 <!-- Pause/Resume Button -->
                 <button 
@@ -230,7 +252,8 @@ function orbitDashboard() {
     const URLS = {
         feed: '{{ orbit_urls.feed }}',
         detail: '{{ orbit_urls.detail_base }}',
-        clear: '{{ orbit_urls.clear }}'
+        clear: '{{ orbit_urls.clear }}',
+        export_all: '{{ orbit_urls.export_all }}'
     };
 
     return {
@@ -240,6 +263,12 @@ function orbitDashboard() {
         detailEntryId: null,
         pollingInterval: null,
         currentPage: 1,
+        searchQuery: '',
+        
+        search() {
+            this.currentPage = 1;
+            this.refreshFeed();
+        },
         
         init() {
             // Initial load
@@ -300,7 +329,12 @@ function orbitDashboard() {
             const page = preservePage ? this.currentPage : 1;
             
             try {
-                const response = await fetch(`${URLS.feed}?type=${this.currentType}&page=${page}`);
+                const queryParams = new URLSearchParams({
+                    type: this.currentType,
+                    page: page,
+                    q: this.searchQuery
+                });
+                const response = await fetch(`${URLS.feed}?${queryParams}`);
                 if (response.ok) {
                     container.innerHTML = await response.text();
                     htmx.process(container);  // Process HTMX attributes on new content
@@ -368,6 +402,14 @@ function orbitDashboard() {
             } catch (error) {
                 console.error('Failed to clear entries:', error);
             }
+        },
+        
+        exportAll() {
+            const queryParams = new URLSearchParams({
+                type: this.currentType,
+                q: this.searchQuery
+            });
+            window.location.href = `${URLS.export_all}?${queryParams}`;
         },
         
         getCSRFToken() {
