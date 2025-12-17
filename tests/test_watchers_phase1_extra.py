@@ -83,7 +83,6 @@ def test_http_client_watcher():
     
     # Verify Orbit entry
     entry = OrbitEntry.objects.filter(type=OrbitEntry.TYPE_HTTP_CLIENT).first()
-            
     assert entry is not None
     assert entry.payload['method'] == 'POST'
     assert entry.payload['url'] == 'https://api.example.com/users'
