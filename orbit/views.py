@@ -56,6 +56,9 @@ class OrbitDashboardView(OrbitProtectedView, TemplateView):
             "model": OrbitEntry.objects.models().count(),
             "http_client": OrbitEntry.objects.http_client().count(),
             "dump": OrbitEntry.objects.dumps().count(),
+            # Phase 2 types (v0.4.0)
+            "mail": OrbitEntry.objects.mails().count(),
+            "signal": OrbitEntry.objects.signals().count(),
         }
 
         # Get error and warning counts for alerts

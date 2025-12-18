@@ -137,6 +137,34 @@ def sanitize_headers(
     return sanitized
 
 
+def filter_sensitive_data(
+    data: Dict[str, Any], hide_keys: Optional[List[str]] = None
+) -> Dict[str, Any]:
+    """
+    Filter sensitive data from request headers or body.
+
+    Args:
+        data: Dictionary to filter
+        hide_keys: List of keys to hide (case-insensitive)
+
+    Returns:
+        Filtered dictionary with sensitive values masked
+    """
+    if hide_keys is None:
+        hide_keys = ["Authorization", "Cookie", "X-CSRFToken", "password", "token", "secret", "api_key"]
+
+    hide_keys_lower = [k.lower() for k in hide_keys]
+    filtered = {}
+
+    for key, value in data.items():
+        if key.lower() in hide_keys_lower:
+            filtered[key] = "***HIDDEN***"
+        else:
+            filtered[key] = value
+
+    return filtered
+
+
 def sanitize_body(
     body: Dict[str, Any], hide_keys: Optional[List[str]] = None
 ) -> Dict[str, Any]:

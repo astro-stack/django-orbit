@@ -547,12 +547,239 @@ def install_http_client_watcher():
 
 
 # =============================================================================
+# Mail Watcher (v0.4.0)
+# =============================================================================
+
+_mail_patched = False
+
+
+def record_mail(message):
+    """
+    Record an outgoing email to Orbit.
+
+    Args:
+        message: EmailMessage instance
+    """
+    config = get_config()
+    if not config.get("ENABLED", True):
+        return
+
+    if not config.get("RECORD_MAIL", True):
+        return
+
+    from orbit.models import OrbitEntry
+
+    # Extract attachments info
+    attachments = []
+    for attachment in getattr(message, "attachments", []):
+        if isinstance(attachment, tuple) and len(attachment) >= 2:
+            name = attachment[0]
+            content = attachment[1]
+            content_type = attachment[2] if len(attachment) > 2 else "application/octet-stream"
+            attachments.append({
+                "name": name,
+                "size": len(content) if content else 0,
+                "content_type": content_type,
+            })
+
+    payload = {
+        "subject": getattr(message, "subject", ""),
+        "from_email": getattr(message, "from_email", ""),
+        "to": list(getattr(message, "to", [])),
+        "cc": list(getattr(message, "cc", [])),
+        "bcc": list(getattr(message, "bcc", [])),
+        "body": getattr(message, "body", "")[:2000],
+        "attachments": attachments,
+    }
+
+    # Check for HTML alternative
+    if hasattr(message, "alternatives"):
+        for content, mimetype in message.alternatives:
+            if mimetype == "text/html":
+                payload["html_body"] = content[:5000]
+                break
+
+    try:
+        OrbitEntry.objects.create(
+            type=OrbitEntry.TYPE_MAIL,
+            payload=payload,
+        )
+    except Exception:
+        pass
+
+
+def install_mail_watcher():
+    """
+    Install the mail watcher by patching EmailMessage.send.
+    """
+    global _mail_patched
+
+    if _mail_patched:
+        return
+
+    try:
+        from django.core.mail import EmailMessage
+
+        original_send = EmailMessage.send
+
+        @functools.wraps(original_send)
+        def patched_send(self, fail_silently=False):
+            result = original_send(self, fail_silently)
+            try:
+                record_mail(self)
+            except Exception as e:
+                logger.debug(f"Failed to record mail: {e}")
+            return result
+
+        EmailMessage.send = patched_send
+        _mail_patched = True
+        logger.debug("Orbit mail watcher installed")
+
+    except Exception as e:
+        logger.warning(f"Failed to install mail watcher: {e}")
+
+
+# =============================================================================
+# Signal Watcher (v0.4.0)
+# =============================================================================
+
+_signal_patched = False
+_signal_registry = {}
+
+
+def record_signal(signal, sender, **kwargs):
+    """
+    Record a Django signal dispatch to Orbit.
+
+    Args:
+        signal: The Signal instance
+        sender: The sender class/object
+        **kwargs: Signal payload
+    """
+    config = get_config()
+    if not config.get("ENABLED", True):
+        return
+
+    if not config.get("RECORD_SIGNALS", True):
+        return
+
+    # Get signal name from registry or try to extract a better name
+    signal_name = _signal_registry.get(id(signal))
+    if signal_name is None:
+        # Try to get a cleaner name from the signal object
+        signal_str = str(signal)
+        if "Signal" in signal_str and "object at" in signal_str:
+            # It's a raw signal object like <django.dispatch.dispatcher.Signal object at 0x...>
+            # Try to extract module path
+            if hasattr(signal, '__module__'):
+                module = getattr(signal, '__module__', '')
+                if module:
+                    signal_name = f"{module}.signal"
+                else:
+                    signal_name = "django.signal"
+            else:
+                signal_name = "django.signal"
+        else:
+            signal_name = signal_str[:60]
+
+    # Check if signal should be ignored
+    ignore_signals = config.get("IGNORE_SIGNALS", [])
+    if signal_name in ignore_signals:
+        return
+
+    from orbit.models import OrbitEntry
+
+    # Skip Orbit's own model to avoid infinite loops
+    if sender is not None:
+        sender_name = getattr(sender, "__name__", str(sender))
+        if sender_name == "OrbitEntry" or "OrbitEntry" in str(sender):
+            return
+
+    # Get receiver names
+    receivers = []
+    for receiver_ref in getattr(signal, "receivers", []):
+        if isinstance(receiver_ref, tuple) and len(receiver_ref) >= 2:
+            receiver = receiver_ref[1]
+            if callable(receiver):
+                try:
+                    receivers.append(receiver().__name__ if hasattr(receiver, '__call__') else str(receiver))
+                except Exception:
+                    receivers.append(str(receiver))
+
+    # Serialize kwargs safely
+    serialized_kwargs = {}
+    for k, v in kwargs.items():
+        if k == "signal":
+            continue
+        try:
+            serialized_kwargs[k] = repr(v)[:200]
+        except Exception:
+            serialized_kwargs[k] = "<unserializable>"
+
+    payload = {
+        "signal": signal_name,
+        "sender": str(sender)[:100] if sender else None,
+        "receivers_count": len(getattr(signal, "receivers", [])),
+        "kwargs": serialized_kwargs,
+    }
+
+    try:
+        OrbitEntry.objects.create(
+            type=OrbitEntry.TYPE_SIGNAL,
+            payload=payload,
+        )
+    except Exception:
+        pass
+
+
+def install_signal_watcher():
+    """
+    Install the signal watcher by patching Signal.send.
+    """
+    global _signal_patched, _signal_registry
+
+    if _signal_patched:
+        return
+
+    try:
+        from django.dispatch import Signal
+
+        # Build signal registry for friendly names
+        from django.db.models import signals as model_signals
+        _signal_registry[id(model_signals.pre_save)] = "django.db.models.signals.pre_save"
+        _signal_registry[id(model_signals.post_save)] = "django.db.models.signals.post_save"
+        _signal_registry[id(model_signals.pre_delete)] = "django.db.models.signals.pre_delete"
+        _signal_registry[id(model_signals.post_delete)] = "django.db.models.signals.post_delete"
+        _signal_registry[id(model_signals.pre_init)] = "django.db.models.signals.pre_init"
+        _signal_registry[id(model_signals.post_init)] = "django.db.models.signals.post_init"
+        _signal_registry[id(model_signals.m2m_changed)] = "django.db.models.signals.m2m_changed"
+
+        original_send = Signal.send
+
+        @functools.wraps(original_send)
+        def patched_send(self, sender, **kwargs):
+            result = original_send(self, sender, **kwargs)
+            try:
+                record_signal(self, sender, **kwargs)
+            except Exception as e:
+                logger.debug(f"Failed to record signal: {e}")
+            return result
+
+        Signal.send = patched_send
+        _signal_patched = True
+        logger.debug("Orbit signal watcher installed")
+
+    except Exception as e:
+        logger.warning(f"Failed to install signal watcher: {e}")
+
+
+# =============================================================================
 # Install All Watchers
 # =============================================================================
 
 
 def install_all_watchers():
-    """Install all Phase 1 watchers."""
+    """Install all Phase 1 and Phase 2 watchers."""
     config = get_config()
 
     if config.get("RECORD_COMMANDS", True):
@@ -566,3 +793,9 @@ def install_all_watchers():
 
     if config.get("RECORD_HTTP_CLIENT", True):
         install_http_client_watcher()
+
+    if config.get("RECORD_MAIL", True):
+        install_mail_watcher()
+
+    if config.get("RECORD_SIGNALS", True):
+        install_signal_watcher()

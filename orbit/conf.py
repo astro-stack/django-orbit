@@ -28,6 +28,13 @@ DEFAULTS = {
     "RECORD_MODELS": True,
     "RECORD_HTTP_CLIENT": True,
     "RECORD_DUMPS": True,
+    # Phase 2 watchers (v0.4.0)
+    "RECORD_MAIL": True,
+    "RECORD_SIGNALS": True,
+    "IGNORE_SIGNALS": [
+        "django.db.models.signals.pre_init",
+        "django.db.models.signals.post_init",
+    ],
     # Command watcher settings
     "IGNORE_COMMANDS": ["runserver", "shell", "dbshell", "showmigrations"],
     "MAX_COMMAND_OUTPUT": 5000,

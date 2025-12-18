@@ -10,3 +10,20 @@ DATABASES = {
 
 # Disable logging to console during tests to keep output clean
 LOGGING = {}
+
+# Override Orbit config for tests
+ORBIT_CONFIG = {
+    "ENABLED": True,
+    "AUTH_CHECK": None,  # Disable auth for tests
+    "RECORD_REQUESTS": True,
+    "RECORD_QUERIES": True,
+    "RECORD_LOGS": True,
+    "RECORD_EXCEPTIONS": True,
+    "RECORD_COMMANDS": True,
+    "RECORD_CACHE": True,
+    "RECORD_MODELS": True,
+    "RECORD_HTTP_CLIENT": True,
+    "RECORD_DUMPS": True,
+    "RECORD_MAIL": True,
+    "RECORD_SIGNALS": False,  # Disable signals in tests to avoid noise
+}

@@ -52,6 +52,14 @@ class OrbitEntryManager(models.Manager):
         """Get all dump entries."""
         return self.filter(type=OrbitEntry.TYPE_DUMP)
 
+    def mails(self):
+        """Get all mail entries."""
+        return self.filter(type=OrbitEntry.TYPE_MAIL)
+
+    def signals(self):
+        """Get all signal entries."""
+        return self.filter(type=OrbitEntry.TYPE_SIGNAL)
+
     def slow_queries(self):
         """Get all slow queries (marked in payload)."""
         return self.filter(type=OrbitEntry.TYPE_QUERY, payload__is_slow=True)
@@ -94,6 +102,9 @@ class OrbitEntry(models.Model):
     TYPE_MODEL = "model"
     TYPE_HTTP_CLIENT = "http_client"
     TYPE_DUMP = "dump"
+    # Phase 2 types (v0.4.0)
+    TYPE_MAIL = "mail"
+    TYPE_SIGNAL = "signal"
 
     TYPE_CHOICES = [
         (TYPE_REQUEST, "HTTP Request"),
@@ -106,6 +117,8 @@ class OrbitEntry(models.Model):
         (TYPE_MODEL, "Model Event"),
         (TYPE_HTTP_CLIENT, "HTTP Client"),
         (TYPE_DUMP, "Dump"),
+        (TYPE_MAIL, "Mail"),
+        (TYPE_SIGNAL, "Signal"),
     ]
 
     # Type to icon mapping for UI
@@ -120,6 +133,8 @@ class OrbitEntry(models.Model):
         TYPE_MODEL: "box",
         TYPE_HTTP_CLIENT: "send",
         TYPE_DUMP: "bug",
+        TYPE_MAIL: "mail",
+        TYPE_SIGNAL: "zap",
     }
 
     # Type to color mapping for UI
@@ -134,6 +149,8 @@ class OrbitEntry(models.Model):
         TYPE_MODEL: "blue",
         TYPE_HTTP_CLIENT: "pink",
         TYPE_DUMP: "lime",
+        TYPE_MAIL: "fuchsia",
+        TYPE_SIGNAL: "yellow",
     }
 
     # Primary key
@@ -273,6 +290,29 @@ class OrbitEntry(models.Model):
             caller = payload.get("caller", {})
             func = caller.get("function", "unknown")
             return f"dump() in {func} ({count} value{'s' if count > 1 else ''})"
+
+        elif self.type == self.TYPE_MAIL:
+            subject = payload.get("subject", "(no subject)")
+            to = payload.get("to", [])
+            to_str = to[0] if to else "?"
+            if len(to) > 1:
+                to_str += f" (+{len(to) - 1})"
+            return f"{subject[:40]} → {to_str}"
+
+        elif self.type == self.TYPE_SIGNAL:
+            signal = payload.get("signal", "unknown")
+            sender = payload.get("sender", "?")
+            # Clean up sender if it's a class reference
+            if sender.startswith("<class '"):
+                sender = sender.replace("<class '", "").replace("'>", "")
+                if "." in sender:
+                    sender = sender.split(".")[-1]  # Get just the class name
+            elif len(sender) > 30:
+                sender = sender[:27] + "..."
+            # Keep full signal path for developer context (truncate if too long)
+            if len(signal) > 50:
+                signal = "..." + signal[-47:]
+            return f"{signal} → {sender}"
 
         return str(self.id)[:8]
 
