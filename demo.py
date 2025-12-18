@@ -262,6 +262,39 @@ def setup_demo():
         emoji = "✓" if http['status_code'] < 400 else "✗"
         print(f"   {emoji} {http['method']} {http['url'][:40]}... → {http['status_code']}")
     
+    # Create sample mail entries (v0.4.0)
+    print("\n📧 Creating sample mail entries...")
+    mail_samples = [
+        {'subject': 'Welcome to Our Platform!', 'from_email': 'noreply@example.com', 'to': ['john@example.com'], 'cc': [], 'bcc': [], 'body': 'Welcome John! Your account is ready.'},
+        {'subject': 'Password Reset Request', 'from_email': 'security@example.com', 'to': ['jane@example.com'], 'cc': [], 'bcc': ['audit@example.com'], 'body': 'Click here to reset your password...'},
+        {'subject': 'Order Confirmation #12345', 'from_email': 'orders@shop.com', 'to': ['customer@example.com', 'billing@example.com'], 'cc': [], 'bcc': [], 'body': 'Thank you for your order!', 'attachments': [{'name': 'invoice.pdf', 'size': 45678, 'content_type': 'application/pdf'}]},
+        {'subject': 'Weekly Newsletter', 'from_email': 'newsletter@company.com', 'to': ['subscribers@example.com'], 'cc': [], 'bcc': [], 'body': 'This week in tech...', 'html_body': '<h1>Weekly Newsletter</h1><p>This week...</p>'},
+    ]
+    for mail in mail_samples:
+        OrbitEntry.objects.create(
+            type='mail',
+            payload=mail,
+        )
+        to_str = mail['to'][0] if mail['to'] else '?'
+        if len(mail['to']) > 1:
+            to_str += f" (+{len(mail['to']) - 1})"
+        print(f"   ✓ {mail['subject'][:35]}... → {to_str}")
+    
+    # Create sample signal entries (v0.4.0)
+    print("\n⚡ Creating sample signal entries...")
+    signal_samples = [
+        {'signal': 'django.db.models.signals.post_save', 'sender': 'demo.Book', 'receivers_count': 2, 'kwargs': {'created': 'True', 'instance': '<Book: Clean Code>'}},
+        {'signal': 'django.db.models.signals.post_delete', 'sender': 'demo.Review', 'receivers_count': 1, 'kwargs': {'instance': '<Review: 5 stars>'}},
+        {'signal': 'django.contrib.auth.signals.user_logged_in', 'sender': 'auth.User', 'receivers_count': 3, 'kwargs': {'user': '<User: admin>'}},
+        {'signal': 'payments.signals.payment_completed', 'sender': 'payments.Payment', 'receivers_count': 2, 'kwargs': {'amount': '99.99', 'order_id': '12345'}},
+    ]
+    for sig in signal_samples:
+        OrbitEntry.objects.create(
+            type='signal',
+            payload=sig,
+        )
+        print(f"   ✓ {sig['signal'].split('.')[-1]} from {sig['sender']}")
+    
     print("\n" + "="*60)
     print("✅ Setup Complete!")
     print("="*60)
@@ -277,6 +310,8 @@ def setup_demo():
     print(f"   🟠 Cache: {OrbitEntry.objects.cache_ops().count()}")
     print(f"   🔵 Models: {OrbitEntry.objects.models().count()}")
     print(f"   🩷 HTTP Client: {OrbitEntry.objects.http_client().count()}")
+    print(f"   📧 Mail: {OrbitEntry.objects.mails().count()}")
+    print(f"   ⚡ Signals: {OrbitEntry.objects.signals().count()}")
     print(f"   ─────────────")
     print(f"   Total: {OrbitEntry.objects.count()}")
     print(f"\n🌐 Demo: http://localhost:8000/")
@@ -508,6 +543,8 @@ def show_status():
     print(f"   🟠 Cache: {OrbitEntry.objects.cache_ops().count()}")
     print(f"   🔵 Models: {OrbitEntry.objects.models().count()}")
     print(f"   🩷 HTTP Client: {OrbitEntry.objects.http_client().count()}")
+    print(f"   📧 Mail: {OrbitEntry.objects.mails().count()}")
+    print(f"   ⚡ Signals: {OrbitEntry.objects.signals().count()}")
     print(f"   ─────────────")
     print(f"   Total: {OrbitEntry.objects.count()}")
     print()

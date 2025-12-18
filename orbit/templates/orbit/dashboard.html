@@ -126,6 +126,24 @@
                 <span class="flex-1">Requests</span>
                 <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.request }}</span>
             </button>
+            
+            <button
+               @click="setType('mail')"
+               :class="currentType === 'mail' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
+               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
+                <i data-lucide="mail" class="w-4 h-4 text-fuchsia-400"></i>
+                <span class="flex-1">Mail</span>
+                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.mail }}</span>
+            </button>
+            
+            <button
+               @click="setType('signal')"
+               :class="currentType === 'signal' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
+               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
+                <i data-lucide="zap" class="w-4 h-4 text-yellow-400"></i>
+                <span class="flex-1">Signals</span>
+                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.signal }}</span>
+            </button>
         </nav>
         
         <!-- Sidebar Footer -->

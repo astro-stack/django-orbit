@@ -14,6 +14,8 @@
             {% elif entry.type == 'model' %}bg-blue-500/10 text-blue-400
             {% elif entry.type == 'http_client' %}bg-pink-500/10 text-pink-400
             {% elif entry.type == 'dump' %}bg-lime-500/10 text-lime-400
+            {% elif entry.type == 'mail' %}bg-fuchsia-500/10 text-fuchsia-400
+            {% elif entry.type == 'signal' %}bg-yellow-500/10 text-yellow-400
             {% endif %}">
             {% if entry.type == 'request' %}
             <i data-lucide="globe" class="w-6 h-6"></i>
@@ -35,6 +37,10 @@
             <i data-lucide="send" class="w-6 h-6"></i>
             {% elif entry.type == 'dump' %}
             <i data-lucide="bug" class="w-6 h-6"></i>
+            {% elif entry.type == 'mail' %}
+            <i data-lucide="mail" class="w-6 h-6"></i>
+            {% elif entry.type == 'signal' %}
+            <i data-lucide="zap" class="w-6 h-6"></i>
             {% endif %}
         </div>
         <div class="flex-1 min-w-0">

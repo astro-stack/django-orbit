@@ -7,16 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Unreleased (v0.3.0) - Reliability & Security
-- **Dashboard Security**: Added configurable `AUTH_CHECK` to restrict access.
-- **Data Management**: Added `orbit_prune` management command with age/importance filtering.
-- **Search & Filtering**:
-    - Added search bar to Dashboard.
-    - Implemented full-text search for entry payloads.
-    - Added direct UUID lookup.
-- **Export**:
-    - Added "Export JSON" button to entry details.
-    - Implemented `/orbit/export/<uuid>/` endpoint.
+## [0.4.0] - 2025-12-18
+
+### Added
+- **Mail Watcher**: Capture all outgoing emails sent via `django.core.mail`
+  - Records subject, from, to, cc, bcc, body, and attachments
+  - Supports HTML email alternatives
+- **Signals Watcher**: Track Django signal dispatches
+  - Records signal name, sender, receivers count, and kwargs
+  - Configurable `IGNORE_SIGNALS` to filter noisy signals (pre_init, post_init by default)
+- **Dashboard Updates**:
+  - New "Mail" filter with fuchsia icon
+  - New "Signals" filter with yellow icon
+  - Entry detail panel support for new types
+- **Configuration**:
+  - Added `RECORD_MAIL` setting (default: True)
+  - Added `RECORD_SIGNALS` setting (default: True)
+  - Added `IGNORE_SIGNALS` list for filtering
+
+### Fixed
+- Added missing `filter_sensitive_data` utility function
+- Improved signal name detection for better developer context
+
+## [0.3.0] - 2025-12-16
+
+### Added
+- **Dashboard Security**: Configurable `AUTH_CHECK` to restrict access
+- **Data Management**: `orbit_prune` management command with age/importance filtering
+- **Search & Filtering**: Full-text search, UUID lookup
+- **Export**: "Export JSON" button and bulk export endpoint
 
 ## [0.2.0] - 2025-12-16
 
