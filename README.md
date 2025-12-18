@@ -6,6 +6,9 @@
 
 *A modern debugging and observability tool that orbits your Django application without touching it.*
 
+<!-- demo file -->
+<video src="demo.mp4" controls></video>
+
 https://labs.wearehik.com/django-orbit
 
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue?style=flat-square&logo=python)](https://python.org)
