@@ -10,17 +10,28 @@ Django Orbit is configured through the `ORBIT_CONFIG` dictionary in your Django 
 ORBIT_CONFIG = {
     # Core Settings
     'ENABLED': True,
-    # Authentication check (callable or path to function)
-    'AUTH_CHECK': None,
+    'AUTH_CHECK': None,  # Callable or path to function
     'STORAGE_LIMIT': 1000,
     
-    
-    # Recording Settings
+    # Recording Settings - Phase 1 (Core)
     'RECORD_REQUESTS': True,
     'RECORD_QUERIES': True,
     'RECORD_LOGS': True,
     'RECORD_EXCEPTIONS': True,
     'RECORD_DUMPS': True,
+    
+    # Recording Settings - Phase 2 (Extended)
+    'RECORD_COMMANDS': True,
+    'RECORD_CACHE': True,
+    'RECORD_MODELS': True,
+    'RECORD_HTTP_CLIENT': True,
+    'RECORD_MAIL': True,
+    'RECORD_SIGNALS': True,
+    
+    # Recording Settings - Phase 3 (v0.5.0)
+    'RECORD_JOBS': True,      # Background jobs (Celery, Django-Q, RQ, APScheduler)
+    'RECORD_REDIS': True,     # Redis operations
+    'RECORD_GATES': True,     # Permission/Gate checks
     
     # Performance Settings
     'SLOW_QUERY_THRESHOLD_MS': 500,
@@ -88,41 +99,41 @@ ORBIT_CONFIG = {
 }
 
 # Using a dotted path to a custom function
-# myapp/auth.py: def can_access_orbit(request): return request.user.is_superuser
 ORBIT_CONFIG = {
     'AUTH_CHECK': 'myapp.auth.can_access_orbit',
 }
 ```
 
-When `AUTH_CHECK` returns `False`, users see a styled "Access Denied" page instead of a generic 403 error.
-
 ### Recording Settings
 
-#### `RECORD_REQUESTS`
-- **Type**: `bool`
-- **Default**: `True`
-- **Description**: Record HTTP request/response cycles
+#### Core Watchers
 
-#### `RECORD_QUERIES`
-- **Type**: `bool`
-- **Default**: `True`
-- **Description**: Record SQL queries
+| Option | Default | Description |
+|--------|---------|-------------|
+| `RECORD_REQUESTS` | `True` | HTTP request/response cycles |
+| `RECORD_QUERIES` | `True` | SQL queries with N+1 detection |
+| `RECORD_LOGS` | `True` | Python logging output |
+| `RECORD_EXCEPTIONS` | `True` | Unhandled exceptions |
+| `RECORD_DUMPS` | `True` | Debug dumps via `orbit.dump()` |
 
-#### `RECORD_LOGS`
-- **Type**: `bool`
-- **Default**: `True`
-- **Description**: Capture Python logging output
+#### Extended Watchers
 
-    
-#### `RECORD_EXCEPTIONS`
-- **Type**: `bool`
-- **Default**: `True`
-- **Description**: Capture unhandled exceptions
+| Option | Default | Description |
+|--------|---------|-------------|
+| `RECORD_COMMANDS` | `True` | Django management commands |
+| `RECORD_CACHE` | `True` | Cache operations (hits/misses) |
+| `RECORD_MODELS` | `True` | ORM signals (post_save, post_delete) |
+| `RECORD_HTTP_CLIENT` | `True` | Outgoing HTTP requests (httpx, requests) |
+| `RECORD_MAIL` | `True` | Email sending via Django mail |
+| `RECORD_SIGNALS` | `True` | Django signals |
 
-#### `RECORD_DUMPS`
-- **Type**: `bool`
-- **Default**: `True`
-- **Description**: Capture debug dumps from `orbit.dump()`
+#### Phase 3 Watchers (v0.5.0+)
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `RECORD_JOBS` | `True` | Background jobs (Celery, Django-Q, RQ, APScheduler, django-celery-beat) |
+| `RECORD_REDIS` | `True` | Redis operations (GET, SET, DEL, etc.) |
+| `RECORD_GATES` | `True` | Permission/authorization checks |
 
 ### Performance Settings
 
@@ -131,7 +142,7 @@ When `AUTH_CHECK` returns `False`, users see a styled "Access Denied" page inste
 - **Default**: `500`
 - **Description**: Threshold in milliseconds for marking a query as "slow"
 
-Queries exceeding this threshold are highlighted in the dashboard.
+Queries exceeding this threshold are highlighted in the dashboard and stats.
 
 ### Path Filtering
 
@@ -140,7 +151,7 @@ Queries exceeding this threshold are highlighted in the dashboard.
 - **Default**: `['/orbit/', '/static/', '/admin/jsi18n/', '/favicon.ico']`
 - **Description**: URL path prefixes to ignore
 
-Requests to these paths are not recorded. Always include `/orbit/` to avoid infinite loops.
+Always include `/orbit/` to avoid infinite loops.
 
 ```python
 ORBIT_CONFIG = {
@@ -176,11 +187,7 @@ Works recursively on nested objects.
 - **Default**: `65536` (64KB)
 - **Description**: Maximum request body size to capture
 
-Larger bodies are replaced with a placeholder message.
-
 ## Environment-Based Configuration
-
-You can configure Orbit differently per environment:
 
 ```python
 # settings/base.py
@@ -202,23 +209,8 @@ ORBIT_CONFIG = {
 }
 ```
 
-## Programmatic Configuration
-
-You can also modify configuration at runtime:
-
-```python
-from orbit.conf import get_config
-
-# Read current config
-config = get_config()
-print(config['SLOW_QUERY_THRESHOLD_MS'])
-
-# Note: Runtime changes should modify Django settings directly
-from django.conf import settings
-settings.ORBIT_CONFIG['ENABLED'] = False
-```
-
 ## Next Steps
 
 - [Dashboard Guide](dashboard.md)
+- [Stats Dashboard](stats.md)
 - [Security Best Practices](security.md)

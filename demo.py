@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 """
 Django Orbit Demo Tool
 
@@ -19,6 +20,11 @@ Quick Start:
 
 import os
 import sys
+
+# Fix Windows console encoding for emojis
+if sys.platform == 'win32':
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
 import time
 import random
 import argparse
@@ -53,6 +59,107 @@ REVIEWER_NAMES = [
     "Alice Developer", "Bob Engineer", "Charlie Coder",
     "Diana Programmer", "Eve Hacker", "Frank Builder",
 ]
+
+
+def generate_historical_data():
+    """Generate historical data spread over time for stats charts."""
+    from orbit.models import OrbitEntry
+    from datetime import timedelta
+    from django.utils import timezone
+    
+    print("\n📊 Generating historical data for stats charts...")
+    
+    now = timezone.now()
+    
+    # Generate requests distributed over the last 7 days
+    print("   Generating time-distributed requests...")
+    paths = ['/', '/books/', '/api/users/', '/api/products/', '/admin/', '/api/orders/']
+    methods = ['GET', 'GET', 'GET', 'POST', 'PUT', 'DELETE']
+    status_codes = [200, 200, 200, 201, 404, 500]
+    
+    for hours_ago in range(0, 168, 2):  # Every 2 hours for 7 days = 84 entries
+        time_offset = timedelta(hours=hours_ago, minutes=random.randint(0, 59))
+        created_time = now - time_offset
+        
+        # More requests during business hours
+        num_requests = random.randint(1, 5) if 8 <= created_time.hour <= 20 else random.randint(0, 2)
+        
+        for _ in range(num_requests):
+            entry = OrbitEntry.objects.create(
+                type='request',
+                payload={
+                    'method': random.choice(methods),
+                    'path': random.choice(paths),
+                    'status_code': random.choices(status_codes, weights=[50, 30, 10, 5, 3, 2])[0],
+                    'client_ip': f'192.168.1.{random.randint(1, 255)}',
+                },
+                duration_ms=random.uniform(10, 500),
+            )
+            # Override created_at (Django auto_now_add normally prevents this)
+            OrbitEntry.objects.filter(id=entry.id).update(created_at=created_time)
+    
+    # Generate exceptions distributed over time
+    print("   Generating time-distributed exceptions...")
+    exception_types = ['ValueError', 'KeyError', 'TypeError', 'AttributeError', 'PermissionDenied']
+    
+    for hours_ago in range(0, 168, 6):  # Every 6 hours
+        if random.random() < 0.7:  # 70% chance of exception in each period
+            time_offset = timedelta(hours=hours_ago, minutes=random.randint(0, 59))
+            created_time = now - time_offset
+            
+            entry = OrbitEntry.objects.create(
+                type='exception',
+                payload={
+                    'exception_type': random.choice(exception_types),
+                    'message': f'Error in operation at {created_time.strftime("%H:%M")}',
+                    'request_method': 'POST',
+                    'request_path': '/api/action/',
+                },
+            )
+            OrbitEntry.objects.filter(id=entry.id).update(created_at=created_time)
+    
+    # Generate queries distributed over time
+    print("   Generating time-distributed queries...")
+    for hours_ago in range(0, 168, 3):  # Every 3 hours
+        time_offset = timedelta(hours=hours_ago, minutes=random.randint(0, 59))
+        created_time = now - time_offset
+        
+        for _ in range(random.randint(2, 8)):
+            is_slow = random.random() < 0.1
+            is_dup = random.random() < 0.15
+            
+            entry = OrbitEntry.objects.create(
+                type='query',
+                payload={
+                    'sql': f'SELECT * FROM table_{random.randint(1, 5)} WHERE id = %s',
+                    'params': [random.randint(1, 100)],
+                    'is_slow': is_slow,
+                    'is_duplicate': is_dup,
+                },
+                duration_ms=random.uniform(200, 800) if is_slow else random.uniform(1, 20),
+            )
+            OrbitEntry.objects.filter(id=entry.id).update(created_at=created_time)
+    
+    # Generate cache ops distributed over time
+    print("   Generating time-distributed cache ops...")
+    for hours_ago in range(0, 168, 4):  # Every 4 hours
+        time_offset = timedelta(hours=hours_ago, minutes=random.randint(0, 59))
+        created_time = now - time_offset
+        
+        for _ in range(random.randint(1, 5)):
+            entry = OrbitEntry.objects.create(
+                type='cache',
+                payload={
+                    'operation': random.choice(['get', 'get', 'get', 'set']),
+                    'key': f'cache_key_{random.randint(1, 20)}',
+                    'hit': random.random() < 0.7,  # 70% hit rate
+                },
+                duration_ms=random.uniform(0.1, 5),
+            )
+            OrbitEntry.objects.filter(id=entry.id).update(created_at=created_time)
+    
+    print("   ✓ Historical data generated!")
+
 
 def setup_demo():
     """Create all sample data for demos."""
@@ -295,6 +402,43 @@ def setup_demo():
         )
         print(f"   ✓ {sig['signal'].split('.')[-1]} from {sig['sender']}")
     
+    # Create sample Redis entries (v0.5.0)
+    print("\n🔴 Creating sample Redis entries...")
+    redis_samples = [
+        {'operation': 'GET', 'key': 'user:1234:session', 'result_size': 256},
+        {'operation': 'SET', 'key': 'cache:homepage', 'result_size': None},
+        {'operation': 'HGETALL', 'key': 'user:1234:profile', 'result_size': 12},
+        {'operation': 'LPUSH', 'key': 'queue:emails', 'result_size': 1},
+        {'operation': 'INCR', 'key': 'stats:page_views', 'result_size': None},
+    ]
+    for redis_op in redis_samples:
+        OrbitEntry.objects.create(
+            type='redis',
+            payload=redis_op,
+            duration_ms=random.uniform(0.5, 5.0),
+        )
+        print(f"   ✓ {redis_op['operation']} {redis_op['key']}")
+    
+    # Create sample Gate entries (v0.5.0)
+    print("\n🛡️ Creating sample Gate entries...")
+    gate_samples = [
+        {'user': 'admin', 'permission': 'auth.add_user', 'result': 'granted', 'backend': 'ModelBackend'},
+        {'user': 'john_doe', 'permission': 'books.change_book', 'result': 'granted', 'backend': 'ModelBackend'},
+        {'user': 'guest', 'permission': 'admin.view_logentry', 'result': 'denied', 'backend': 'ModelBackend'},
+        {'user': 'john_doe', 'permission': 'books.delete_review', 'result': 'denied', 'object': 'Review:42', 'backend': 'ModelBackend'},
+        {'user': 'admin', 'permission': 'auth.change_user', 'result': 'granted', 'backend': 'ModelBackend'},
+    ]
+    for gate in gate_samples:
+        OrbitEntry.objects.create(
+            type='gate',
+            payload=gate,
+        )
+        icon = "✓" if gate['result'] == 'granted' else "✗"
+        print(f"   {icon} {gate['permission']} → {gate['user']}")
+    
+    # Generate historical data for stats charts
+    generate_historical_data()
+    
     print("\n" + "="*60)
     print("✅ Setup Complete!")
     print("="*60)
@@ -312,11 +456,14 @@ def setup_demo():
     print(f"   🩷 HTTP Client: {OrbitEntry.objects.http_client().count()}")
     print(f"   📧 Mail: {OrbitEntry.objects.mails().count()}")
     print(f"   ⚡ Signals: {OrbitEntry.objects.signals().count()}")
+    print(f"   🔴 Redis: {OrbitEntry.objects.redis_ops().count()}")
+    print(f"   🛡️ Gates: {OrbitEntry.objects.gates().count()}")
     print(f"   ─────────────")
     print(f"   Total: {OrbitEntry.objects.count()}")
     print(f"\n🌐 Demo: http://localhost:8000/")
     print(f"🛰️  Orbit: http://localhost:8000/orbit/")
     print(f"\n💡 TIP: Run 'python demo.py fill' to generate live events!\n")
+
 
 
 def fill_dashboard():

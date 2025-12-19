@@ -774,12 +774,715 @@ def install_signal_watcher():
 
 
 # =============================================================================
+# Celery Jobs Watcher
+# =============================================================================
+
+_celery_patched = False
+
+
+def record_celery_task(
+    task_id: str,
+    task_name: str,
+    args: tuple,
+    kwargs: dict,
+    status: str,
+    result: Any = None,
+    exception: str = None,
+    duration_ms: float = 0,
+    retries: int = 0,
+):
+    """
+    Record a Celery task execution to Orbit.
+
+    Args:
+        task_id: Celery task ID
+        task_name: Name of the task
+        args: Task positional arguments
+        kwargs: Task keyword arguments
+        status: Task status (started, success, failure, retry)
+        result: Task result (for success)
+        exception: Exception message (for failure)
+        duration_ms: Execution duration
+        retries: Number of retries
+    """
+    config = get_config()
+    if not config.get("ENABLED", True):
+        return
+
+    if not config.get("RECORD_JOBS", True):
+        return
+
+    from orbit.models import OrbitEntry
+
+    # Serialize args/kwargs safely
+    try:
+        serialized_args = repr(args)[:500]
+    except Exception:
+        serialized_args = "<unserializable>"
+    
+    try:
+        serialized_kwargs = repr(kwargs)[:500]
+    except Exception:
+        serialized_kwargs = "<unserializable>"
+
+    payload = {
+        "task_id": task_id,
+        "name": task_name,
+        "status": status,
+        "args": serialized_args,
+        "kwargs": serialized_kwargs,
+        "retries": retries,
+    }
+
+    if result is not None and status == "success":
+        try:
+            payload["result"] = repr(result)[:200]
+        except Exception:
+            payload["result"] = "<unserializable>"
+
+    if exception:
+        payload["error"] = exception
+
+    try:
+        OrbitEntry.objects.create(
+            type=OrbitEntry.TYPE_JOB,
+            payload=payload,
+            duration_ms=duration_ms,
+        )
+    except Exception:
+        pass
+
+
+def install_celery_watcher():
+    """
+    Install the Celery task watcher using Celery signals.
+    """
+    global _celery_patched
+
+    if _celery_patched:
+        return
+
+    try:
+        from celery import signals
+        from celery import current_task
+        import threading
+
+        # Track task start times
+        _task_start_times = threading.local()
+
+        @signals.task_prerun.connect
+        def task_prerun_handler(task_id, task, args, kwargs, **kw):
+            _task_start_times.times = getattr(_task_start_times, 'times', {})
+            _task_start_times.times[task_id] = time.time()
+
+        @signals.task_postrun.connect
+        def task_postrun_handler(task_id, task, args, kwargs, retval, state, **kw):
+            start_time = getattr(_task_start_times, 'times', {}).get(task_id)
+            duration_ms = 0
+            if start_time:
+                duration_ms = (time.time() - start_time) * 1000
+                _task_start_times.times.pop(task_id, None)
+
+            status = "success" if state == "SUCCESS" else state.lower()
+            record_celery_task(
+                task_id=task_id,
+                task_name=task.name,
+                args=args,
+                kwargs=kwargs,
+                status=status,
+                result=retval if state == "SUCCESS" else None,
+                duration_ms=duration_ms,
+                retries=getattr(task.request, 'retries', 0),
+            )
+
+        @signals.task_failure.connect
+        def task_failure_handler(task_id, exception, args, kwargs, traceback, einfo, **kw):
+            start_time = getattr(_task_start_times, 'times', {}).get(task_id)
+            duration_ms = 0
+            if start_time:
+                duration_ms = (time.time() - start_time) * 1000
+                _task_start_times.times.pop(task_id, None)
+
+            record_celery_task(
+                task_id=task_id,
+                task_name=kw.get('sender', {}).name if hasattr(kw.get('sender'), 'name') else 'unknown',
+                args=args,
+                kwargs=kwargs,
+                status="failure",
+                exception=str(exception),
+                duration_ms=duration_ms,
+            )
+
+        _celery_patched = True
+        logger.debug("Orbit Celery watcher installed")
+
+    except ImportError:
+        logger.debug("Celery not installed, skipping Celery watcher")
+    except Exception as e:
+        logger.warning(f"Failed to install Celery watcher: {e}")
+
+
+# =============================================================================
+# Redis Watcher
+# =============================================================================
+
+_redis_patched = False
+
+
+def record_redis_operation(
+    operation: str,
+    key: str = None,
+    duration_ms: float = 0,
+    result_size: int = None,
+    error: str = None,
+):
+    """
+    Record a Redis operation to Orbit.
+
+    Args:
+        operation: Operation type (GET, SET, DEL, HGET, etc.)
+        key: Redis key
+        duration_ms: Operation duration
+        result_size: Size of result in bytes
+        error: Error message if failed
+    """
+    config = get_config()
+    if not config.get("ENABLED", True):
+        return
+
+    if not config.get("RECORD_REDIS", True):
+        return
+
+    from orbit.models import OrbitEntry
+
+    payload = {
+        "operation": operation.upper(),
+        "key": key[:200] if key else None,
+    }
+
+    if result_size is not None:
+        payload["result_size"] = result_size
+
+    if error:
+        payload["error"] = error
+
+    try:
+        OrbitEntry.objects.create(
+            type=OrbitEntry.TYPE_REDIS,
+            payload=payload,
+            duration_ms=duration_ms,
+        )
+    except Exception:
+        pass
+
+
+def install_redis_watcher():
+    """
+    Install the Redis watcher by patching redis-py client.
+    """
+    global _redis_patched
+
+    if _redis_patched:
+        return
+
+    try:
+        import redis
+
+        # Commands to track
+        tracked_commands = [
+            'get', 'set', 'setex', 'setnx', 'delete', 'del',
+            'hget', 'hset', 'hdel', 'hgetall',
+            'lpush', 'rpush', 'lpop', 'rpop', 'lrange',
+            'sadd', 'srem', 'smembers',
+            'zadd', 'zrem', 'zrange',
+            'incr', 'decr', 'expire', 'ttl',
+            'exists', 'keys', 'scan',
+        ]
+
+        original_execute_command = redis.Redis.execute_command
+
+        @functools.wraps(original_execute_command)
+        def patched_execute_command(self, *args, **options):
+            if not args:
+                return original_execute_command(self, *args, **options)
+
+            command = args[0].lower() if isinstance(args[0], str) else str(args[0]).lower()
+            key = args[1] if len(args) > 1 else None
+            if isinstance(key, bytes):
+                key = key.decode('utf-8', errors='replace')
+
+            start_time = time.time()
+            error = None
+            result = None
+
+            try:
+                result = original_execute_command(self, *args, **options)
+                return result
+            except Exception as e:
+                error = str(e)
+                raise
+            finally:
+                if command in tracked_commands:
+                    duration_ms = (time.time() - start_time) * 1000
+                    result_size = None
+                    if result is not None:
+                        try:
+                            if isinstance(result, bytes):
+                                result_size = len(result)
+                            elif isinstance(result, (list, set)):
+                                result_size = len(result)
+                        except Exception:
+                            pass
+
+                    try:
+                        record_redis_operation(
+                            operation=command,
+                            key=str(key) if key else None,
+                            duration_ms=duration_ms,
+                            result_size=result_size,
+                            error=error,
+                        )
+                    except Exception:
+                        pass
+
+        redis.Redis.execute_command = patched_execute_command
+        _redis_patched = True
+        logger.debug("Orbit Redis watcher installed")
+
+    except ImportError:
+        logger.debug("redis-py not installed, skipping Redis watcher")
+    except Exception as e:
+        logger.warning(f"Failed to install Redis watcher: {e}")
+
+
+# =============================================================================
+# Gates/Policies Watcher
+# =============================================================================
+
+_gates_patched = False
+
+
+def record_permission_check(
+    user: str,
+    permission: str,
+    obj: str = None,
+    result: bool = False,
+    backend: str = None,
+):
+    """
+    Record a permission check to Orbit.
+
+    Args:
+        user: User identifier
+        permission: Permission being checked
+        obj: Object being checked against
+        result: Whether permission was granted
+        backend: Auth backend used
+    """
+    config = get_config()
+    if not config.get("ENABLED", True):
+        return
+
+    if not config.get("RECORD_GATES", True):
+        return
+
+    from orbit.models import OrbitEntry
+
+    payload = {
+        "user": user[:100],
+        "permission": permission,
+        "result": "granted" if result else "denied",
+    }
+
+    if obj:
+        payload["object"] = obj[:100]
+
+    if backend:
+        payload["backend"] = backend
+
+    try:
+        OrbitEntry.objects.create(
+            type=OrbitEntry.TYPE_GATE,
+            payload=payload,
+        )
+    except Exception:
+        pass
+
+
+def install_gates_watcher():
+    """
+    Install the permission/gates watcher by patching Django's permission backend.
+    """
+    global _gates_patched
+
+    if _gates_patched:
+        return
+
+    try:
+        from django.contrib.auth.backends import ModelBackend
+
+        original_has_perm = ModelBackend.has_perm
+
+        @functools.wraps(original_has_perm)
+        def patched_has_perm(self, user_obj, perm, obj=None):
+            result = original_has_perm(self, user_obj, perm, obj)
+
+            try:
+                user_str = str(getattr(user_obj, 'username', user_obj))
+                obj_str = None
+                if obj:
+                    obj_str = f"{type(obj).__name__}:{getattr(obj, 'pk', obj)}"
+
+                record_permission_check(
+                    user=user_str,
+                    permission=perm,
+                    obj=obj_str,
+                    result=result,
+                    backend="ModelBackend",
+                )
+            except Exception:
+                pass
+
+            return result
+
+        ModelBackend.has_perm = patched_has_perm
+        _gates_patched = True
+        logger.debug("Orbit gates watcher installed")
+
+    except Exception as e:
+        logger.warning(f"Failed to install gates watcher: {e}")
+
+
+# =============================================================================
+# Django-Q Watcher
+# =============================================================================
+
+_djangoq_patched = False
+
+
+def install_djangoq_watcher():
+    """
+    Install Django-Q task watcher using django-q signals.
+    """
+    global _djangoq_patched
+
+    if _djangoq_patched:
+        return
+
+    try:
+        from django_q.signals import pre_execute, post_execute
+        from orbit.models import OrbitEntry
+        import threading
+
+        _task_start_times = threading.local()
+
+        def pre_execute_handler(sender, func, task, **kwargs):
+            _task_start_times.times = getattr(_task_start_times, 'times', {})
+            _task_start_times.times[task.get('id', '')] = time.time()
+
+        def post_execute_handler(sender, task, **kwargs):
+            config = get_config()
+            if not config.get("ENABLED", True) or not config.get("RECORD_JOBS", True):
+                return
+
+            task_id = task.get('id', '')
+            start_time = getattr(_task_start_times, 'times', {}).get(task_id)
+            duration_ms = 0
+            if start_time:
+                duration_ms = (time.time() - start_time) * 1000
+                _task_start_times.times.pop(task_id, None)
+
+            payload = {
+                "task_id": task_id,
+                "name": task.get('name', 'unknown'),
+                "status": "success" if task.get('success') else "failure",
+                "queue": "django-q",
+                "args": repr(task.get('args', []))[:500],
+                "kwargs": repr(task.get('kwargs', {}))[:500],
+            }
+
+            if not task.get('success'):
+                payload["error"] = task.get('result', 'Unknown error')
+
+            try:
+                OrbitEntry.objects.create(
+                    type=OrbitEntry.TYPE_JOB,
+                    payload=payload,
+                    duration_ms=duration_ms,
+                )
+            except Exception:
+                pass
+
+        pre_execute.connect(pre_execute_handler)
+        post_execute.connect(post_execute_handler)
+        _djangoq_patched = True
+        logger.debug("Orbit Django-Q watcher installed")
+
+    except ImportError:
+        logger.debug("Django-Q not installed, skipping Django-Q watcher")
+    except Exception as e:
+        logger.warning(f"Failed to install Django-Q watcher: {e}")
+
+
+# =============================================================================
+# RQ (Redis Queue) Watcher
+# =============================================================================
+
+_rq_patched = False
+
+
+def install_rq_watcher():
+    """
+    Install RQ (Redis Queue) task watcher.
+    """
+    global _rq_patched
+
+    if _rq_patched:
+        return
+
+    try:
+        from rq import Worker
+        from rq.job import Job
+        from orbit.models import OrbitEntry
+
+        original_perform_job = Worker.perform_job
+
+        def patched_perform_job(self, job, queue, *args, **kwargs):
+            config = get_config()
+            if not config.get("ENABLED", True) or not config.get("RECORD_JOBS", True):
+                return original_perform_job(self, job, queue, *args, **kwargs)
+
+            start_time = time.time()
+            result = original_perform_job(self, job, queue, *args, **kwargs)
+            duration_ms = (time.time() - start_time) * 1000
+
+            # Refresh job to get status
+            job.refresh()
+
+            payload = {
+                "task_id": job.id,
+                "name": job.func_name or 'unknown',
+                "status": job.get_status() or "unknown",
+                "queue": queue.name,
+                "args": repr(job.args)[:500],
+                "kwargs": repr(job.kwargs)[:500],
+            }
+
+            if job.is_failed:
+                payload["status"] = "failure"
+                payload["error"] = str(job.exc_info) if job.exc_info else "Unknown error"
+
+            try:
+                OrbitEntry.objects.create(
+                    type=OrbitEntry.TYPE_JOB,
+                    payload=payload,
+                    duration_ms=duration_ms,
+                )
+            except Exception:
+                pass
+
+            return result
+
+        Worker.perform_job = patched_perform_job
+        _rq_patched = True
+        logger.debug("Orbit RQ watcher installed")
+
+    except ImportError:
+        logger.debug("RQ not installed, skipping RQ watcher")
+    except Exception as e:
+        logger.warning(f"Failed to install RQ watcher: {e}")
+
+
+# =============================================================================
+# APScheduler Watcher
+# =============================================================================
+
+_apscheduler_patched = False
+
+
+def install_apscheduler_watcher():
+    """
+    Install APScheduler watcher to track scheduled job executions.
+    """
+    global _apscheduler_patched
+
+    if _apscheduler_patched:
+        return
+
+    try:
+        from apscheduler.events import (
+            EVENT_JOB_EXECUTED, EVENT_JOB_ERROR, EVENT_JOB_MISSED,
+            JobExecutionEvent
+        )
+        from orbit.models import OrbitEntry
+
+        def job_listener(event):
+            config = get_config()
+            if not config.get("ENABLED", True) or not config.get("RECORD_JOBS", True):
+                return
+
+            if not isinstance(event, JobExecutionEvent):
+                return
+
+            status = "success"
+            error = None
+
+            if event.exception:
+                status = "failure"
+                error = str(event.exception)
+            elif hasattr(event, 'code'):
+                if event.code == EVENT_JOB_MISSED:
+                    status = "missed"
+
+            duration_ms = 0
+            if hasattr(event, 'run_time') and event.run_time:
+                duration_ms = event.run_time * 1000
+
+            payload = {
+                "task_id": event.job_id,
+                "name": event.job_id,
+                "status": status,
+                "queue": "apscheduler",
+                "scheduled_time": event.scheduled_run_time.isoformat() if event.scheduled_run_time else None,
+            }
+
+            if error:
+                payload["error"] = error[:500]
+
+            try:
+                OrbitEntry.objects.create(
+                    type=OrbitEntry.TYPE_JOB,
+                    payload=payload,
+                    duration_ms=duration_ms,
+                )
+            except Exception:
+                pass
+
+        # Store listener reference for later use
+        install_apscheduler_watcher.listener = job_listener
+        _apscheduler_patched = True
+        logger.debug("Orbit APScheduler watcher prepared (call add_listener on your scheduler)")
+
+    except ImportError:
+        logger.debug("APScheduler not installed, skipping APScheduler watcher")
+    except Exception as e:
+        logger.warning(f"Failed to install APScheduler watcher: {e}")
+
+
+def register_apscheduler(scheduler):
+    """
+    Register the APScheduler listener with a scheduler instance.
+    
+    Usage:
+        from apscheduler.schedulers.background import BackgroundScheduler
+        from orbit.watchers import register_apscheduler
+        
+        scheduler = BackgroundScheduler()
+        register_apscheduler(scheduler)
+    """
+    try:
+        from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR, EVENT_JOB_MISSED
+        
+        install_apscheduler_watcher()
+        
+        if hasattr(install_apscheduler_watcher, 'listener'):
+            scheduler.add_listener(
+                install_apscheduler_watcher.listener,
+                EVENT_JOB_EXECUTED | EVENT_JOB_ERROR | EVENT_JOB_MISSED
+            )
+            logger.debug("Orbit APScheduler listener registered")
+    except Exception as e:
+        logger.warning(f"Failed to register APScheduler: {e}")
+
+
+# =============================================================================
+# django-celery-beat Watcher
+# =============================================================================
+
+_celerybeat_patched = False
+
+
+def install_celerybeat_watcher():
+    """
+    Install django-celery-beat watcher to track periodic task configurations.
+    Note: This monitors task scheduling, not execution (use install_celery_watcher for execution).
+    """
+    global _celerybeat_patched
+
+    if _celerybeat_patched:
+        return
+
+    try:
+        from django.db.models.signals import post_save, post_delete
+        from django_celery_beat.models import PeriodicTask
+        from orbit.models import OrbitEntry
+
+        def periodic_task_changed(sender, instance, created, **kwargs):
+            config = get_config()
+            if not config.get("ENABLED", True) or not config.get("RECORD_JOBS", True):
+                return
+
+            action = "created" if created else "updated"
+            
+            payload = {
+                "task_id": f"periodic-{instance.id}",
+                "name": instance.name,
+                "status": action,
+                "queue": "celery-beat",
+                "task": instance.task,
+                "enabled": instance.enabled,
+                "schedule": str(instance.interval or instance.crontab or instance.solar or instance.clocked),
+            }
+
+            try:
+                OrbitEntry.objects.create(
+                    type=OrbitEntry.TYPE_JOB,
+                    payload=payload,
+                    duration_ms=0,
+                )
+            except Exception:
+                pass
+
+        def periodic_task_deleted(sender, instance, **kwargs):
+            config = get_config()
+            if not config.get("ENABLED", True) or not config.get("RECORD_JOBS", True):
+                return
+
+            payload = {
+                "task_id": f"periodic-{instance.id}",
+                "name": instance.name,
+                "status": "deleted",
+                "queue": "celery-beat",
+                "task": instance.task,
+            }
+
+            try:
+                OrbitEntry.objects.create(
+                    type=OrbitEntry.TYPE_JOB,
+                    payload=payload,
+                    duration_ms=0,
+                )
+            except Exception:
+                pass
+
+        post_save.connect(periodic_task_changed, sender=PeriodicTask)
+        post_delete.connect(periodic_task_deleted, sender=PeriodicTask)
+        _celerybeat_patched = True
+        logger.debug("Orbit django-celery-beat watcher installed")
+
+    except ImportError:
+        logger.debug("django-celery-beat not installed, skipping celery-beat watcher")
+    except Exception as e:
+        logger.warning(f"Failed to install celery-beat watcher: {e}")
+
+
+# =============================================================================
 # Install All Watchers
 # =============================================================================
 
 
 def install_all_watchers():
-    """Install all Phase 1 and Phase 2 watchers."""
+    """Install all Phase 1, Phase 2, and Phase 3 watchers."""
     config = get_config()
 
     if config.get("RECORD_COMMANDS", True):
@@ -799,3 +1502,17 @@ def install_all_watchers():
 
     if config.get("RECORD_SIGNALS", True):
         install_signal_watcher()
+
+    if config.get("RECORD_JOBS", True):
+        install_celery_watcher()
+        install_djangoq_watcher()
+        install_rq_watcher()
+        install_celerybeat_watcher()
+        install_apscheduler_watcher()
+
+    if config.get("RECORD_REDIS", True):
+        install_redis_watcher()
+
+    if config.get("RECORD_GATES", True):
+        install_gates_watcher()
+

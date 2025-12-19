@@ -60,6 +60,14 @@ class OrbitEntryManager(models.Manager):
         """Get all signal entries."""
         return self.filter(type=OrbitEntry.TYPE_SIGNAL)
 
+    def redis_ops(self):
+        """Get all Redis operation entries."""
+        return self.filter(type=OrbitEntry.TYPE_REDIS)
+
+    def gates(self):
+        """Get all gate/permission entries."""
+        return self.filter(type=OrbitEntry.TYPE_GATE)
+
     def slow_queries(self):
         """Get all slow queries (marked in payload)."""
         return self.filter(type=OrbitEntry.TYPE_QUERY, payload__is_slow=True)
@@ -105,6 +113,9 @@ class OrbitEntry(models.Model):
     # Phase 2 types (v0.4.0)
     TYPE_MAIL = "mail"
     TYPE_SIGNAL = "signal"
+    # Phase 3 types (v0.5.0)
+    TYPE_REDIS = "redis"
+    TYPE_GATE = "gate"
 
     TYPE_CHOICES = [
         (TYPE_REQUEST, "HTTP Request"),
@@ -119,6 +130,8 @@ class OrbitEntry(models.Model):
         (TYPE_DUMP, "Dump"),
         (TYPE_MAIL, "Mail"),
         (TYPE_SIGNAL, "Signal"),
+        (TYPE_REDIS, "Redis"),
+        (TYPE_GATE, "Gate/Policy"),
     ]
 
     # Type to icon mapping for UI
@@ -135,6 +148,8 @@ class OrbitEntry(models.Model):
         TYPE_DUMP: "bug",
         TYPE_MAIL: "mail",
         TYPE_SIGNAL: "zap",
+        TYPE_REDIS: "server",
+        TYPE_GATE: "shield",
     }
 
     # Type to color mapping for UI
@@ -151,6 +166,8 @@ class OrbitEntry(models.Model):
         TYPE_DUMP: "lime",
         TYPE_MAIL: "fuchsia",
         TYPE_SIGNAL: "yellow",
+        TYPE_REDIS: "red",
+        TYPE_GATE: "indigo",
     }
 
     # Primary key
@@ -313,6 +330,22 @@ class OrbitEntry(models.Model):
             if len(signal) > 50:
                 signal = "..." + signal[-47:]
             return f"{signal} → {sender}"
+
+        elif self.type == self.TYPE_REDIS:
+            operation = payload.get("operation", "?")
+            key = payload.get("key", "?")
+            if key and len(key) > 40:
+                key = key[:37] + "..."
+            result_size = payload.get("result_size")
+            size_str = f" ({result_size} items)" if result_size is not None else ""
+            return f"{operation} {key}{size_str}"
+
+        elif self.type == self.TYPE_GATE:
+            permission = payload.get("permission", "?")
+            user = payload.get("user", "?")
+            result = payload.get("result", "?")
+            icon = "✓" if result == "granted" else "✗"
+            return f"{icon} {permission} → {user}"
 
         return str(self.id)[:8]
 

@@ -35,6 +35,10 @@ DEFAULTS = {
         "django.db.models.signals.pre_init",
         "django.db.models.signals.post_init",
     ],
+    # Phase 3 watchers (v0.5.0)
+    "RECORD_JOBS": True,
+    "RECORD_REDIS": True,
+    "RECORD_GATES": True,
     # Command watcher settings
     "IGNORE_COMMANDS": ["runserver", "shell", "dbshell", "showmigrations"],
     "MAX_COMMAND_OUTPUT": 5000,

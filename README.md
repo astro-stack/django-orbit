@@ -8,12 +8,14 @@
 
 ![Demo](demo.gif)
 
-https://labs.wearehik.com/django-orbit
+[![Star on GitHub](https://img.shields.io/github/stars/astro-stack/django-orbit?style=social)](https://github.com/astro-stack/django-orbit)
 
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue?style=flat-square&logo=python)](https://python.org)
 [![Django](https://img.shields.io/badge/Django-4.0%2B-green?style=flat-square&logo=django)](https://djangoproject.com)
 [![License](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](LICENSE)
 [![Code Style](https://img.shields.io/badge/Code%20Style-Black-black?style=flat-square)](https://github.com/psf/black)
+
+[📚 Documentation](https://labs.wearehik.com/django-orbit) · [🎮 Live Demo](#-try-the-demo) · [⭐ Star on GitHub](https://github.com/astro-stack/django-orbit)
 
 </div>
 
@@ -21,15 +23,32 @@ https://labs.wearehik.com/django-orbit
 
 ## ✨ Features
 
-- 🌐 **Request Tracking** - Capture all HTTP requests with headers, body, and response data
-- 🗄️ **SQL Recording** - Log every database query with timing, caller info, and duplicate detection
+### Core Observability
+- 🌐 **Request Tracking** - Capture HTTP requests with headers, body, and response
+- 🗄️ **SQL Recording** - Log queries with N+1 detection and slow query alerts
 - 📝 **Log Aggregation** - Automatically capture Python logging output
-- 🚨 **Exception Tracking** - Full traceback capture for unhandled exceptions
+- 🚨 **Exception Tracking** - Full traceback capture for errors
 - ⏱️ **Performance Metrics** - Duration tracking for requests and queries
-- 🔗 **Event Correlation** - Link related events with `family_hash` grouping
-- 🌙 **Beautiful Dark UI** - Space-themed mission control dashboard
+
+### Extended Monitoring (v0.2.0+)
+- 🟣 **Management Commands** - Track `python manage.py` executions
+- 🟠 **Cache Operations** - Monitor hits, misses, sets, deletes
+- 🔵 **Model Events** - ORM create/update/delete auditing
+- 🩷 **HTTP Client** - Outgoing API request monitoring
+- 📧 **Mail Capture** - Track sent emails
+- ⚡ **Django Signals** - Event dispatch monitoring
+
+### Advanced Features (v0.5.0+)
+- ⏰ **Background Jobs** - Celery, Django-Q, RQ, APScheduler monitoring
+- 🔴 **Redis Operations** - Track GET, SET, DEL, and more
+- 🛡️ **Gates/Permissions** - Authorization check auditing
+- 📊 **Stats Dashboard** - Apdex score, percentiles, interactive charts
+
+### Dashboard Features
+- 🌙 **Beautiful Dark UI** - Space-themed mission control
 - ⚡ **Live Updates** - HTMX-powered real-time feed
-- 🔒 **Zero DOM Injection** - Unlike Debug Toolbar, lives at its own URL
+- 🔗 **Event Correlation** - Link related events with family grouping
+- 🔒 **Zero DOM Injection** - Lives at its own URL, no template pollution
 
 ## 🎯 Philosophy
 
@@ -45,24 +64,11 @@ Unlike Django Debug Toolbar which injects HTML into your templates, Django Orbit
 
 ## 📦 Installation
 
-### From PyPI
-
 ```bash
 pip install django-orbit
 ```
 
-### From Source
-
-```bash
-git clone https://github.com/astro-stack/django-orbit.git
-cd django-orbit
-pip install -e .
-```
-
-
 ## 🎮 Try the Demo
-
-The fastest way to see Django Orbit in action:
 
 ```bash
 git clone https://github.com/astro-stack/django-orbit.git
@@ -75,16 +81,7 @@ python manage.py runserver
 Then visit:
 - **Demo app**: http://localhost:8000/
 - **Orbit Dashboard**: http://localhost:8000/orbit/
-
-### Demo Script Commands
-
-| Command | Description |
-|---------|-------------|
-| `python demo.py setup` | Creates sample data: books, reviews + 40+ Orbit entries (all 9 types) |
-| `python demo.py fill` | Tests live watchers by making HTTP requests (requires server) |
-| `python demo.py simulate` | Simulates continuous traffic for load testing |
-| `python demo.py status` | Shows current entry counts |
-| `python demo.py clear` | Clears all Orbit entries |
+- **Stats Dashboard**: http://localhost:8000/orbit/stats/
 
 ## 🚀 Quick Start
 
@@ -92,7 +89,6 @@ Then visit:
 
 ```python
 # settings.py
-
 INSTALLED_APPS = [
     # ...
     'orbit',
@@ -103,9 +99,8 @@ INSTALLED_APPS = [
 
 ```python
 # settings.py
-
 MIDDLEWARE = [
-    'orbit.middleware.OrbitMiddleware',  # Add early in the list
+    'orbit.middleware.OrbitMiddleware',  # Add early
     # ...
 ]
 ```
@@ -114,12 +109,11 @@ MIDDLEWARE = [
 
 ```python
 # urls.py
-
 from django.urls import path, include
 
 urlpatterns = [
-    # ...
     path('orbit/', include('orbit.urls')),
+    # ...
 ]
 ```
 
@@ -131,282 +125,116 @@ python manage.py migrate orbit
 
 ### 5. Visit the Dashboard
 
-Navigate to `http://localhost:8000/orbit/` to see your mission control!
+Navigate to `http://localhost:8000/orbit/` 🚀
 
 ## ⚙️ Configuration
 
-Django Orbit is configurable via Django settings:
-
 ```python
 # settings.py
-
 ORBIT_CONFIG = {
-    # Enable/disable Orbit (default: True)
     'ENABLED': True,
-    
-    # Slow query threshold in milliseconds (default: 500)
     'SLOW_QUERY_THRESHOLD_MS': 500,
-    
-    # Paths to ignore (default list shown)
-    'IGNORE_PATHS': [
-        '/orbit/',
-        '/static/',
-        '/admin/jsi18n/',
-        '/favicon.ico',
-    ],
-    
-    # Headers to hide from capture (default list shown)
-    'HIDE_REQUEST_HEADERS': [
-        'Authorization',
-        'Cookie',
-        'X-CSRFToken',
-    ],
-    
-    # Body keys to hide (default list shown)
-    'HIDE_REQUEST_BODY_KEYS': [
-        'password',
-        'token',
-        'secret',
-        'api_key',
-    ],
-    
-    # Maximum request body size to capture (default: 64KB)
-    'MAX_BODY_SIZE': 65536,
-    
-    # Maximum entries to keep (default: 1000)
     'STORAGE_LIMIT': 1000,
     
-    # What to record (all default: True)
+    # Core watchers
     'RECORD_REQUESTS': True,
     'RECORD_QUERIES': True,
     'RECORD_LOGS': True,
     'RECORD_EXCEPTIONS': True,
+    
+    # Extended watchers
+    'RECORD_COMMANDS': True,
+    'RECORD_CACHE': True,
+    'RECORD_MODELS': True,
+    'RECORD_HTTP_CLIENT': True,
+    'RECORD_MAIL': True,
+    'RECORD_SIGNALS': True,
+    
+    # Advanced watchers (v0.5.0+)
+    'RECORD_JOBS': True,
+    'RECORD_REDIS': True,
+    'RECORD_GATES': True,
+    
+    # Security
+    'AUTH_CHECK': lambda request: request.user.is_staff,
+    'IGNORE_PATHS': ['/orbit/', '/static/', '/media/'],
 }
 ```
 
-## 🎨 Dashboard Features
+## 📊 Stats Dashboard
 
-### Main Feed
+The new Stats Dashboard (`/orbit/stats/`) provides advanced analytics:
 
-The main feed shows a real-time stream of events:
+| Metric | Description |
+|--------|-------------|
+| **Apdex Score** | User satisfaction index (0-1) |
+| **Percentiles** | P50, P75, P95, P99 response times |
+| **Error Rate** | Failure percentage with trend |
+| **Throughput** | Requests per minute/hour |
+| **Database** | Slow queries, N+1 detection |
+| **Cache** | Hit rate with sparkline chart |
+| **Jobs** | Success rate, failure tracking |
+| **Permissions** | Top denied permissions |
 
-- **Requests** - HTTP requests with status codes
-- **Queries** - SQL queries with timing
-- **Logs** - Python log messages
-- **Exceptions** - Errors with tracebacks
-- **Jobs** - Background task tracking (coming soon)
+## 🔧 Background Job Integrations
 
-### Detail Panel
+Orbit automatically detects and monitors:
 
-Click any entry to open the slide-over detail panel featuring:
+| Backend | Integration |
+|---------|-------------|
+| **Celery** | Via signals (automatic) |
+| **Django-Q** | Via signals (automatic) |
+| **RQ** | Worker patching (automatic) |
+| **APScheduler** | `register_apscheduler(scheduler)` |
+| **django-celery-beat** | Via model signals (automatic) |
 
-- Full JSON payload with syntax highlighting
-- Request/Response headers
-- SQL query with caller location
-- Exception traceback
-- Related events (same request family)
-
-### Sidebar Navigation
-
-Filter events by type with live count badges:
-
-- 🌐 Requests
-- 🗄️ Queries
-- 📝 Logs
-- 🚨 Exceptions
-- ⏰ Jobs
-
-## 📊 Entry Types
-
-### Request Entry
-
-Captures HTTP request/response cycle:
-
-```json
-{
-  "method": "POST",
-  "path": "/api/users/",
-  "status_code": 201,
-  "duration_ms": 45.2,
-  "client_ip": "127.0.0.1",
-  "headers": {"Content-Type": "application/json"},
-  "body": {"username": "john", "password": "***HIDDEN***"},
-  "query_count": 5
-}
-```
-
-### Query Entry
-
-Captures SQL queries:
-
-```json
-{
-  "sql": "SELECT * FROM users WHERE id = %s",
-  "params": [1],
-  "duration_ms": 2.3,
-  "is_slow": false,
-  "is_duplicate": false,
-  "caller": {
-    "filename": "/app/views.py",
-    "lineno": 42,
-    "function": "get_user"
-  }
-}
-```
-
-### Log Entry
-
-Captures Python logging:
-
-```json
-{
-  "level": "WARNING",
-  "message": "Rate limit exceeded for user 123",
-  "logger": "myapp.views",
-  "module": "views",
-  "filename": "views.py",
-  "lineno": 78
-}
-```
-
-### Exception Entry
-
-Captures unhandled exceptions:
-
-```json
-{
-  "exception_type": "ValueError",
-  "message": "Invalid input data",
-  "traceback": [
-    {"filename": "/app/views.py", "lineno": 42, "name": "process", "line": "raise ValueError(...)"}
-  ],
-  "request_method": "POST",
-  "request_path": "/api/process/"
-}
-```
-
-## 🔧 Advanced Usage
-
-### Manual Entry Creation
-
-You can create entries programmatically:
+## 🛡️ Security
 
 ```python
-from orbit.models import OrbitEntry
-
-# Log a custom event
-OrbitEntry.objects.create(
-    type=OrbitEntry.TYPE_LOG,
-    payload={
-        'level': 'INFO',
-        'message': 'Custom event',
-        'custom_data': {'key': 'value'}
-    }
-)
-```
-
-### Family Hash Grouping
-
-Events are automatically grouped by request using `family_hash`. You can query related events:
-
-```python
-# Get all events for a specific request
-request_entry = OrbitEntry.objects.requests().first()
-related = OrbitEntry.objects.for_family(request_entry.family_hash)
-```
-
-### Custom Log Handler
-
-The `OrbitLogHandler` integrates with Python logging:
-
-```python
-import logging
-
-logger = logging.getLogger('myapp')
-logger.info('This will be captured by Orbit!')
-```
-
-## 🛡️ Security Considerations
-
-### Production Usage
-
-Django Orbit is designed for **development and staging environments**. For production:
-
-1. **Disable in production** or protect the URL:
-
-```python
-# settings.py
+# Restrict access to staff users
 ORBIT_CONFIG = {
-    'ENABLED': DEBUG,  # Only enable in debug mode
-}
-```
-
-2. **Use authentication**:
-
-```python
-# settings.py
-ORBIT_CONFIG = {
-    # Callable that takes 'request' and returns True/False
     'AUTH_CHECK': lambda request: request.user.is_staff,
 }
+
+# Or disable in production
+ORBIT_CONFIG = {
+    'ENABLED': DEBUG,
+}
 ```
 
-### Sensitive Data
-
-Orbit automatically hides:
-
-- Authorization headers
-- Cookies
-- Password fields
-- Tokens and API keys
-
-Configure additional fields to hide via `HIDE_REQUEST_HEADERS` and `HIDE_REQUEST_BODY_KEYS`.
+Orbit automatically hides sensitive data (passwords, tokens, API keys).
 
 ## 🗺️ Roadmap
 
-### Already Implemented ✅
-- [x] Request tracking
-- [x] SQL query recording with slow/duplicate detection
-- [x] Log aggregation
-- [x] Exception capture with tracebacks
-- [x] Event correlation (family_hash grouping)
-- [x] **Management Commands** - Track `python manage.py` commands
-- [x] **Cache Operations** - Hit/miss/set/delete tracking
-- [x] **Model Events** - ORM create/update/delete auditing
-- [x] **HTTP Client** - Outgoing API request monitoring
-- [x] **Debug Dumps** - `orbit_dump()` for variable inspection
-- [x] **Data Security** - Dashboard authentication (AUTH_CHECK)
-- [x] **Data Cleanup** - Pruning management command
-- [x] **Search & Filter** - Search by UUID or content
-- [x] **Export** - Download entries as JSON (Single & Bulk)
+### Implemented ✅
+- Request/Query/Log/Exception tracking
+- N+1 detection with duplicate navigation
+- Management Commands, Cache, Models, HTTP Client
+- Mail, Signals watchers
+- Jobs (Celery, Django-Q, RQ, APScheduler)
+- Redis operations
+- Gates/Permissions
+- Stats Dashboard with Apdex, charts
+- Dashboard authentication
+- Search, Export, Pagination
 
-### Coming Soon 🚧
-- [ ] **Email Capture** - Track sent emails
-- [ ] **Django Signals** - Event dispatch monitoring
-
-### Future Plans 🔮
-- [ ] Redis/external storage backend
-- [ ] Background job tracking (Celery, RQ, etc.)
-- [ ] Scheduled tasks monitoring
-- [ ] Export/import functionality
-- [ ] Advanced filtering and search
-- [ ] Performance insights and recommendations
+### Future 🔮
+- External storage backends (Redis, PostgreSQL)
+- Performance recommendations
+- Custom dashboards
+- Webhook integrations
 
 ## 🤝 Contributing
 
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## 📄 License
 
-Django Orbit is open source under the [MIT License](LICENSE).
+MIT License - see [LICENSE](LICENSE).
 
 ## 💖 Acknowledgments
 
-Inspired by:
-
-- [Laravel Telescope](https://laravel.com/docs/telescope) - The original inspiration
-- [Spatie Ray](https://spatie.be/products/ray) - Beautiful debugging experience
-- [Django Debug Toolbar](https://django-debug-toolbar.readthedocs.io/) - The Django classic
+Inspired by [Laravel Telescope](https://laravel.com/docs/telescope), [Spatie Ray](https://spatie.be/products/ray), and [Django Debug Toolbar](https://django-debug-toolbar.readthedocs.io/).
 
 ---
 
@@ -414,6 +242,6 @@ Inspired by:
 
 **Built with ❤️ for the Django community**
 
-[⭐ Star us on GitHub](https://github.com/astro-stack/django-orbit)
+[⭐ Star us on GitHub](https://github.com/astro-stack/django-orbit) · [📚 Read the Docs](https://labs.wearehik.com/django-orbit)
 
 </div>

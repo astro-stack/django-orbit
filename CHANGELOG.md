@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2025-12-19
+
+### Added
+- **Jobs Watcher**: Track background job executions
+  - Celery integration via signals
+  - Django-Q integration via signals
+  - RQ (Redis Queue) integration via monkey-patching
+  - APScheduler integration with event listeners
+  - django-celery-beat integration for periodic tasks
+- **Redis Watcher**: Capture Redis operations
+  - Tracks GET, SET, DEL, HGET, HSET, LPUSH, RPUSH, etc.
+  - Records key, operation type, duration, and result size
+- **Gates/Permissions Watcher**: Monitor authorization checks
+  - Tracks permission checks via Django's ModelBackend
+  - Records user, permission, object, result (granted/denied)
+- **Stats Dashboard**: New dedicated analytics page at `/orbit/stats/`
+  - Real-time Apdex score calculation
+  - Response time percentiles (P50, P75, P95, P99)
+  - Throughput metrics (requests/min or /hr)
+  - Error rate tracking with threshold visualization
+  - Database performance analytics (slow queries, N+1 detection)
+  - Cache hit rate monitoring with sparkline charts
+  - Background job success rate and failure tracking
+  - Permission check analytics with top denied permissions
+  - Time range filters (1h, 6h, 24h, 7d)
+  - ApexCharts for interactive visualizations
+- **Duplicate Query Navigation**: Click on duplicate queries in entry details to navigate between related N+1 queries
+- **Dashboard Improvements**:
+  - Scrollable sidebar for many event types
+  - Stats panel only visible for "All Events" filter
+  - Loading spinner in detail panel
+  - New event type icons for Jobs, Redis, Gates
+
+### Configuration
+- Added `RECORD_JOBS` setting (default: True)
+- Added `RECORD_REDIS` setting (default: True)
+- Added `RECORD_GATES` setting (default: True)
+
+### Technical
+- Added `tests/test_watchers_v050.py` with unit tests for new watchers
+- Added `generate_historical_data()` to demo.py for stats visualization
+- Retry logic for SQLite database lock issues
+
 ## [0.4.0] - 2025-12-18
 
 ### Added

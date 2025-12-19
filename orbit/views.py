@@ -59,6 +59,9 @@ class OrbitDashboardView(OrbitProtectedView, TemplateView):
             # Phase 2 types (v0.4.0)
             "mail": OrbitEntry.objects.mails().count(),
             "signal": OrbitEntry.objects.signals().count(),
+            # Phase 3 types (v0.5.0)
+            "redis": OrbitEntry.objects.redis_ops().count(),
+            "gate": OrbitEntry.objects.gates().count(),
         }
 
         # Get error and warning counts for alerts
@@ -74,6 +77,96 @@ class OrbitDashboardView(OrbitProtectedView, TemplateView):
         ).count()
 
         context["current_type"] = entry_type
+
+        # Calculate statistics for dashboard
+        from django.db.models import Avg, Count, Sum
+        from django.db.models.functions import TruncHour
+        from datetime import timedelta
+        from django.utils import timezone
+
+        now = timezone.now()
+        last_hour = now - timedelta(hours=1)
+        last_24h = now - timedelta(hours=24)
+
+        # Performance stats
+        requests_last_hour = OrbitEntry.objects.filter(
+            type=OrbitEntry.TYPE_REQUEST,
+            created_at__gte=last_hour
+        )
+        
+        queries_last_hour = OrbitEntry.objects.filter(
+            type=OrbitEntry.TYPE_QUERY,
+            created_at__gte=last_hour
+        )
+
+        context["stats"] = {
+            # Request metrics
+            "requests_per_hour": requests_last_hour.count(),
+            "avg_response_time": requests_last_hour.aggregate(
+                avg=Avg("duration_ms")
+            )["avg"] or 0,
+            
+            # Query metrics
+            "queries_per_hour": queries_last_hour.count(),
+            "avg_query_time": queries_last_hour.aggregate(
+                avg=Avg("duration_ms")
+            )["avg"] or 0,
+            "slow_queries_pct": (
+                (context["slow_query_count"] / context["counts"]["query"] * 100)
+                if context["counts"]["query"] > 0 else 0
+            ),
+            "duplicate_queries": OrbitEntry.objects.filter(
+                type=OrbitEntry.TYPE_QUERY,
+                payload__is_duplicate=True
+            ).count(),
+            
+            # Error metrics
+            "error_rate": (
+                (context["error_count"] / context["counts"]["request"] * 100)
+                if context["counts"]["request"] > 0 else 0
+            ),
+            "exceptions_24h": OrbitEntry.objects.filter(
+                type=OrbitEntry.TYPE_EXCEPTION,
+                created_at__gte=last_24h
+            ).count(),
+            
+            # Cache metrics
+            "cache_hits": OrbitEntry.objects.filter(
+                type=OrbitEntry.TYPE_CACHE,
+                payload__hit=True
+            ).count(),
+            "cache_misses": OrbitEntry.objects.filter(
+                type=OrbitEntry.TYPE_CACHE,
+                payload__hit=False
+            ).count(),
+            
+            # Permission metrics
+            "permission_denied": OrbitEntry.objects.filter(
+                type=OrbitEntry.TYPE_GATE,
+                payload__result="denied"
+            ).count(),
+            "permission_granted": OrbitEntry.objects.filter(
+                type=OrbitEntry.TYPE_GATE,
+                payload__result="granted"
+            ).count(),
+            
+            # Job metrics
+            "jobs_failed": OrbitEntry.objects.filter(
+                type=OrbitEntry.TYPE_JOB,
+                payload__status="failed"
+            ).count(),
+            "jobs_success": OrbitEntry.objects.filter(
+                type=OrbitEntry.TYPE_JOB,
+                payload__status="success"
+            ).count(),
+        }
+        
+        # Calculate cache hit rate
+        total_cache = context["stats"]["cache_hits"] + context["stats"]["cache_misses"]
+        context["stats"]["cache_hit_rate"] = (
+            (context["stats"]["cache_hits"] / total_cache * 100)
+            if total_cache > 0 else 0
+        )
 
         from django.urls import reverse
 
@@ -140,9 +233,11 @@ class OrbitFeedPartial(OrbitProtectedView, View):
         total_pages = (total_count + per_page - 1) // per_page  # Ceiling division
         page = max(1, min(page, total_pages)) if total_pages > 0 else 1
 
-        # Get entries for current page
+        # Get entries for current page - only load necessary fields for performance
         offset = (page - 1) * per_page
-        entries = queryset.order_by("-created_at")[offset : offset + per_page]
+        entries = queryset.only(
+            'id', 'type', 'payload', 'duration_ms', 'created_at'
+        ).order_by("-created_at")[offset : offset + per_page]
 
         # Render partial
         return TemplateResponse(
@@ -182,6 +277,20 @@ class OrbitDetailPartial(OrbitProtectedView, View):
                 .order_by("created_at")[:50]
             )
 
+        # Get duplicate queries (same SQL) for query entries
+        duplicate_entries = []
+        if entry.type == OrbitEntry.TYPE_QUERY:
+            sql = entry.payload.get('sql', '')
+            if sql and entry.payload.get('is_duplicate'):
+                duplicate_entries = (
+                    OrbitEntry.objects.filter(
+                        type=OrbitEntry.TYPE_QUERY,
+                        payload__sql=sql,
+                    )
+                    .exclude(id=entry.id)
+                    .order_by("-created_at")[:20]
+                )
+
         # Format payload as pretty JSON
         payload_json = json.dumps(
             entry.payload, indent=2, ensure_ascii=False, default=str
@@ -194,6 +303,7 @@ class OrbitDetailPartial(OrbitProtectedView, View):
                 "entry": entry,
                 "payload_json": payload_json,
                 "related_entries": related_entries,
+                "duplicate_entries": duplicate_entries,
             },
         )
 
@@ -215,49 +325,58 @@ class OrbitClearView(OrbitProtectedView, View):
         )
 
 
-class OrbitStatsView(OrbitProtectedView, View):
+class OrbitStatsView(OrbitProtectedView, TemplateView):
     """
-    View that returns stats/metrics as JSON.
+    Full-page Stats Dashboard view with charts and analytics.
     """
+    template_name = "orbit/stats.html"
 
-    def get(self, request: HttpRequest) -> JsonResponse:
-        from datetime import timedelta
-
-        from django.db.models import Avg, Count, Max, Min, Sum
-        from django.utils import timezone
-
-        # Time range (last hour)
-        since = timezone.now() - timedelta(hours=1)
-
-        # Get aggregated stats
-        request_stats = (
-            OrbitEntry.objects.requests()
-            .filter(created_at__gte=since)
-            .aggregate(
-                count=Count("id"),
-                avg_duration=Avg("duration_ms"),
-                max_duration=Max("duration_ms"),
-                error_count=Count("id", filter=models.Q(payload__status_code__gte=400)),
-            )
-        )
-
-        query_stats = (
-            OrbitEntry.objects.queries()
-            .filter(created_at__gte=since)
-            .aggregate(
-                count=Count("id"),
-                avg_duration=Avg("duration_ms"),
-                slow_count=Count("id", filter=models.Q(payload__is_slow=True)),
-            )
-        )
-
-        return JsonResponse(
-            {
-                "requests": request_stats,
-                "queries": query_stats,
-                "time_range": "1h",
-            }
-        )
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        from orbit import stats
+        import time
+        from django.db import OperationalError
+        
+        # Get time range from query params (default: 24h)
+        time_range = self.request.GET.get('range', '24h')
+        if time_range not in ['1h', '6h', '24h', '7d']:
+            time_range = '24h'
+        
+        context['time_range'] = time_range
+        context['time_ranges'] = ['1h', '6h', '24h', '7d']
+        
+        # Get all metrics with retry logic for SQLite database lock
+        max_retries = 3
+        retry_delay = 0.5
+        
+        for attempt in range(max_retries):
+            try:
+                context['summary'] = stats.get_summary_stats(time_range)
+                context['percentiles'] = stats.get_percentiles(time_range)
+                context['throughput_data'] = stats.get_throughput_data(time_range)
+                context['response_time_data'] = stats.get_response_time_trend(time_range)
+                context['error_trend_data'] = stats.get_error_rate_trend(time_range)
+                context['database'] = stats.get_database_metrics(time_range)
+                context['cache'] = stats.get_cache_metrics(time_range)
+                context['jobs'] = stats.get_jobs_metrics(time_range)
+                context['security'] = stats.get_security_metrics(time_range)
+                break  # Success, exit retry loop
+            except OperationalError as e:
+                if 'locked' in str(e) and attempt < max_retries - 1:
+                    time.sleep(retry_delay * (attempt + 1))
+                    continue
+                context['error'] = str(e)
+                break
+            except Exception as e:
+                context['error'] = str(e)
+                break
+        
+        # Add URLs
+        from django.urls import reverse
+        context['dashboard_url'] = reverse('orbit:dashboard')
+        
+        return context
 
 
 class OrbitExportView(OrbitProtectedView, View):

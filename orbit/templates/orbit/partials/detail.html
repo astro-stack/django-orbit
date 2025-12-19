@@ -16,6 +16,8 @@
             {% elif entry.type == 'dump' %}bg-lime-500/10 text-lime-400
             {% elif entry.type == 'mail' %}bg-fuchsia-500/10 text-fuchsia-400
             {% elif entry.type == 'signal' %}bg-yellow-500/10 text-yellow-400
+            {% elif entry.type == 'redis' %}bg-red-500/10 text-red-400
+            {% elif entry.type == 'gate' %}bg-indigo-500/10 text-indigo-400
             {% endif %}">
             {% if entry.type == 'request' %}
             <i data-lucide="globe" class="w-6 h-6"></i>
@@ -41,6 +43,10 @@
             <i data-lucide="mail" class="w-6 h-6"></i>
             {% elif entry.type == 'signal' %}
             <i data-lucide="zap" class="w-6 h-6"></i>
+            {% elif entry.type == 'redis' %}
+            <i data-lucide="server" class="w-6 h-6"></i>
+            {% elif entry.type == 'gate' %}
+            <i data-lucide="shield" class="w-6 h-6"></i>
             {% endif %}
         </div>
         <div class="flex-1 min-w-0">
@@ -231,6 +237,34 @@
                 </div>
                 <span class="text-xs font-mono text-orbit-text-secondary truncate flex-1">{{ related.summary }}</span>
                 <span class="text-xs text-orbit-text-muted">{{ related.created_at|time:"H:i:s" }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Duplicate Queries (N+1 Debug) -->
+    {% if duplicate_entries %}
+    <div class="mt-6">
+        <div class="flex items-center gap-2 mb-3">
+            <i data-lucide="copy" class="w-4 h-4 text-amber-400"></i>
+            <h4 class="text-sm font-medium text-amber-400">Duplicate Queries (N+1 Detected)</h4>
+            <span class="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full">{{ duplicate_entries|length }} similar</span>
+        </div>
+        <p class="text-xs text-orbit-text-muted mb-3">
+            These queries have the same SQL. Consider using <code class="text-amber-300">select_related()</code> or <code class="text-amber-300">prefetch_related()</code> to optimize.
+        </p>
+        <div class="space-y-1 max-h-40 overflow-y-auto bg-orbit-bg-tertiary/30 rounded-lg p-2">
+            {% for dup in duplicate_entries %}
+            <div class="flex items-center gap-2 p-2 rounded hover:bg-orbit-bg-tertiary/50 cursor-pointer transition-colors"
+                 onclick="document.dispatchEvent(new CustomEvent('orbit:open-detail', {detail: {entryId: '{{ dup.id }}'}}))">
+                <div class="w-5 h-5 rounded flex items-center justify-center bg-emerald-500/10 text-emerald-400 flex-shrink-0">
+                    <i data-lucide="database" class="w-3 h-3"></i>
+                </div>
+                <span class="text-xs font-mono text-orbit-text-secondary truncate flex-1">
+                    {{ dup.duration_ms|floatformat:1 }}ms
+                </span>
+                <span class="text-xs text-orbit-text-muted">{{ dup.created_at|time:"H:i:s.u" }}</span>
             </div>
             {% endfor %}
         </div>

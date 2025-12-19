@@ -1,0 +1,524 @@
+{% extends 'orbit/base.html' %}
+{% load static %}
+
+{% block title %}Stats Dashboard - Django Orbit{% endblock %}
+
+{% block extra_head %}
+<!-- ApexCharts -->
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.44.0/dist/apexcharts.min.js"></script>
+{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-orbit-bg-primary" x-data="statsPage()">
+    <!-- Header -->
+    <header class="h-14 border-b border-orbit-border bg-orbit-bg-secondary/50 backdrop-blur sticky top-0 z-20 flex items-center justify-between px-6">
+        <div class="flex items-center gap-4">
+            <a href="{{ dashboard_url }}" class="flex items-center gap-2 text-orbit-text-muted hover:text-orbit-text-primary transition-colors">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                <span>Back to Dashboard</span>
+            </a>
+            <div class="h-4 w-px bg-orbit-border"></div>
+            <h1 class="text-lg font-semibold text-orbit-text-primary flex items-center gap-2">
+                <i data-lucide="bar-chart-2" class="w-5 h-5 text-orbit-accent-cyan"></i>
+                Performance Analytics
+            </h1>
+        </div>
+        
+        <!-- Time Range Selector -->
+        <div class="flex items-center gap-2 bg-orbit-bg-tertiary rounded-lg p-1">
+            {% for range in time_ranges %}
+            <a href="?range={{ range }}" 
+               class="px-3 py-1.5 rounded-md text-sm font-medium transition-all
+                      {% if range == time_range %}
+                      bg-orbit-accent-cyan text-orbit-bg-primary
+                      {% else %}
+                      text-orbit-text-secondary hover:text-orbit-text-primary
+                      {% endif %}">
+                {{ range }}
+            </a>
+            {% endfor %}
+        </div>
+    </header>
+    
+    <main class="p-6 max-w-7xl mx-auto">
+        {% if error %}
+        <div class="bg-rose-500/10 border border-rose-500/30 rounded-xl p-4 mb-6">
+            <p class="text-rose-400">Error loading stats: {{ error }}</p>
+        </div>
+        {% endif %}
+        
+        <!-- Health Overview Cards -->
+        <section class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <!-- Apdex Score -->
+            <div class="bg-orbit-bg-secondary/50 backdrop-blur rounded-xl p-5 border border-orbit-border hover:border-orbit-accent-cyan/30 transition-all">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs text-orbit-text-muted uppercase tracking-wider">Apdex Score</span>
+                    <div class="w-8 h-8 rounded-lg {% if summary.apdex >= 0.94 %}bg-emerald-500/10{% elif summary.apdex >= 0.85 %}bg-cyan-500/10{% elif summary.apdex >= 0.70 %}bg-amber-500/10{% else %}bg-rose-500/10{% endif %} flex items-center justify-center">
+                        <i data-lucide="activity" class="w-4 h-4 {% if summary.apdex >= 0.94 %}text-emerald-400{% elif summary.apdex >= 0.85 %}text-cyan-400{% elif summary.apdex >= 0.70 %}text-amber-400{% else %}text-rose-400{% endif %}"></i>
+                    </div>
+                </div>
+                <div class="text-3xl font-bold {% if summary.apdex >= 0.94 %}text-emerald-400{% elif summary.apdex >= 0.85 %}text-cyan-400{% elif summary.apdex >= 0.70 %}text-amber-400{% else %}text-rose-400{% endif %}">
+                    {{ summary.apdex }}
+                </div>
+                <div class="text-xs text-orbit-text-muted mt-1">
+                    {% if summary.apdex >= 0.94 %}Excellent{% elif summary.apdex >= 0.85 %}Good{% elif summary.apdex >= 0.70 %}Fair{% else %}Poor{% endif %}
+                </div>
+            </div>
+            
+            <!-- Avg Response Time -->
+            <div class="bg-orbit-bg-secondary/50 backdrop-blur rounded-xl p-5 border border-orbit-border hover:border-cyan-500/30 transition-all">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs text-orbit-text-muted uppercase tracking-wider">Avg Response</span>
+                    <div class="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                        <i data-lucide="clock" class="w-4 h-4 text-cyan-400"></i>
+                    </div>
+                </div>
+                <div class="text-3xl font-bold text-orbit-text-primary">
+                    {{ summary.avg_response_time }}<span class="text-lg text-orbit-text-muted">ms</span>
+                </div>
+                <div class="text-xs text-orbit-text-muted mt-1">
+                    P95: <span class="text-cyan-400">{{ percentiles.p95 }}ms</span>
+                </div>
+            </div>
+            
+            <!-- Error Rate -->
+            <div class="bg-orbit-bg-secondary/50 backdrop-blur rounded-xl p-5 border border-orbit-border hover:border-rose-500/30 transition-all">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs text-orbit-text-muted uppercase tracking-wider">Error Rate</span>
+                    <div class="w-8 h-8 rounded-lg {% if summary.error_rate > 5 %}bg-rose-500/10{% elif summary.error_rate > 1 %}bg-amber-500/10{% else %}bg-emerald-500/10{% endif %} flex items-center justify-center">
+                        <i data-lucide="alert-circle" class="w-4 h-4 {% if summary.error_rate > 5 %}text-rose-400{% elif summary.error_rate > 1 %}text-amber-400{% else %}text-emerald-400{% endif %}"></i>
+                    </div>
+                </div>
+                <div class="text-3xl font-bold {% if summary.error_rate > 5 %}text-rose-400{% elif summary.error_rate > 1 %}text-amber-400{% else %}text-emerald-400{% endif %}">
+                    {{ summary.error_rate }}<span class="text-lg text-orbit-text-muted">%</span>
+                </div>
+                <div class="text-xs text-orbit-text-muted mt-1">
+                    <span class="text-rose-400">{{ summary.error_count }}</span> exceptions
+                </div>
+            </div>
+            
+            <!-- Throughput -->
+            <div class="bg-orbit-bg-secondary/50 backdrop-blur rounded-xl p-5 border border-orbit-border hover:border-violet-500/30 transition-all">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs text-orbit-text-muted uppercase tracking-wider">Throughput</span>
+                    <div class="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                        <i data-lucide="trending-up" class="w-4 h-4 text-violet-400"></i>
+                    </div>
+                </div>
+                <div class="text-3xl font-bold text-violet-400">
+                    {{ summary.throughput }}<span class="text-lg text-orbit-text-muted">{{ summary.throughput_unit }}</span>
+                </div>
+                <div class="text-xs text-orbit-text-muted mt-1">
+                    {{ summary.total_requests }} total requests
+                </div>
+            </div>
+        </section>
+        
+        <!-- Latency Percentiles -->
+        <section class="bg-orbit-bg-secondary/50 backdrop-blur rounded-xl p-5 border border-orbit-border mb-8">
+            <h2 class="text-sm font-medium text-orbit-text-primary mb-4 flex items-center gap-2">
+                <i data-lucide="gauge" class="w-4 h-4 text-orbit-accent-cyan"></i>
+                Response Time Percentiles
+            </h2>
+            <div class="grid grid-cols-4 gap-4">
+                <div class="text-center p-4 bg-orbit-bg-primary/50 rounded-lg">
+                    <div class="text-2xl font-bold text-emerald-400">{{ percentiles.p50 }}<span class="text-sm text-orbit-text-muted">ms</span></div>
+                    <div class="text-xs text-orbit-text-muted mt-1">P50 (Median)</div>
+                </div>
+                <div class="text-center p-4 bg-orbit-bg-primary/50 rounded-lg">
+                    <div class="text-2xl font-bold text-cyan-400">{{ percentiles.p75 }}<span class="text-sm text-orbit-text-muted">ms</span></div>
+                    <div class="text-xs text-orbit-text-muted mt-1">P75</div>
+                </div>
+                <div class="text-center p-4 bg-orbit-bg-primary/50 rounded-lg">
+                    <div class="text-2xl font-bold text-amber-400">{{ percentiles.p95 }}<span class="text-sm text-orbit-text-muted">ms</span></div>
+                    <div class="text-xs text-orbit-text-muted mt-1">P95</div>
+                </div>
+                <div class="text-center p-4 bg-orbit-bg-primary/50 rounded-lg">
+                    <div class="text-2xl font-bold text-rose-400">{{ percentiles.p99 }}<span class="text-sm text-orbit-text-muted">ms</span></div>
+                    <div class="text-xs text-orbit-text-muted mt-1">P99 (Tail)</div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Charts Row -->
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Response Time Trend -->
+            <div class="bg-orbit-bg-secondary/50 backdrop-blur rounded-xl p-5 border border-orbit-border">
+                <h2 class="text-sm font-medium text-orbit-text-primary mb-4 flex items-center gap-2">
+                    <i data-lucide="activity" class="w-4 h-4 text-cyan-400"></i>
+                    Response Time Trend
+                </h2>
+                <div id="response-time-chart" class="h-64"></div>
+            </div>
+            
+            <!-- Throughput Chart -->
+            <div class="bg-orbit-bg-secondary/50 backdrop-blur rounded-xl p-5 border border-orbit-border">
+                <h2 class="text-sm font-medium text-orbit-text-primary mb-4 flex items-center gap-2">
+                    <i data-lucide="bar-chart" class="w-4 h-4 text-violet-400"></i>
+                    Request Throughput
+                </h2>
+                <div id="throughput-chart" class="h-64"></div>
+            </div>
+        </section>
+        
+        <!-- Error Rate Chart -->
+        <section class="bg-orbit-bg-secondary/50 backdrop-blur rounded-xl p-5 border border-orbit-border mb-8">
+            <h2 class="text-sm font-medium text-orbit-text-primary mb-4 flex items-center gap-2">
+                <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-400"></i>
+                Error Rate Trend
+            </h2>
+            <div id="error-rate-chart" class="h-48"></div>
+        </section>
+        
+        <!-- Database & Cache Row -->
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Database Analytics -->
+            <div class="bg-orbit-bg-secondary/50 backdrop-blur rounded-xl p-5 border border-orbit-border">
+                <h2 class="text-sm font-medium text-orbit-text-primary mb-4 flex items-center gap-2">
+                    <i data-lucide="database" class="w-4 h-4 text-emerald-400"></i>
+                    Database Performance
+                </h2>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="p-3 bg-orbit-bg-primary/50 rounded-lg">
+                        <div class="text-xl font-bold text-orbit-text-primary">{{ database.total_queries }}</div>
+                        <div class="text-xs text-orbit-text-muted">Total Queries</div>
+                    </div>
+                    <div class="p-3 bg-orbit-bg-primary/50 rounded-lg">
+                        <div class="text-xl font-bold text-emerald-400">{{ database.avg_time }}<span class="text-sm text-orbit-text-muted">ms</span></div>
+                        <div class="text-xs text-orbit-text-muted">Avg Duration</div>
+                    </div>
+                    <div class="p-3 bg-orbit-bg-primary/50 rounded-lg">
+                        <div class="text-xl font-bold {% if database.slow_pct > 10 %}text-rose-400{% elif database.slow_pct > 5 %}text-amber-400{% else %}text-emerald-400{% endif %}">{{ database.slow_count }}</div>
+                        <div class="text-xs text-orbit-text-muted">Slow Queries ({{ database.slow_pct }}%)</div>
+                    </div>
+                    <div class="p-3 bg-orbit-bg-primary/50 rounded-lg">
+                        <div class="text-xl font-bold {% if database.duplicate_count > 5 %}text-amber-400{% else %}text-orbit-text-primary{% endif %}">{{ database.duplicate_count }}</div>
+                        <div class="text-xs text-orbit-text-muted">Duplicate (N+1)</div>
+                    </div>
+                </div>
+                
+                {% if database.top_slow %}
+                <h3 class="text-xs text-orbit-text-muted uppercase tracking-wider mb-2">Top Slow Queries</h3>
+                <div class="space-y-2 max-h-40 overflow-y-auto">
+                    {% for query in database.top_slow %}
+                    <div @click="openDetail('{{ query.id }}')" 
+                         class="p-2 bg-orbit-bg-primary/30 rounded text-xs cursor-pointer hover:bg-orbit-accent-cyan/10 hover:border-orbit-accent-cyan/30 border border-transparent transition-all">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-rose-400 font-mono">{{ query.duration_ms }}ms</span>
+                            <span class="text-orbit-text-muted">{{ query.timestamp|slice:":19" }}</span>
+                        </div>
+                        <div class="text-orbit-text-secondary font-mono truncate">{{ query.sql }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Cache Analytics -->
+            <div class="bg-orbit-bg-secondary/50 backdrop-blur rounded-xl p-5 border border-orbit-border">
+                <h2 class="text-sm font-medium text-orbit-text-primary mb-4 flex items-center gap-2">
+                    <i data-lucide="hard-drive" class="w-4 h-4 text-orange-400"></i>
+                    Cache Performance
+                </h2>
+                <div class="grid grid-cols-3 gap-4 mb-4">
+                    <div class="p-3 bg-orbit-bg-primary/50 rounded-lg text-center">
+                        <div class="text-2xl font-bold {% if cache.hit_rate >= 80 %}text-emerald-400{% elif cache.hit_rate >= 50 %}text-amber-400{% else %}text-rose-400{% endif %}">{{ cache.hit_rate }}%</div>
+                        <div class="text-xs text-orbit-text-muted">Hit Rate</div>
+                    </div>
+                    <div class="p-3 bg-orbit-bg-primary/50 rounded-lg text-center">
+                        <div class="text-2xl font-bold text-emerald-400">{{ cache.hits }}</div>
+                        <div class="text-xs text-orbit-text-muted">Hits</div>
+                    </div>
+                    <div class="p-3 bg-orbit-bg-primary/50 rounded-lg text-center">
+                        <div class="text-2xl font-bold text-rose-400">{{ cache.misses }}</div>
+                        <div class="text-xs text-orbit-text-muted">Misses</div>
+                    </div>
+                </div>
+                <div id="cache-chart" class="h-32"></div>
+            </div>
+        </section>
+        
+        <!-- Jobs & Security Row -->
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Jobs Analytics -->
+            <div class="bg-orbit-bg-secondary/50 backdrop-blur rounded-xl p-5 border border-orbit-border">
+                <h2 class="text-sm font-medium text-orbit-text-primary mb-4 flex items-center gap-2">
+                    <i data-lucide="clock" class="w-4 h-4 text-amber-400"></i>
+                    Background Jobs
+                </h2>
+                <div class="grid grid-cols-3 gap-4 mb-4">
+                    <div class="p-3 bg-orbit-bg-primary/50 rounded-lg text-center">
+                        <div class="text-2xl font-bold {% if jobs.success_rate >= 95 %}text-emerald-400{% elif jobs.success_rate >= 80 %}text-amber-400{% else %}text-rose-400{% endif %}">{{ jobs.success_rate }}%</div>
+                        <div class="text-xs text-orbit-text-muted">Success Rate</div>
+                    </div>
+                    <div class="p-3 bg-orbit-bg-primary/50 rounded-lg text-center">
+                        <div class="text-2xl font-bold text-emerald-400">{{ jobs.success }}</div>
+                        <div class="text-xs text-orbit-text-muted">Success</div>
+                    </div>
+                    <div class="p-3 bg-orbit-bg-primary/50 rounded-lg text-center">
+                        <div class="text-2xl font-bold text-rose-400">{{ jobs.failed }}</div>
+                        <div class="text-xs text-orbit-text-muted">Failed</div>
+                    </div>
+                </div>
+                
+                {% if jobs.failed_jobs %}
+                <h3 class="text-xs text-orbit-text-muted uppercase tracking-wider mb-2">Recent Failures</h3>
+                <div class="space-y-2 max-h-32 overflow-y-auto">
+                    {% for job in jobs.failed_jobs %}
+                    <div @click="openDetail('{{ job.id }}')" 
+                         class="p-2 bg-rose-500/10 rounded text-xs cursor-pointer hover:bg-rose-500/20 border border-transparent hover:border-rose-500/30 transition-all">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-rose-400 font-medium">{{ job.name }}</span>
+                            <span class="text-orbit-text-muted">{{ job.timestamp|slice:":19" }}</span>
+                        </div>
+                        <div class="text-orbit-text-secondary truncate">{{ job.error }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Security Analytics -->
+            <div class="bg-orbit-bg-secondary/50 backdrop-blur rounded-xl p-5 border border-orbit-border">
+                <h2 class="text-sm font-medium text-orbit-text-primary mb-4 flex items-center gap-2">
+                    <i data-lucide="shield" class="w-4 h-4 text-indigo-400"></i>
+                    Permission Checks
+                </h2>
+                <div class="grid grid-cols-3 gap-4 mb-4">
+                    <div class="p-3 bg-orbit-bg-primary/50 rounded-lg text-center">
+                        <div class="text-2xl font-bold text-orbit-text-primary">{{ security.total }}</div>
+                        <div class="text-xs text-orbit-text-muted">Total Checks</div>
+                    </div>
+                    <div class="p-3 bg-orbit-bg-primary/50 rounded-lg text-center">
+                        <div class="text-2xl font-bold text-emerald-400">{{ security.granted }}</div>
+                        <div class="text-xs text-orbit-text-muted">Granted</div>
+                    </div>
+                    <div class="p-3 bg-orbit-bg-primary/50 rounded-lg text-center">
+                        <div class="text-2xl font-bold text-rose-400">{{ security.denied }}</div>
+                        <div class="text-xs text-orbit-text-muted">Denied</div>
+                    </div>
+                </div>
+                
+                {% if security.top_denied %}
+                <h3 class="text-xs text-orbit-text-muted uppercase tracking-wider mb-2">Top Denied Permissions</h3>
+                <div class="space-y-2">
+                    {% for perm in security.top_denied %}
+                    <div class="flex items-center justify-between p-2 bg-orbit-bg-primary/30 rounded">
+                        <span class="text-xs font-mono text-orbit-text-secondary">{{ perm.permission }}</span>
+                        <span class="text-xs text-rose-400 font-bold">{{ perm.count }}x</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </section>
+    </main>
+    
+    <!-- Slide-over Detail Panel -->
+    <div x-show="detailOpen" 
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-50"
+         @click.self="detailOpen = false">
+        <!-- Backdrop -->
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+        
+        <!-- Panel -->
+        <div x-show="detailOpen"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="translate-x-full"
+             x-transition:enter-end="translate-x-0"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="translate-x-0"
+             x-transition:leave-end="translate-x-full"
+             class="absolute right-0 top-0 h-full w-full max-w-2xl bg-orbit-bg-secondary border-l border-orbit-border shadow-xl overflow-hidden flex flex-col">
+            
+            <!-- Panel Header -->
+            <div class="flex items-center justify-between p-4 border-b border-orbit-border bg-orbit-bg-primary/50">
+                <h2 class="text-lg font-semibold text-orbit-text-primary flex items-center gap-2">
+                    <i data-lucide="eye" class="w-5 h-5 text-orbit-accent-cyan"></i>
+                    Entry Details
+                </h2>
+                <button @click="detailOpen = false" class="p-2 rounded-lg hover:bg-orbit-bg-tertiary transition-colors">
+                    <i data-lucide="x" class="w-5 h-5 text-orbit-text-muted"></i>
+                </button>
+            </div>
+            
+            <!-- Panel Content -->
+            <div id="stats-detail-content" class="flex-1 overflow-y-auto p-4">
+                <!-- Loading state -->
+                <div x-show="detailLoading" class="flex items-center justify-center h-32">
+                    <div class="animate-spin rounded-full h-8 w-8 border-2 border-orbit-accent-cyan border-t-transparent"></div>
+                </div>
+                <!-- Content loaded via HTMX -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Common chart options
+    const chartDefaults = {
+        chart: {
+            background: 'transparent',
+            toolbar: { show: false },
+            zoom: { enabled: false },
+            fontFamily: 'inherit',
+        },
+        theme: { mode: 'dark' },
+        grid: {
+            borderColor: 'rgba(255,255,255,0.05)',
+            strokeDashArray: 4,
+        },
+        tooltip: {
+            theme: 'dark',
+            style: { fontSize: '12px' },
+        },
+    };
+    
+    // Response Time Chart
+    const responseTimeData = {{ response_time_data|safe }};
+    if (responseTimeData && responseTimeData.length > 0) {
+        new ApexCharts(document.querySelector('#response-time-chart'), {
+            ...chartDefaults,
+            chart: { ...chartDefaults.chart, type: 'area', height: 256 },
+            series: [{
+                name: 'Avg Response Time',
+                data: responseTimeData.map(d => ({ x: new Date(d.timestamp), y: d.avg }))
+            }],
+            stroke: { curve: 'smooth', width: 2 },
+            fill: {
+                type: 'gradient',
+                gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.1 }
+            },
+            colors: ['#22d3ee'],
+            markers: {
+                size: responseTimeData.length < 5 ? 6 : 0,
+                colors: ['#22d3ee'],
+                strokeWidth: 0,
+                hover: { size: 8 }
+            },
+            xaxis: { type: 'datetime', labels: { style: { colors: '#64748b' } } },
+            yaxis: { 
+                labels: { 
+                    style: { colors: '#64748b' },
+                    formatter: v => v ? v.toFixed(0) + 'ms' : '0ms'
+                }
+            },
+        }).render();
+    } else {
+        document.querySelector('#response-time-chart').innerHTML = '<div class="flex items-center justify-center h-full text-orbit-text-muted text-sm">No data available for this time range</div>';
+    }
+    
+    // Throughput Chart
+    const throughputData = {{ throughput_data|safe }};
+    if (throughputData && throughputData.length > 0) {
+        new ApexCharts(document.querySelector('#throughput-chart'), {
+            ...chartDefaults,
+            chart: { ...chartDefaults.chart, type: 'bar', height: 256 },
+            series: [{
+                name: 'Requests',
+                data: throughputData.map(d => ({ x: new Date(d.timestamp), y: d.count }))
+            }],
+            colors: ['#8b5cf6'],
+            plotOptions: {
+                bar: { borderRadius: 4, columnWidth: '60%' }
+            },
+            xaxis: { type: 'datetime', labels: { style: { colors: '#64748b' } } },
+            yaxis: { labels: { style: { colors: '#64748b' } } },
+        }).render();
+    }
+    
+    // Error Rate Chart
+    const errorData = {{ error_trend_data|safe }};
+    if (errorData && errorData.length > 0) {
+        new ApexCharts(document.querySelector('#error-rate-chart'), {
+            ...chartDefaults,
+            chart: { ...chartDefaults.chart, type: 'line', height: 192 },
+            series: [{
+                name: 'Error Rate',
+                data: errorData.map(d => ({ x: new Date(d.timestamp), y: d.rate }))
+            }],
+            stroke: { curve: 'straight', width: 2 },
+            colors: ['#f43f5e'],
+            xaxis: { type: 'datetime', labels: { style: { colors: '#64748b' } } },
+            yaxis: { 
+                labels: { 
+                    style: { colors: '#64748b' },
+                    formatter: v => v.toFixed(1) + '%'
+                },
+                min: 0
+            },
+            annotations: {
+                yaxis: [{ y: 5, borderColor: '#f43f5e', strokeDashArray: 4, label: { text: 'Threshold' } }]
+            }
+        }).render();
+    }
+    
+    // Cache Chart
+    const cacheData = {{ cache.trend|safe }};
+    if (cacheData && cacheData.length > 0) {
+        new ApexCharts(document.querySelector('#cache-chart'), {
+            ...chartDefaults,
+            chart: { ...chartDefaults.chart, type: 'area', height: 128, sparkline: { enabled: true } },
+            series: [{
+                name: 'Hit Rate',
+                data: cacheData.map(d => d.hit_rate)
+            }],
+            stroke: { curve: 'smooth', width: 2 },
+            fill: {
+                type: 'gradient',
+                gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.1 }
+            },
+            colors: ['#f97316'],
+            tooltip: {
+                fixed: { enabled: false },
+                y: { formatter: v => v + '%' }
+            }
+        }).render();
+    }
+    
+    // Initialize Lucide icons (check if available)
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+});
+
+// Alpine.js component for stats page
+function statsPage() {
+    return {
+        detailOpen: false,
+        detailLoading: false,
+        
+        async openDetail(entryId) {
+            this.detailLoading = true;
+            this.detailOpen = true;
+            
+            try {
+                const response = await fetch(`{% url 'orbit:detail' entry_id='00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', entryId));
+                const html = await response.text();
+                document.getElementById('stats-detail-content').innerHTML = html;
+                
+                // Reinitialize lucide icons in the new content
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+            } catch (error) {
+                document.getElementById('stats-detail-content').innerHTML = `
+                    <div class="p-4 bg-rose-500/10 rounded-lg text-rose-400">
+                        Error loading entry details: ${error.message}
+                    </div>
+                `;
+            } finally {
+                this.detailLoading = false;
+            }
+        }
+    };
+}
+</script>
+{% endblock %}

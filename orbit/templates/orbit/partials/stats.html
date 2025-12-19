@@ -1,0 +1,146 @@
+{% comment %}
+Statistics Panel for Django Orbit Dashboard
+Shows performance metrics, error tracking, and issue detection.
+{% endcomment %}
+
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <!-- Requests Per Hour -->
+    <div class="bg-orbit-bg-secondary/50 backdrop-blur rounded-xl p-4 border border-orbit-border hover:border-orbit-accent-cyan/30 transition-all">
+        <div class="flex items-center gap-3 mb-2">
+            <div class="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                <i data-lucide="activity" class="w-4 h-4 text-cyan-400"></i>
+            </div>
+            <span class="text-xs text-orbit-text-muted uppercase tracking-wider">Requests/hr</span>
+        </div>
+        <div class="text-2xl font-bold text-orbit-text-primary">{{ stats.requests_per_hour }}</div>
+        <div class="text-xs text-orbit-text-muted mt-1">
+            Avg: <span class="text-cyan-400">{{ stats.avg_response_time|floatformat:1 }}ms</span>
+        </div>
+    </div>
+
+    <!-- Queries Per Hour -->
+    <div class="bg-orbit-bg-secondary/50 backdrop-blur rounded-xl p-4 border border-orbit-border hover:border-emerald-500/30 transition-all">
+        <div class="flex items-center gap-3 mb-2">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                <i data-lucide="database" class="w-4 h-4 text-emerald-400"></i>
+            </div>
+            <span class="text-xs text-orbit-text-muted uppercase tracking-wider">Queries/hr</span>
+        </div>
+        <div class="text-2xl font-bold text-orbit-text-primary">{{ stats.queries_per_hour }}</div>
+        <div class="text-xs text-orbit-text-muted mt-1">
+            Avg: <span class="text-emerald-400">{{ stats.avg_query_time|floatformat:2 }}ms</span>
+        </div>
+    </div>
+
+    <!-- Error Rate -->
+    <div class="bg-orbit-bg-secondary/50 backdrop-blur rounded-xl p-4 border border-orbit-border hover:border-rose-500/30 transition-all">
+        <div class="flex items-center gap-3 mb-2">
+            <div class="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center">
+                <i data-lucide="alert-circle" class="w-4 h-4 text-rose-400"></i>
+            </div>
+            <span class="text-xs text-orbit-text-muted uppercase tracking-wider">Error Rate</span>
+        </div>
+        <div class="text-2xl font-bold {% if stats.error_rate > 5 %}text-rose-400{% elif stats.error_rate > 1 %}text-amber-400{% else %}text-emerald-400{% endif %}">
+            {{ stats.error_rate|floatformat:1 }}%
+        </div>
+        <div class="text-xs text-orbit-text-muted mt-1">
+            <span class="text-rose-400">{{ stats.exceptions_24h }}</span> exceptions (24h)
+        </div>
+    </div>
+
+    <!-- Cache Hit Rate -->
+    <div class="bg-orbit-bg-secondary/50 backdrop-blur rounded-xl p-4 border border-orbit-border hover:border-orange-500/30 transition-all">
+        <div class="flex items-center gap-3 mb-2">
+            <div class="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                <i data-lucide="hard-drive" class="w-4 h-4 text-orange-400"></i>
+            </div>
+            <span class="text-xs text-orbit-text-muted uppercase tracking-wider">Cache Hit</span>
+        </div>
+        <div class="text-2xl font-bold {% if stats.cache_hit_rate > 80 %}text-emerald-400{% elif stats.cache_hit_rate > 50 %}text-amber-400{% else %}text-rose-400{% endif %}">
+            {{ stats.cache_hit_rate|floatformat:0 }}%
+        </div>
+        <div class="text-xs text-orbit-text-muted mt-1">
+            <span class="text-emerald-400">{{ stats.cache_hits }}</span> hits / <span class="text-rose-400">{{ stats.cache_misses }}</span> misses
+        </div>
+    </div>
+</div>
+
+<!-- Issues & Warnings Section -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+    <!-- Slow Queries -->
+    <div class="bg-orbit-bg-secondary/50 backdrop-blur rounded-xl p-4 border border-orbit-border">
+        <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                    <i data-lucide="clock" class="w-3 h-3 text-amber-400"></i>
+                </div>
+                <span class="text-sm font-medium text-orbit-text-primary">Slow Queries</span>
+            </div>
+            <span class="text-lg font-bold {% if slow_query_count > 10 %}text-rose-400{% elif slow_query_count > 0 %}text-amber-400{% else %}text-emerald-400{% endif %}">
+                {{ slow_query_count }}
+            </span>
+        </div>
+        <div class="flex items-center gap-2">
+            <div class="flex-1 h-2 bg-orbit-bg-tertiary rounded-full overflow-hidden">
+                <div class="h-full {% if stats.slow_queries_pct > 10 %}bg-rose-500{% elif stats.slow_queries_pct > 5 %}bg-amber-500{% else %}bg-emerald-500{% endif %}" 
+                     style="width: {{ stats.slow_queries_pct|floatformat:0 }}%"></div>
+            </div>
+            <span class="text-xs text-orbit-text-muted">{{ stats.slow_queries_pct|floatformat:1 }}%</span>
+        </div>
+        <div class="text-xs text-orbit-text-muted mt-2">
+            <span class="text-amber-400">{{ stats.duplicate_queries }}</span> duplicate queries
+        </div>
+    </div>
+
+    <!-- Permission Checks -->
+    <div class="bg-orbit-bg-secondary/50 backdrop-blur rounded-xl p-4 border border-orbit-border">
+        <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                    <i data-lucide="shield" class="w-3 h-3 text-indigo-400"></i>
+                </div>
+                <span class="text-sm font-medium text-orbit-text-primary">Permissions</span>
+            </div>
+            <span class="text-lg font-bold text-rose-400">{{ stats.permission_denied }}</span>
+        </div>
+        <div class="flex items-center gap-4 text-xs">
+            <div class="flex items-center gap-1">
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span class="text-orbit-text-muted">Granted:</span>
+                <span class="text-emerald-400 font-medium">{{ stats.permission_granted }}</span>
+            </div>
+            <div class="flex items-center gap-1">
+                <span class="w-2 h-2 rounded-full bg-rose-400"></span>
+                <span class="text-orbit-text-muted">Denied:</span>
+                <span class="text-rose-400 font-medium">{{ stats.permission_denied }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Jobs Status -->
+    <div class="bg-orbit-bg-secondary/50 backdrop-blur rounded-xl p-4 border border-orbit-border">
+        <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                    <i data-lucide="clock" class="w-3 h-3 text-amber-400"></i>
+                </div>
+                <span class="text-sm font-medium text-orbit-text-primary">Background Jobs</span>
+            </div>
+            <span class="text-lg font-bold {% if stats.jobs_failed > 0 %}text-rose-400{% else %}text-emerald-400{% endif %}">
+                {{ stats.jobs_failed }}
+            </span>
+        </div>
+        <div class="flex items-center gap-4 text-xs">
+            <div class="flex items-center gap-1">
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span class="text-orbit-text-muted">Success:</span>
+                <span class="text-emerald-400 font-medium">{{ stats.jobs_success }}</span>
+            </div>
+            <div class="flex items-center gap-1">
+                <span class="w-2 h-2 rounded-full bg-rose-400"></span>
+                <span class="text-orbit-text-muted">Failed:</span>
+                <span class="text-rose-400 font-medium">{{ stats.jobs_failed }}</span>
+            </div>
+        </div>
+    </div>
+</div>
