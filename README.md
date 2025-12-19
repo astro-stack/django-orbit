@@ -15,7 +15,7 @@
 [![License](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](LICENSE)
 [![Code Style](https://img.shields.io/badge/Code%20Style-Black-black?style=flat-square)](https://github.com/psf/black)
 
-[📚 Documentation](https://labs.wearehik.com/django-orbit) · [🎮 Live Demo](#-try-the-demo) · [⭐ Star on GitHub](https://github.com/astro-stack/django-orbit)
+[📚 Documentation](https://astro-stack.github.io/django-orbit) · [🎮 Live Demo](#-try-the-demo) · [⭐ Star on GitHub](https://github.com/astro-stack/django-orbit)
 
 </div>
 
@@ -242,6 +242,6 @@ Inspired by [Laravel Telescope](https://laravel.com/docs/telescope), [Spatie Ray
 
 **Built with ❤️ for the Django community**
 
-[⭐ Star us on GitHub](https://github.com/astro-stack/django-orbit) · [📚 Read the Docs](https://labs.wearehik.com/django-orbit)
+[⭐ Star us on GitHub](https://github.com/astro-stack/django-orbit) · [📚 Read the Docs](https://astro-stack.github.io/django-orbit)
 
 </div>
