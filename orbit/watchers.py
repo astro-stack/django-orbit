@@ -110,56 +110,46 @@ def install_command_watcher():
 
         @functools.wraps(_original_execute)
         def patched_execute(self, *args, **options):
-            import io
-            import sys
-
             command_name = self.__class__.__module__.split(".")[-1]
 
-            # Capture output
-            old_stdout = sys.stdout
-            old_stderr = sys.stderr
-            captured_output = io.StringIO()
+            # Check if we should skip recording this command
+            config = get_config()
+            ignore_commands = config.get(
+                "IGNORE_COMMANDS", ["runserver", "shell", "dbshell", "showmigrations"]
+            )
+            if command_name in ignore_commands:
+                return _original_execute(self, *args, **options)
 
+            # Execute command normally WITHOUT redirecting stdout/stderr
+            # This preserves interactivity for commands like collectstatic
+            start_time = time.perf_counter()
+            exit_code = 0
+            
             try:
-                # Redirect stdout/stderr to capture output
-                sys.stdout = captured_output
-                sys.stderr = captured_output
-
-                start_time = time.perf_counter()
-                try:
-                    result = _original_execute(self, *args, **options)
-                    exit_code = 0
-                except SystemExit as e:
-                    exit_code = e.code if e.code is not None else 0
-                    raise
-                except Exception:
-                    exit_code = 1
-                    raise
-                finally:
-                    duration_ms = (time.perf_counter() - start_time) * 1000
-                    output = captured_output.getvalue()
-
-                    # Restore stdout/stderr before recording
-                    sys.stdout = old_stdout
-                    sys.stderr = old_stderr
-
-                    # Record to Orbit
-                    try:
-                        record_command(
-                            command_name=command_name,
-                            args=args,
-                            options=options,
-                            exit_code=exit_code,
-                            output=output,
-                            duration_ms=duration_ms,
-                        )
-                    except Exception as e:
-                        logger.debug(f"Failed to record command: {e}")
-
-                return result
+                result = _original_execute(self, *args, **options)
+            except SystemExit as e:
+                exit_code = e.code if e.code is not None else 0
+                raise
+            except Exception:
+                exit_code = 1
+                raise
             finally:
-                sys.stdout = old_stdout
-                sys.stderr = old_stderr
+                duration_ms = (time.perf_counter() - start_time) * 1000
+
+                # Record to Orbit (without captured output to avoid breaking interactivity)
+                try:
+                    record_command(
+                        command_name=command_name,
+                        args=args,
+                        options=options,
+                        exit_code=exit_code,
+                        output="",  # Don't capture output to preserve interactivity
+                        duration_ms=duration_ms,
+                    )
+                except Exception as e:
+                    logger.debug(f"Failed to record command: {e}")
+
+            return result
 
         BaseCommand.execute = patched_execute
         logger.debug("Orbit command watcher installed")

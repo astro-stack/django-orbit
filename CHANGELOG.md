@@ -7,7 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.6.0] - 2025-01-22
+## [0.6.1] - 2026-01-22
+
+### Fixed
+- **Missing migration** for entry types added in v0.4.0-v0.6.0 (Issue #3)
+  - Added migration 0004 with `mail`, `signal`, `redis`, `gate`, `transaction`, `storage` types
+- **Command watcher breaking interactive commands** like `collectstatic` (Issue #4)
+  - Removed stdout/stderr redirection that prevented user input
+  - Commands now execute normally while still being recorded
+
+## [0.6.0] - 2026-01-22
 
 ### Added
 - **Transaction Watcher**: Track database transaction blocks
