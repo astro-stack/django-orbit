@@ -14,6 +14,7 @@
 [![Django](https://img.shields.io/badge/Django-4.0%2B-green?style=flat-square&logo=django)](https://djangoproject.com)
 [![License](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](LICENSE)
 [![Code Style](https://img.shields.io/badge/Code%20Style-Black-black?style=flat-square)](https://github.com/psf/black)
+[![Buy Me a Coffee](https://img.shields.io/badge/Support-Buy%20Me%20a%20Coffee-yellow?style=flat-square&logo=buy-me-a-coffee)](https://buymeacoffee.com/hernancode)
 
 [📚 Documentation](https://astro-stack.github.io/django-orbit) · [🎮 Live Demo](#-try-the-demo) · [⭐ Star on GitHub](https://github.com/astro-stack/django-orbit)
 
@@ -43,6 +44,10 @@
 - 🔴 **Redis Operations** - Track GET, SET, DEL, and more
 - 🛡️ **Gates/Permissions** - Authorization check auditing
 - 📊 **Stats Dashboard** - Apdex score, percentiles, interactive charts
+
+### New in v0.6.0
+- 🔄 **Database Transactions** - Track atomic blocks, commits, rollbacks
+- 📁 **Storage Operations** - Monitor file saves, reads, deletes (S3/Local)
 
 ### Dashboard Features
 - 🌙 **Beautiful Dark UI** - Space-themed mission control
@@ -155,6 +160,10 @@ ORBIT_CONFIG = {
     'RECORD_REDIS': True,
     'RECORD_GATES': True,
     
+    # v0.6.0 watchers
+    'RECORD_TRANSACTIONS': True,
+    'RECORD_STORAGE': True,
+    
     # Security
     'AUTH_CHECK': lambda request: request.user.is_staff,
     'IGNORE_PATHS': ['/orbit/', '/static/', '/media/'],
@@ -223,6 +232,12 @@ Orbit automatically hides sensitive data (passwords, tokens, API keys).
 - Performance recommendations
 - Custom dashboards
 - Webhook integrations
+
+## ☕ Support the Project
+
+If Django Orbit helps you debug faster, consider buying me a coffee!
+
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-☕-yellow?style=for-the-badge&logo=buy-me-a-coffee)](https://buymeacoffee.com/hernancode)
 
 ## 🤝 Contributing
 

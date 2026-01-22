@@ -70,6 +70,7 @@ def generate_historical_data():
     print("\n📊 Generating historical data for stats charts...")
     
     now = timezone.now()
+    entries_to_create = []
     
     # Generate requests distributed over the last 7 days
     print("   Generating time-distributed requests...")
@@ -77,15 +78,15 @@ def generate_historical_data():
     methods = ['GET', 'GET', 'GET', 'POST', 'PUT', 'DELETE']
     status_codes = [200, 200, 200, 201, 404, 500]
     
-    for hours_ago in range(0, 168, 2):  # Every 2 hours for 7 days = 84 entries
+    for hours_ago in range(0, 168, 4):  # Every 4 hours for 7 days = 42 time slots
         time_offset = timedelta(hours=hours_ago, minutes=random.randint(0, 59))
         created_time = now - time_offset
         
         # More requests during business hours
-        num_requests = random.randint(1, 5) if 8 <= created_time.hour <= 20 else random.randint(0, 2)
+        num_requests = random.randint(1, 3) if 8 <= created_time.hour <= 20 else random.randint(0, 1)
         
         for _ in range(num_requests):
-            entry = OrbitEntry.objects.create(
+            entries_to_create.append(OrbitEntry(
                 type='request',
                 payload={
                     'method': random.choice(methods),
@@ -94,20 +95,19 @@ def generate_historical_data():
                     'client_ip': f'192.168.1.{random.randint(1, 255)}',
                 },
                 duration_ms=random.uniform(10, 500),
-            )
-            # Override created_at (Django auto_now_add normally prevents this)
-            OrbitEntry.objects.filter(id=entry.id).update(created_at=created_time)
+                created_at=created_time,
+            ))
     
     # Generate exceptions distributed over time
     print("   Generating time-distributed exceptions...")
     exception_types = ['ValueError', 'KeyError', 'TypeError', 'AttributeError', 'PermissionDenied']
     
-    for hours_ago in range(0, 168, 6):  # Every 6 hours
-        if random.random() < 0.7:  # 70% chance of exception in each period
+    for hours_ago in range(0, 168, 12):  # Every 12 hours
+        if random.random() < 0.7:
             time_offset = timedelta(hours=hours_ago, minutes=random.randint(0, 59))
             created_time = now - time_offset
             
-            entry = OrbitEntry.objects.create(
+            entries_to_create.append(OrbitEntry(
                 type='exception',
                 payload={
                     'exception_type': random.choice(exception_types),
@@ -115,20 +115,20 @@ def generate_historical_data():
                     'request_method': 'POST',
                     'request_path': '/api/action/',
                 },
-            )
-            OrbitEntry.objects.filter(id=entry.id).update(created_at=created_time)
+                created_at=created_time,
+            ))
     
     # Generate queries distributed over time
     print("   Generating time-distributed queries...")
-    for hours_ago in range(0, 168, 3):  # Every 3 hours
+    for hours_ago in range(0, 168, 6):  # Every 6 hours
         time_offset = timedelta(hours=hours_ago, minutes=random.randint(0, 59))
         created_time = now - time_offset
         
-        for _ in range(random.randint(2, 8)):
+        for _ in range(random.randint(1, 4)):
             is_slow = random.random() < 0.1
             is_dup = random.random() < 0.15
             
-            entry = OrbitEntry.objects.create(
+            entries_to_create.append(OrbitEntry(
                 type='query',
                 payload={
                     'sql': f'SELECT * FROM table_{random.randint(1, 5)} WHERE id = %s',
@@ -137,28 +137,72 @@ def generate_historical_data():
                     'is_duplicate': is_dup,
                 },
                 duration_ms=random.uniform(200, 800) if is_slow else random.uniform(1, 20),
-            )
-            OrbitEntry.objects.filter(id=entry.id).update(created_at=created_time)
+                created_at=created_time,
+            ))
     
     # Generate cache ops distributed over time
     print("   Generating time-distributed cache ops...")
-    for hours_ago in range(0, 168, 4):  # Every 4 hours
+    for hours_ago in range(0, 168, 8):  # Every 8 hours
         time_offset = timedelta(hours=hours_ago, minutes=random.randint(0, 59))
         created_time = now - time_offset
         
-        for _ in range(random.randint(1, 5)):
-            entry = OrbitEntry.objects.create(
+        for _ in range(random.randint(1, 3)):
+            entries_to_create.append(OrbitEntry(
                 type='cache',
                 payload={
                     'operation': random.choice(['get', 'get', 'get', 'set']),
                     'key': f'cache_key_{random.randint(1, 20)}',
-                    'hit': random.random() < 0.7,  # 70% hit rate
+                    'hit': random.random() < 0.7,
                 },
                 duration_ms=random.uniform(0.1, 5),
-            )
-            OrbitEntry.objects.filter(id=entry.id).update(created_at=created_time)
+                created_at=created_time,
+            ))
+    
+    # Generate transactions distributed over time (v0.6.0)
+    print("   Generating time-distributed transactions...")
+    for hours_ago in range(0, 168, 8):  # Every 8 hours
+        time_offset = timedelta(hours=hours_ago, minutes=random.randint(0, 59))
+        created_time = now - time_offset
+        
+        for _ in range(random.randint(1, 3)):
+            is_rollback = random.random() < 0.15  # 15% rollback rate
+            entries_to_create.append(OrbitEntry(
+                type='transaction',
+                payload={
+                    'status': 'rolled_back' if is_rollback else 'committed',
+                    'using': 'default',
+                    'exception': 'IntegrityError' if is_rollback else None,
+                },
+                duration_ms=random.uniform(5, 100),
+                created_at=created_time,
+            ))
+    
+    # Generate storage ops distributed over time (v0.6.0)
+    print("   Generating time-distributed storage ops...")
+    for hours_ago in range(0, 168, 12):  # Every 12 hours
+        time_offset = timedelta(hours=hours_ago, minutes=random.randint(0, 59))
+        created_time = now - time_offset
+        
+        for _ in range(random.randint(1, 2)):
+            op = random.choice(['save', 'open', 'delete', 'exists'])
+            entries_to_create.append(OrbitEntry(
+                type='storage',
+                payload={
+                    'operation': op,
+                    'path': f'uploads/file_{random.randint(1, 100)}.pdf',
+                    'backend': random.choice(['FileSystemStorage', 'S3Boto3Storage']),
+                    'size': random.randint(1000, 50000) if op == 'save' else None,
+                },
+                duration_ms=random.uniform(10, 200),
+                created_at=created_time,
+            ))
+    
+    # Bulk create all entries at once
+    print(f"   Bulk inserting {len(entries_to_create)} entries...")
+    OrbitEntry.objects.bulk_create(entries_to_create, batch_size=100)
     
     print("   ✓ Historical data generated!")
+
 
 
 def setup_demo():
@@ -436,6 +480,41 @@ def setup_demo():
         icon = "✓" if gate['result'] == 'granted' else "✗"
         print(f"   {icon} {gate['permission']} → {gate['user']}")
     
+    # Create sample Transaction entries (v0.6.0)
+    print("\n🔄 Creating sample Transaction entries...")
+    transaction_samples = [
+        {'status': 'committed', 'using': 'default', 'exception': None},
+        {'status': 'committed', 'using': 'default', 'exception': None},
+        {'status': 'rolled_back', 'using': 'default', 'exception': 'IntegrityError: duplicate key'},
+        {'status': 'committed', 'using': 'replica', 'exception': None},
+        {'status': 'rolled_back', 'using': 'default', 'exception': 'ValueError: invalid data'},
+    ]
+    for tx in transaction_samples:
+        OrbitEntry.objects.create(
+            type='transaction',
+            payload=tx,
+            duration_ms=random.uniform(5, 100),
+        )
+        icon = "✓" if tx['status'] == 'committed' else "✗"
+        print(f"   {icon} transaction.{tx['status']} ({tx['using']})")
+    
+    # Create sample Storage entries (v0.6.0)
+    print("\n📁 Creating sample Storage entries...")
+    storage_samples = [
+        {'operation': 'save', 'path': 'uploads/report_2025.pdf', 'backend': 'FileSystemStorage', 'size': 45678},
+        {'operation': 'save', 'path': 'media/avatars/user_123.jpg', 'backend': 'S3Boto3Storage', 'size': 12500},
+        {'operation': 'open', 'path': 'uploads/report_2025.pdf', 'backend': 'FileSystemStorage'},
+        {'operation': 'exists', 'path': 'media/avatars/user_456.jpg', 'backend': 'S3Boto3Storage', 'exists': False},
+        {'operation': 'delete', 'path': 'temp/old_cache.tmp', 'backend': 'FileSystemStorage'},
+    ]
+    for st in storage_samples:
+        OrbitEntry.objects.create(
+            type='storage',
+            payload=st,
+            duration_ms=random.uniform(10, 200),
+        )
+        print(f"   ✓ {st['operation'].upper()} {st['path'][:35]}...")
+    
     # Generate historical data for stats charts
     generate_historical_data()
     
@@ -458,6 +537,8 @@ def setup_demo():
     print(f"   ⚡ Signals: {OrbitEntry.objects.signals().count()}")
     print(f"   🔴 Redis: {OrbitEntry.objects.redis_ops().count()}")
     print(f"   🛡️ Gates: {OrbitEntry.objects.gates().count()}")
+    print(f"   🔄 Transactions: {OrbitEntry.objects.filter(type='transaction').count()}")
+    print(f"   📁 Storage: {OrbitEntry.objects.filter(type='storage').count()}")
     print(f"   ─────────────")
     print(f"   Total: {OrbitEntry.objects.count()}")
     print(f"\n🌐 Demo: http://localhost:8000/")
@@ -692,6 +773,10 @@ def show_status():
     print(f"   🩷 HTTP Client: {OrbitEntry.objects.http_client().count()}")
     print(f"   📧 Mail: {OrbitEntry.objects.mails().count()}")
     print(f"   ⚡ Signals: {OrbitEntry.objects.signals().count()}")
+    print(f"   🔴 Redis: {OrbitEntry.objects.redis_ops().count()}")
+    print(f"   🛡️ Gates: {OrbitEntry.objects.gates().count()}")
+    print(f"   🔄 Transactions: {OrbitEntry.objects.filter(type='transaction').count()}")
+    print(f"   📁 Storage: {OrbitEntry.objects.filter(type='storage').count()}")
     print(f"   ─────────────")
     print(f"   Total: {OrbitEntry.objects.count()}")
     print()

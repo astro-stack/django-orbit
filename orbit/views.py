@@ -62,6 +62,9 @@ class OrbitDashboardView(OrbitProtectedView, TemplateView):
             # Phase 3 types (v0.5.0)
             "redis": OrbitEntry.objects.redis_ops().count(),
             "gate": OrbitEntry.objects.gates().count(),
+            # Phase 4 types (v0.6.0)
+            "transaction": OrbitEntry.objects.filter(type=OrbitEntry.TYPE_TRANSACTION).count(),
+            "storage": OrbitEntry.objects.filter(type=OrbitEntry.TYPE_STORAGE).count(),
         }
 
         # Get error and warning counts for alerts
@@ -361,6 +364,8 @@ class OrbitStatsView(OrbitProtectedView, TemplateView):
                 context['cache'] = stats.get_cache_metrics(time_range)
                 context['jobs'] = stats.get_jobs_metrics(time_range)
                 context['security'] = stats.get_security_metrics(time_range)
+                context['transactions'] = stats.get_transaction_metrics(time_range)
+                context['storage'] = stats.get_storage_metrics(time_range)
                 break  # Success, exit retry loop
             except OperationalError as e:
                 if 'locked' in str(e) and attempt < max_retries - 1:

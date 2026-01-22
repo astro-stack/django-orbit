@@ -448,3 +448,97 @@ def get_summary_stats(time_range: str = '24h') -> Dict[str, Any]:
         'total_requests': request_count,
         'percentiles': get_percentiles(time_range),
     }
+
+
+def get_transaction_metrics(time_range: str = '24h') -> Dict[str, Any]:
+    """
+    Get database transaction analytics (v0.6.0).
+    
+    Returns:
+        Dict with commit rate, rollback count, avg duration
+    """
+    start_time, end_time, _, _ = get_time_range(time_range)
+    
+    transactions = OrbitEntry.objects.filter(
+        type=OrbitEntry.TYPE_TRANSACTION,
+        created_at__gte=start_time,
+        created_at__lte=end_time,
+    )
+    
+    total = transactions.count()
+    committed = transactions.filter(payload__status='committed').count()
+    rolled_back = transactions.filter(payload__status='rolled_back').count()
+    
+    commit_rate = (committed / total * 100) if total > 0 else 100
+    
+    # Average duration
+    stats = transactions.aggregate(avg_duration=Avg('duration_ms'))
+    
+    # Recent rollbacks
+    recent_rollbacks = transactions.filter(payload__status='rolled_back').order_by('-created_at')[:10]
+    
+    return {
+        'total': total,
+        'committed': committed,
+        'rolled_back': rolled_back,
+        'commit_rate': round(commit_rate, 1),
+        'avg_duration': round(stats['avg_duration'] or 0, 2),
+        'recent_rollbacks': [
+            {
+                'id': str(t.id),
+                'exception': t.payload.get('exception', 'Unknown'),
+                'using': t.payload.get('using', 'default'),
+                'duration_ms': t.duration_ms,
+                'timestamp': t.created_at.isoformat(),
+            }
+            for t in recent_rollbacks
+        ],
+    }
+
+
+def get_storage_metrics(time_range: str = '24h') -> Dict[str, Any]:
+    """
+    Get storage operation analytics (v0.6.0).
+    
+    Returns:
+        Dict with operation counts, backends, avg duration
+    """
+    start_time, end_time, _, _ = get_time_range(time_range)
+    
+    storage_ops = OrbitEntry.objects.filter(
+        type=OrbitEntry.TYPE_STORAGE,
+        created_at__gte=start_time,
+        created_at__lte=end_time,
+    )
+    
+    total = storage_ops.count()
+    
+    # Count by operation
+    saves = storage_ops.filter(payload__operation='save').count()
+    opens = storage_ops.filter(payload__operation='open').count()
+    deletes = storage_ops.filter(payload__operation='delete').count()
+    exists_checks = storage_ops.filter(payload__operation='exists').count()
+    
+    # Average duration
+    stats = storage_ops.aggregate(avg_duration=Avg('duration_ms'))
+    
+    # Count by backend
+    backend_counts = {}
+    for entry in storage_ops.values('payload')[:100]:
+        backend = entry['payload'].get('backend', 'Unknown')
+        backend_counts[backend] = backend_counts.get(backend, 0) + 1
+    
+    top_backends = sorted(backend_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+    
+    return {
+        'total': total,
+        'saves': saves,
+        'opens': opens,
+        'deletes': deletes,
+        'exists_checks': exists_checks,
+        'avg_duration': round(stats['avg_duration'] or 0, 2),
+        'top_backends': [
+            {'backend': backend, 'count': count}
+            for backend, count in top_backends
+        ],
+    }
