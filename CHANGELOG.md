@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2025-01-22
+
+### Added
+- **Transaction Watcher**: Track database transaction blocks
+  - Intercepts `transaction.atomic()` context managers
+  - Records commit/rollback status
+  - Captures transaction duration in milliseconds
+  - Logs exceptions that trigger rollbacks
+- **Storage Watcher**: Monitor file storage operations
+  - Tracks `save`, `open`, `delete`, `exists` operations
+  - Works with `FileSystemStorage` (default)
+  - Supports `S3Boto3Storage` (django-storages)
+  - Records file path, backend name, and operation duration
+- **Dashboard Updates**:
+  - New "Transactions" filter with teal icon (layers)
+  - New "Storage" filter with sky-blue icon (archive)
+  - Summary formatting for transaction status (✓/✗ icons)
+
+### Configuration
+- Added `RECORD_TRANSACTIONS` setting (default: True)
+- Added `RECORD_STORAGE` setting (default: True)
+
+### Technical
+- `OrbitAtomicWrapper` class for safe atomic block interception
+- Storage patching via `create_patched_base()` factory to avoid closure issues
+- Added `tests/test_transactions.py` and `tests/test_storage.py`
+
 ## [0.5.0] - 2025-12-19
 
 ### Added

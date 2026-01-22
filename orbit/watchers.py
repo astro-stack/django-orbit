@@ -169,10 +169,57 @@ def install_command_watcher():
 
 
 # =============================================================================
-# Cache Watcher
+# Cache Watcher (Enhanced for v0.6.0)
 # =============================================================================
 
 _cache_patched = False
+
+
+def _detect_cache_backend_type(cache) -> str:
+    """
+    Detect the type of cache backend.
+    
+    Returns: redis, memcached, file, locmem, db, valkey, or unknown
+    """
+    class_name = cache.__class__.__name__.lower()
+    module_name = cache.__class__.__module__.lower()
+    
+    # Check for Valkey first (it's a Redis fork, may use redis client)
+    if "valkey" in module_name or "valkey" in class_name:
+        return "valkey"
+    
+    # Redis backends
+    if "redis" in class_name or "redis" in module_name:
+        return "redis"
+    
+    # Memcached backends (django.core.cache.backends.memcached)
+    if "memcached" in class_name or "memcached" in module_name:
+        # Distinguish between pymemcache and python-memcached
+        if hasattr(cache, "_cache") and cache._cache is not None:
+            client_class = cache._cache.__class__.__name__.lower()
+            if "pylibmc" in client_class:
+                return "memcached_pylibmc"
+            elif "pymemcache" in module_name or "pymemcache" in str(type(cache._cache)):
+                return "memcached_pymemcache"
+        return "memcached"
+    
+    # File-based cache
+    if "filebased" in class_name or "filebased" in module_name:
+        return "file"
+    
+    # Local memory cache
+    if "locmem" in class_name or "locmem" in module_name:
+        return "locmem"
+    
+    # Database cache
+    if "database" in class_name or "db" in class_name:
+        return "database"
+    
+    # Dummy cache (for testing)
+    if "dummy" in class_name:
+        return "dummy"
+    
+    return "unknown"
 
 
 def record_cache_operation(
@@ -180,17 +227,23 @@ def record_cache_operation(
     key: str,
     hit: Optional[bool] = None,
     backend: str = "default",
+    backend_type: str = "unknown",
     ttl: Optional[int] = None,
+    keys_count: Optional[int] = None,
+    duration_ms: float = 0,
 ):
     """
     Record a cache operation to Orbit.
 
     Args:
-        operation: get, set, delete, clear
-        key: Cache key
+        operation: get, set, delete, get_many, set_many, delete_many, clear, incr, decr
+        key: Cache key (or comma-separated keys for *_many operations)
         hit: True if cache hit, False if miss (for get operations)
-        backend: Cache backend name
+        backend: Cache backend alias (e.g., "default")
+        backend_type: Type of backend (redis, memcached, file, etc.)
         ttl: Time-to-live in seconds (for set operations)
+        keys_count: Number of keys for batch operations
+        duration_ms: Operation duration in milliseconds
     """
     config = get_config()
     if not config.get("ENABLED", True):
@@ -205,6 +258,7 @@ def record_cache_operation(
         "operation": operation,
         "key": key,
         "backend": backend,
+        "backend_type": backend_type,
     }
 
     if hit is not None:
@@ -212,11 +266,15 @@ def record_cache_operation(
 
     if ttl is not None:
         payload["ttl"] = ttl
+    
+    if keys_count is not None:
+        payload["keys_count"] = keys_count
 
     try:
         OrbitEntry.objects.create(
             type=OrbitEntry.TYPE_CACHE,
             payload=payload,
+            duration_ms=duration_ms,
         )
     except Exception:
         pass
@@ -225,6 +283,7 @@ def record_cache_operation(
 def install_cache_watcher():
     """
     Install the cache watcher by patching Django's cache backends.
+    Supports: Redis, Memcached, File, LocMem, Database, Valkey, and custom backends.
     """
     global _cache_patched
 
@@ -246,16 +305,26 @@ def install_cache_watcher():
 
 
 def _patch_cache_backend(cache, alias: str):
-    """Patch a single cache backend."""
+    """Patch a single cache backend with comprehensive operation tracking."""
+    backend_type = _detect_cache_backend_type(cache)
+    
     original_get = cache.get
     original_set = cache.set
     original_delete = cache.delete
+    original_clear = getattr(cache, "clear", None)
+    original_get_many = getattr(cache, "get_many", None)
+    original_set_many = getattr(cache, "set_many", None)
+    original_delete_many = getattr(cache, "delete_many", None)
+    original_incr = getattr(cache, "incr", None)
+    original_decr = getattr(cache, "decr", None)
 
     _miss_sentinel = object()
 
     @functools.wraps(original_get)
     def patched_get(key, default=None, version=None):
+        start_time = time.perf_counter()
         result = original_get(key, default=_miss_sentinel, version=version)
+        duration_ms = (time.perf_counter() - start_time) * 1000
 
         if result is _miss_sentinel:
             hit = False
@@ -264,25 +333,38 @@ def _patch_cache_backend(cache, alias: str):
             hit = True
 
         try:
-            record_cache_operation("get", key, hit=hit, backend=alias)
+            record_cache_operation(
+                "get", key, hit=hit, backend=alias, 
+                backend_type=backend_type, duration_ms=duration_ms
+            )
         except Exception:
             pass
         return result
 
     @functools.wraps(original_set)
     def patched_set(key, value, timeout=None, version=None):
+        start_time = time.perf_counter()
         result = original_set(key, value, timeout=timeout, version=version)
+        duration_ms = (time.perf_counter() - start_time) * 1000
         try:
-            record_cache_operation("set", key, backend=alias, ttl=timeout)
+            record_cache_operation(
+                "set", key, backend=alias, backend_type=backend_type,
+                ttl=timeout, duration_ms=duration_ms
+            )
         except Exception:
             pass
         return result
 
     @functools.wraps(original_delete)
     def patched_delete(key, version=None):
+        start_time = time.perf_counter()
         result = original_delete(key, version=version)
+        duration_ms = (time.perf_counter() - start_time) * 1000
         try:
-            record_cache_operation("delete", key, backend=alias)
+            record_cache_operation(
+                "delete", key, backend=alias, backend_type=backend_type,
+                duration_ms=duration_ms
+            )
         except Exception:
             pass
         return result
@@ -290,6 +372,132 @@ def _patch_cache_backend(cache, alias: str):
     cache.get = patched_get
     cache.set = patched_set
     cache.delete = patched_delete
+    
+    # Patch clear() if available
+    if original_clear is not None:
+        @functools.wraps(original_clear)
+        def patched_clear():
+            start_time = time.perf_counter()
+            result = original_clear()
+            duration_ms = (time.perf_counter() - start_time) * 1000
+            try:
+                record_cache_operation(
+                    "clear", "*", backend=alias, backend_type=backend_type,
+                    duration_ms=duration_ms
+                )
+            except Exception:
+                pass
+            return result
+        cache.clear = patched_clear
+    
+    # Patch get_many() if available
+    if original_get_many is not None:
+        @functools.wraps(original_get_many)
+        def patched_get_many(keys, version=None):
+            start_time = time.perf_counter()
+            result = original_get_many(keys, version=version)
+            duration_ms = (time.perf_counter() - start_time) * 1000
+            
+            hits = len(result) if result else 0
+            total = len(keys) if keys else 0
+            
+            try:
+                record_cache_operation(
+                    "get_many",
+                    key=f"{hits}/{total} keys",
+                    hit=hits > 0,
+                    backend=alias,
+                    backend_type=backend_type,
+                    keys_count=total,
+                    duration_ms=duration_ms,
+                )
+            except Exception:
+                pass
+            return result
+        cache.get_many = patched_get_many
+    
+    # Patch set_many() if available
+    if original_set_many is not None:
+        @functools.wraps(original_set_many)
+        def patched_set_many(mapping, timeout=None, version=None):
+            start_time = time.perf_counter()
+            result = original_set_many(mapping, timeout=timeout, version=version)
+            duration_ms = (time.perf_counter() - start_time) * 1000
+            
+            keys_count = len(mapping) if mapping else 0
+            
+            try:
+                record_cache_operation(
+                    "set_many",
+                    key=f"{keys_count} keys",
+                    backend=alias,
+                    backend_type=backend_type,
+                    ttl=timeout,
+                    keys_count=keys_count,
+                    duration_ms=duration_ms,
+                )
+            except Exception:
+                pass
+            return result
+        cache.set_many = patched_set_many
+    
+    # Patch delete_many() if available
+    if original_delete_many is not None:
+        @functools.wraps(original_delete_many)
+        def patched_delete_many(keys, version=None):
+            start_time = time.perf_counter()
+            result = original_delete_many(keys, version=version)
+            duration_ms = (time.perf_counter() - start_time) * 1000
+            
+            keys_count = len(keys) if keys else 0
+            
+            try:
+                record_cache_operation(
+                    "delete_many",
+                    key=f"{keys_count} keys",
+                    backend=alias,
+                    backend_type=backend_type,
+                    keys_count=keys_count,
+                    duration_ms=duration_ms,
+                )
+            except Exception:
+                pass
+            return result
+        cache.delete_many = patched_delete_many
+    
+    # Patch incr() if available
+    if original_incr is not None:
+        @functools.wraps(original_incr)
+        def patched_incr(key, delta=1, version=None):
+            start_time = time.perf_counter()
+            result = original_incr(key, delta=delta, version=version)
+            duration_ms = (time.perf_counter() - start_time) * 1000
+            try:
+                record_cache_operation(
+                    "incr", key, backend=alias, backend_type=backend_type,
+                    duration_ms=duration_ms
+                )
+            except Exception:
+                pass
+            return result
+        cache.incr = patched_incr
+    
+    # Patch decr() if available
+    if original_decr is not None:
+        @functools.wraps(original_decr)
+        def patched_decr(key, delta=1, version=None):
+            start_time = time.perf_counter()
+            result = original_decr(key, delta=delta, version=version)
+            duration_ms = (time.perf_counter() - start_time) * 1000
+            try:
+                record_cache_operation(
+                    "decr", key, backend=alias, backend_type=backend_type,
+                    duration_ms=duration_ms
+                )
+            except Exception:
+                pass
+            return result
+        cache.decr = patched_decr
 
 
 # =============================================================================
@@ -1477,6 +1685,329 @@ def install_celerybeat_watcher():
 
 
 # =============================================================================
+# Transaction Watcher (v0.6.0)
+# =============================================================================
+
+_transaction_patched = False
+
+
+def record_transaction(
+    using: str,
+    duration_ms: float,
+    status: str,
+    savepoint_id: Optional[str] = None,
+    exception: Optional[str] = None,
+):
+    """
+    Record a database transaction to Orbit.
+
+    Args:
+        using: Database alias
+        duration_ms: Transaction duration in milliseconds
+        status: committed, rolled_back
+        savepoint_id: Savepoint ID (if nested)
+        exception: Exception message (if failed)
+    """
+    config = get_config()
+    if not config.get("ENABLED", True):
+        return
+
+    if not config.get("RECORD_TRANSACTIONS", True):
+        return
+
+    from orbit.models import OrbitEntry
+
+    payload = {
+        "using": using,
+        "status": status,
+    }
+
+    if savepoint_id:
+        payload["savepoint_id"] = savepoint_id
+    
+    if exception:
+        payload["exception"] = exception
+
+    try:
+        OrbitEntry.objects.create(
+            type=OrbitEntry.TYPE_TRANSACTION,
+            payload=payload,
+            duration_ms=duration_ms,
+        )
+    except Exception:
+        pass
+
+
+def install_transaction_watcher():
+    """
+    Install the transaction watcher by patching django.db.transaction.atomic.
+    """
+    global _transaction_patched
+
+    if _transaction_patched:
+        return
+
+    try:
+        import django.db.transaction
+        
+        original_atomic = django.db.transaction.atomic
+        
+        class OrbitAtomicWrapper:
+            """Wrapper for Django's Atomic context manager to track duration and status."""
+            def __init__(self, context_manager, using):
+                self.ctx = context_manager
+                self.using = using
+                self.start_time = None
+
+            def __enter__(self):
+                self.start_time = time.perf_counter()
+                return self.ctx.__enter__()
+
+            def __exit__(self, exc_type, exc_value, traceback):
+                # Call original exit first to ensure transaction is actually committed/rolled back
+                result = self.ctx.__exit__(exc_type, exc_value, traceback)
+                
+                # Debug print
+                # print(f"DEBUG: __exit__ called with exc_type={exc_type}, result={result}")
+                
+                if self.start_time:
+                    duration_ms = (time.perf_counter() - self.start_time) * 1000
+                    status = "rolled_back" if exc_type else "committed"
+                    
+                    try:
+                        record_transaction(
+                            using=self.using or "default",
+                            duration_ms=duration_ms,
+                            status=status,
+                            exception=str(exc_value) if exc_value else None
+                        )
+                    except Exception:
+                        pass
+                
+                return result
+
+            def __getattr__(self, name):
+                return getattr(self.ctx, name)
+        
+        @functools.wraps(original_atomic)
+        def patched_atomic(using=None, savepoint=True, durable=False):
+            # Call original atomic matching Django version signature
+            try:
+                if durable:
+                    ctx = original_atomic(using=using, savepoint=savepoint, durable=durable)
+                else:
+                    ctx = original_atomic(using=using, savepoint=savepoint)
+            except TypeError:
+                 ctx = original_atomic(using=using, savepoint=savepoint)
+            
+            return OrbitAtomicWrapper(ctx, using)
+
+        django.db.transaction.atomic = patched_atomic
+        _transaction_patched = True
+        logger.debug("Orbit transaction watcher installed")
+
+    except Exception as e:
+        logger.warning(f"Failed to install transaction watcher: {e}")
+
+
+# =============================================================================
+# Storage Watcher (v0.6.0)
+# =============================================================================
+
+_storage_patched = False
+
+
+def record_storage_operation(
+    operation: str,
+    path: str,
+    backend: str,
+    duration_ms: float,
+    size: Optional[int] = None,
+    exists: Optional[bool] = None,
+):
+    """
+    Record a storage operation to Orbit.
+    """
+    config = get_config()
+    if not config.get("ENABLED", True):
+        return
+
+    if not config.get("RECORD_STORAGE", True):
+        return
+
+    from orbit.models import OrbitEntry
+
+    payload = {
+        "operation": operation,
+        "path": str(path),
+        "backend": backend,
+    }
+
+    if size is not None:
+        payload["size"] = size
+        
+    if exists is not None:
+        payload["exists"] = exists
+
+    try:
+        OrbitEntry.objects.create(
+            type=OrbitEntry.TYPE_STORAGE,
+            payload=payload,
+            duration_ms=duration_ms,
+        )
+    except Exception:
+        pass
+
+
+def install_storage_watcher():
+    """
+    Install the storage watcher by patching Storage classes methods.
+    Patches base Storage (for save/open) and specific backends for methods that don't call super() (delete/exists).
+    """
+    global _storage_patched
+
+    if _storage_patched:
+        return
+
+    try:
+        from django.core.files.storage import Storage, FileSystemStorage
+        
+        classes_to_patch = [Storage, FileSystemStorage]
+        
+        # Try to include django-storages S3 backend if available
+        try:
+            from storages.backends.s3boto3 import S3Boto3Storage
+            classes_to_patch.append(S3Boto3Storage)
+        except ImportError:
+            pass
+            
+        # Try to include Google Cloud Storage if available
+        try:
+            from storages.backends.gcloud import GoogleCloudStorage
+            classes_to_patch.append(GoogleCloudStorage)
+        except ImportError:
+            pass
+        
+        # Helper to patch a class
+        def patch_class(cls):
+            # We only patch methods if they exist in the class __dict__ or are inherited but we want to intercept base calls
+            # For save/open, they are usually on Storage base.
+            # For delete/exists, they are usually on subclasses.
+            
+            # Patch save (usually inherited from Storage, so patching Storage is enough, but double patching is safe-ish if we check)
+            # Actually, better to patch only if it's the specific implementation or base.
+            
+            # Let's simplify: wrapping the method on the class works. 
+            # If Child.delete calls Super.delete (which is patched), we get double log? 
+            # Storage.delete raises NotImplemented, so Child probably doesn't call it.
+            # Storage.save CALLS _save. We patched Storage.save. Child inherits Storage.save. So patching Storage is enough for save.
+            
+            # BUT, delete and exists are different.
+            
+            # We iterate methods we want to patch
+            methods = ['delete', 'exists', 'listdir']
+            
+            for method_name in methods:
+                if not hasattr(cls, method_name):
+                    continue
+                
+                original_method = getattr(cls, method_name)
+                
+                # Avoid double patching
+                if getattr(original_method, '_orbit_patched', False):
+                    continue
+                
+                @functools.wraps(original_method)
+                def patched_method(self, *args, **kwargs):
+                    start_time = time.perf_counter()
+                    
+                    # Call original
+                    try:
+                        result = original_method(self, *args, **kwargs)
+                    except Exception as e:
+                        # Log errors too? For now just propagate
+                        raise e
+                        
+                    duration_ms = (time.perf_counter() - start_time) * 1000
+                    
+                    try:
+                        # Extract path from first arg if possible
+                        path = args[0] if len(args) > 0 else "?"
+                        backend_name = self.__class__.__name__
+                        
+                        record_storage_operation(
+                            method_name, 
+                            path=str(path),
+                            backend=backend_name, 
+                            duration_ms=duration_ms,
+                            exists=result if method_name == 'exists' else None
+                        )
+                    except Exception:
+                        pass
+                    return result
+                
+                patched_method._orbit_patched = True
+                setattr(cls, method_name, patched_method)
+
+        # Apply patching
+        # 1. Patch Storage.save and Storage.open (base methods)
+        # These are template methods that call _save/_open, so patching base is usually sufficient
+        # providing subclasses don't override the public save/open (which is rare, they override _save/_open)
+        
+        # 1. Patch Storage.save and Storage.open (base methods)
+        def create_patched_base(original, method_name):
+            @functools.wraps(original)
+            def patched_base(self, *args, **kwargs):
+                start_time = time.perf_counter()
+                # Capture size for save
+                size = None
+                if method_name == 'save' and len(args) > 1:
+                    content = args[1]
+                    try:
+                        if hasattr(content, 'size'):
+                            size = content.size
+                        elif hasattr(content, '__len__'):
+                            size = len(content)
+                    except:
+                        pass
+                        
+                result = original(self, *args, **kwargs)
+                duration_ms = (time.perf_counter() - start_time) * 1000
+                
+                try:
+                    path = result if method_name == 'save' else (args[0] if args else '?')
+                    record_storage_operation(
+                        method_name, 
+                        path=path,
+                        backend=self.__class__.__name__, 
+                        duration_ms=duration_ms,
+                        size=size
+                    )
+                except Exception:
+                    pass
+                return result
+            return patched_base
+
+        for method_name in ['save', 'open']:
+            if hasattr(Storage, method_name):
+                original = getattr(Storage, method_name)
+                if not getattr(original, '_orbit_patched', False):
+                    patched_base = create_patched_base(original, method_name)
+                    patched_base._orbit_patched = True
+                    setattr(Storage, method_name, patched_base)
+
+        # 2. Patch delete/exists/listdir on specific classes
+        for cls in classes_to_patch:
+            patch_class(cls)
+        
+        _storage_patched = True
+        logger.debug("Orbit storage watcher installed")
+
+    except Exception as e:
+        logger.warning(f"Failed to install storage watcher: {e}")
+
+
+# =============================================================================
 # Install All Watchers
 # =============================================================================
 
@@ -1515,4 +2046,10 @@ def install_all_watchers():
 
     if config.get("RECORD_GATES", True):
         install_gates_watcher()
+    
+    if config.get("RECORD_TRANSACTIONS", True):
+        install_transaction_watcher()
+        
+    if config.get("RECORD_STORAGE", True):
+        install_storage_watcher()
 

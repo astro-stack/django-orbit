@@ -116,6 +116,8 @@ class OrbitEntry(models.Model):
     # Phase 3 types (v0.5.0)
     TYPE_REDIS = "redis"
     TYPE_GATE = "gate"
+    TYPE_TRANSACTION = "transaction"
+    TYPE_STORAGE = "storage"
 
     TYPE_CHOICES = [
         (TYPE_REQUEST, "HTTP Request"),
@@ -132,6 +134,8 @@ class OrbitEntry(models.Model):
         (TYPE_SIGNAL, "Signal"),
         (TYPE_REDIS, "Redis"),
         (TYPE_GATE, "Gate/Policy"),
+        (TYPE_TRANSACTION, "Transaction"),
+        (TYPE_STORAGE, "Storage"),
     ]
 
     # Type to icon mapping for UI
@@ -150,6 +154,8 @@ class OrbitEntry(models.Model):
         TYPE_SIGNAL: "zap",
         TYPE_REDIS: "server",
         TYPE_GATE: "shield",
+        TYPE_TRANSACTION: "layers",
+        TYPE_STORAGE: "archive",
     }
 
     # Type to color mapping for UI
@@ -168,6 +174,8 @@ class OrbitEntry(models.Model):
         TYPE_SIGNAL: "yellow",
         TYPE_REDIS: "red",
         TYPE_GATE: "indigo",
+        TYPE_TRANSACTION: "teal",
+        TYPE_STORAGE: "sky",
     }
 
     # Primary key
@@ -346,6 +354,41 @@ class OrbitEntry(models.Model):
             result = payload.get("result", "?")
             icon = "✓" if result == "granted" else "✗"
             return f"{icon} {permission} → {user}"
+        
+        elif self.type == self.TYPE_TRANSACTION:
+            status = payload.get("status", "?")
+            using = payload.get("using", "default")
+            exception = payload.get("exception")
+            icon = "✓" if status == "committed" else "✗"
+            duration = f" {self.duration_ms:.0f}ms" if self.duration_ms else ""
+            if status == "rolled_back" and exception:
+                # Show exception name for rollbacks
+                exc_short = exception.split(":")[0] if ":" in exception else exception
+                if len(exc_short) > 25:
+                    exc_short = exc_short[:22] + "..."
+                return f"{icon} rollback: {exc_short}{duration} ({using})"
+            return f"{icon} {status}{duration} ({using})"
+
+        elif self.type == self.TYPE_STORAGE:
+            operation = payload.get("operation", "?")
+            path = payload.get("path", "?")
+            backend = payload.get("backend", "")
+            size = payload.get("size")
+            # Truncate path but keep filename visible
+            if len(path) > 35:
+                path = "..." + path[-32:]
+            # Format size
+            size_str = ""
+            if size and operation == "save":
+                if size >= 1024 * 1024:
+                    size_str = f" ({size / 1024 / 1024:.1f}MB)"
+                elif size >= 1024:
+                    size_str = f" ({size / 1024:.1f}KB)"
+                else:
+                    size_str = f" ({size}B)"
+            # Short backend name
+            backend_short = backend.replace("Storage", "") if backend else ""
+            return f"{operation.upper()} {path}{size_str} [{backend_short}]"
 
         return str(self.id)[:8]
 

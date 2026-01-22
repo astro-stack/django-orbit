@@ -33,6 +33,10 @@ ORBIT_CONFIG = {
     'RECORD_REDIS': True,     # Redis operations
     'RECORD_GATES': True,     # Permission/Gate checks
     
+    # Recording Settings - Phase 4 (v0.6.0)
+    'RECORD_TRANSACTIONS': True,  # Database transaction blocks
+    'RECORD_STORAGE': True,       # File storage operations
+    
     # Performance Settings
     'SLOW_QUERY_THRESHOLD_MS': 500,
     
@@ -134,6 +138,13 @@ ORBIT_CONFIG = {
 | `RECORD_JOBS` | `True` | Background jobs (Celery, Django-Q, RQ, APScheduler, django-celery-beat) |
 | `RECORD_REDIS` | `True` | Redis operations (GET, SET, DEL, etc.) |
 | `RECORD_GATES` | `True` | Permission/authorization checks |
+
+#### Phase 4 Watchers (v0.6.0+)
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `RECORD_TRANSACTIONS` | `True` | Database transaction blocks (`atomic()`) |
+| `RECORD_STORAGE` | `True` | File storage operations (save, open, delete, exists) |
 
 ### Performance Settings
 

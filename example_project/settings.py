@@ -131,4 +131,7 @@ ORBIT_CONFIG = {
         '/static/',
         '/favicon.ico',
     ],
+    # v0.6.0 watchers
+    'RECORD_TRANSACTIONS': True,
+    'RECORD_STORAGE': True,
 }
