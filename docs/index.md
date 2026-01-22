@@ -40,6 +40,13 @@ Django Orbit is a debugging and observability tool for Django applications. Unli
 | Stats & Analytics | No | Yes |
 | Modern UI | Basic | Space-themed |
 
+### What's New in v0.6.0
+
+- **Transaction Watcher**: Track database transactions (commits/rollbacks)
+- **Storage Watcher**: Monitor file operations (save, open, delete, exists)
+- **Improved Summaries**: More informative entry summaries with duration and sizes
+- **Enhanced Analytics**: Transaction and storage metrics in Stats Dashboard
+
 ### What's New in v0.5.0
 
 - **Jobs Watcher**: Track Celery, Django-Q, RQ, APScheduler tasks

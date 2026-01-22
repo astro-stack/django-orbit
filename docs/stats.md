@@ -148,6 +148,42 @@ Orbit supports:
 
 Lists the most frequently denied permissions to help identify authorization issues.
 
+## Transaction Monitoring (v0.6.0)
+
+| Metric | Description |
+|--------|-------------|
+| **Total Transactions** | Number of `atomic()` blocks executed |
+| **Committed** | Successfully completed transactions |
+| **Rolled Back** | Transactions that were rolled back |
+| **Commit Rate** | Percentage of successful commits |
+| **Avg Duration** | Average transaction duration |
+
+### Recent Rollbacks
+
+Lists recent failed transactions with:
+
+- Exception that caused the rollback
+- Database alias (default, replica, etc.)
+- Duration in milliseconds
+- Timestamp
+
+**Click any rollback** to view full details and related queries.
+
+## Storage Operations (v0.6.0)
+
+| Metric | Description |
+|--------|-------------|
+| **Total Operations** | Number of file operations |
+| **Saves** | Files uploaded/saved |
+| **Opens** | Files read/opened |
+| **Deletes** | Files deleted |
+| **Exists Checks** | Existence checks |
+| **Avg Duration** | Average operation duration |
+
+### Top Storage Backends
+
+Lists the most used storage backends (FileSystemStorage, S3Boto3Storage, etc.).
+
 ## Interactive Features
 
 ### Clickable Entries
@@ -170,6 +206,8 @@ ORBIT_CONFIG = {
     'RECORD_CACHE': True,       # For cache metrics
     'RECORD_JOBS': True,        # For job metrics
     'RECORD_GATES': True,       # For permission metrics
+    'RECORD_TRANSACTIONS': True, # For transaction metrics (v0.6.0)
+    'RECORD_STORAGE': True,     # For storage metrics (v0.6.0)
 }
 ```
 
