@@ -1739,6 +1739,7 @@ def install_transaction_watcher():
 
     try:
         import django.db.transaction
+        import threading
         
         original_atomic = django.db.transaction.atomic
         
@@ -1747,21 +1748,28 @@ def install_transaction_watcher():
             def __init__(self, context_manager, using):
                 self.ctx = context_manager
                 self.using = using
-                self.start_time = None
+                # Use thread-local storage for start times to support recursion and concurrency
+                self._local = threading.local()
+
+            def _get_stack(self):
+                if not hasattr(self._local, 'stack'):
+                    self._local.stack = []
+                return self._local.stack
 
             def __enter__(self):
-                self.start_time = time.perf_counter()
+                # Push start time to stack
+                self._get_stack().append(time.perf_counter())
                 return self.ctx.__enter__()
 
             def __exit__(self, exc_type, exc_value, traceback):
-                # Call original exit first to ensure transaction is actually committed/rolled back
+                # Call original exit first
                 result = self.ctx.__exit__(exc_type, exc_value, traceback)
                 
-                # Debug print
-                # print(f"DEBUG: __exit__ called with exc_type={exc_type}, result={result}")
-                
-                if self.start_time:
-                    duration_ms = (time.perf_counter() - self.start_time) * 1000
+                # Pop start time
+                stack = self._get_stack()
+                if stack:
+                    start_time = stack.pop()
+                    duration_ms = (time.perf_counter() - start_time) * 1000
                     status = "rolled_back" if exc_type else "committed"
                     
                     try:
@@ -1775,13 +1783,36 @@ def install_transaction_watcher():
                         pass
                 
                 return result
+            
+            def __call__(self, func):
+                """Support usage as a decorator (@transaction.atomic)."""
+                @functools.wraps(func)
+                def wrapper(*args, **kwargs):
+                    with self:
+                        return func(*args, **kwargs)
+                return wrapper
 
             def __getattr__(self, name):
                 return getattr(self.ctx, name)
         
         @functools.wraps(original_atomic)
         def patched_atomic(using=None, savepoint=True, durable=False):
-            # Call original atomic matching Django version signature
+            # Check if used as bare decorator: @transaction.atomic (without parens)
+            if callable(using):
+                func = using
+                # Create the context manager (default db) by calling original with None
+                try:
+                    if durable:
+                         ctx = original_atomic(using=None, savepoint=savepoint, durable=durable)
+                    else:
+                         ctx = original_atomic(using=None, savepoint=savepoint)
+                except TypeError:
+                     ctx = original_atomic(using=None, savepoint=savepoint)
+                
+                # Wrap the context manager and immediately decorate the function
+                return OrbitAtomicWrapper(ctx, None)(func)
+
+            # Standard usage: atomic(), atomic(using='db'), or context manager
             try:
                 if durable:
                     ctx = original_atomic(using=using, savepoint=savepoint, durable=durable)
