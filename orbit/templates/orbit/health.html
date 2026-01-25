@@ -1,0 +1,291 @@
+{% extends 'orbit/base.html' %}
+
+{% block title %}System Health - Django Orbit{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-orbit-bg-primary">
+    <!-- Header -->
+    <header class="h-14 border-b border-orbit-border bg-orbit-bg-secondary/50 backdrop-blur sticky top-0 z-20 flex items-center justify-between px-6">
+        <div class="flex items-center gap-4">
+            <a href="{{ dashboard_url }}" class="flex items-center gap-2 text-orbit-text-muted hover:text-orbit-text-primary transition-colors">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                <span>Back to Dashboard</span>
+            </a>
+            <div class="h-4 w-px bg-orbit-border"></div>
+            <h1 class="text-lg font-semibold text-orbit-text-primary flex items-center gap-2">
+                <i data-lucide="heart-pulse" class="w-5 h-5 text-orbit-accent-cyan"></i>
+                System Health
+            </h1>
+        </div>
+        
+        <!-- Overall Status Badge -->
+        <div class="flex items-center gap-3">
+            {% if is_healthy %}
+            <span class="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                <i data-lucide="check-circle" class="w-4 h-4"></i>
+                All Systems Operational
+            </span>
+            {% else %}
+            <span class="flex items-center gap-2 px-4 py-2 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/30">
+                <i data-lucide="alert-circle" class="w-4 h-4"></i>
+                Some Issues Detected
+            </span>
+            {% endif %}
+        </div>
+    </header>
+    
+    <main class="p-6 max-w-6xl mx-auto">
+        <!-- Summary Cards -->
+        <section class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <!-- Total Modules -->
+            <div class="bg-orbit-bg-secondary/50 backdrop-blur rounded-xl p-5 border border-orbit-border">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs text-orbit-text-muted uppercase tracking-wider">Total Modules</span>
+                    <div class="w-8 h-8 rounded-lg bg-orbit-accent-cyan/10 flex items-center justify-center">
+                        <i data-lucide="box" class="w-4 h-4 text-orbit-accent-cyan"></i>
+                    </div>
+                </div>
+                <div class="text-3xl font-bold text-orbit-text-primary">{{ watchers.total }}</div>
+            </div>
+            
+            <!-- Healthy -->
+            <div class="bg-orbit-bg-secondary/50 backdrop-blur rounded-xl p-5 border border-orbit-border hover:border-emerald-500/30 transition-all">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs text-orbit-text-muted uppercase tracking-wider">Healthy</span>
+                    <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                        <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+                    </div>
+                </div>
+                <div class="text-3xl font-bold text-emerald-400">{{ watchers.installed_count }}</div>
+            </div>
+            
+            <!-- Failed -->
+            <div class="bg-orbit-bg-secondary/50 backdrop-blur rounded-xl p-5 border border-orbit-border hover:border-rose-500/30 transition-all">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs text-orbit-text-muted uppercase tracking-wider">Failed</span>
+                    <div class="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center">
+                        <i data-lucide="x-circle" class="w-4 h-4 text-rose-400"></i>
+                    </div>
+                </div>
+                <div class="text-3xl font-bold text-rose-400">{{ watchers.failed_count }}</div>
+            </div>
+            
+            <!-- Disabled -->
+            <div class="bg-orbit-bg-secondary/50 backdrop-blur rounded-xl p-5 border border-orbit-border">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs text-orbit-text-muted uppercase tracking-wider">Disabled</span>
+                    <div class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                        <i data-lucide="pause-circle" class="w-4 h-4 text-amber-400"></i>
+                    </div>
+                </div>
+                <div class="text-3xl font-bold text-amber-400">
+                    {% with disabled_count=watchers.total|add:"-"|add:watchers.installed_count|add:"-"|add:watchers.failed_count %}
+                    {{ disabled_count|default:0 }}
+                    {% endwith %}
+                </div>
+            </div>
+        </section>
+        
+        <!-- Modules List -->
+        <section class="bg-orbit-bg-secondary/50 backdrop-blur rounded-xl border border-orbit-border">
+            <div class="p-5 border-b border-orbit-border">
+                <h2 class="text-lg font-semibold text-orbit-text-primary flex items-center gap-2">
+                    <i data-lucide="layers" class="w-5 h-5 text-orbit-accent-cyan"></i>
+                    Watchers & Modules
+                </h2>
+                <p class="text-sm text-orbit-text-muted mt-1">
+                    Status of all observation modules. Failed modules are isolated and don't affect others.
+                </p>
+            </div>
+            
+            <div class="divide-y divide-orbit-border">
+                {% for module in watchers.modules %}
+                <div class="p-4 hover:bg-orbit-bg-tertiary/30 transition-colors" x-data="{ expanded: false }">
+                    <div class="flex items-center justify-between cursor-pointer" @click="expanded = !expanded">
+                        <div class="flex items-center gap-4">
+                            <!-- Status Indicator -->
+                            {% if module.is_healthy %}
+                            <div class="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                                <i data-lucide="check-circle" class="w-5 h-5 text-emerald-400"></i>
+                            </div>
+                            {% elif module.is_disabled %}
+                            <div class="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                                <i data-lucide="pause-circle" class="w-5 h-5 text-amber-400"></i>
+                            </div>
+                            {% else %}
+                            <div class="w-10 h-10 rounded-lg bg-rose-500/10 flex items-center justify-center">
+                                <i data-lucide="x-circle" class="w-5 h-5 text-rose-400"></i>
+                            </div>
+                            {% endif %}
+                            
+                            <div>
+                                <h3 class="font-medium text-orbit-text-primary capitalize">{{ module.name }}</h3>
+                                <p class="text-sm text-orbit-text-muted">{{ module.description }}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center gap-4">
+                            <!-- Status Badge -->
+                            {% if module.is_healthy %}
+                            <span class="px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                                Healthy
+                            </span>
+                            {% elif module.is_disabled %}
+                            <span class="px-3 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                                Disabled
+                            </span>
+                            {% else %}
+                            <span class="px-3 py-1 rounded-full text-xs font-medium bg-rose-500/10 text-rose-400 border border-rose-500/30">
+                                Failed
+                            </span>
+                            {% endif %}
+                            
+                            <!-- Expand button if there's an error -->
+                            {% if module.error %}
+                            <i data-lucide="chevron-down" class="w-4 h-4 text-orbit-text-muted transition-transform" :class="expanded && 'rotate-180'"></i>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Error Details (if failed) -->
+                    {% if module.error %}
+                    <div x-show="expanded" x-collapse class="mt-4 ml-14">
+                        <div class="bg-rose-500/10 border border-rose-500/30 rounded-lg p-4">
+                            <h4 class="text-sm font-medium text-rose-400 mb-2 flex items-center gap-2">
+                                <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+                                Error Details
+                            </h4>
+                            <pre class="text-xs text-rose-300 font-mono whitespace-pre-wrap break-all bg-rose-500/5 p-3 rounded">{{ module.error }}</pre>
+                            
+                            {% if module.error_traceback %}
+                            <details class="mt-3">
+                                <summary class="text-xs text-rose-400/70 cursor-pointer hover:text-rose-400">
+                                    Show full traceback
+                                </summary>
+                                <pre class="mt-2 text-xs text-rose-300/70 font-mono whitespace-pre-wrap break-all bg-rose-500/5 p-3 rounded max-h-64 overflow-auto">{{ module.error_traceback }}</pre>
+                            </details>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% empty %}
+                <div class="p-8 text-center text-orbit-text-muted">
+                    <i data-lucide="inbox" class="w-12 h-12 mx-auto mb-4 text-orbit-text-muted/50"></i>
+                    <p>No modules registered yet.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        
+        <!-- Failed Modules Summary (if any) -->
+        {% if watchers.failed %}
+        <section class="bg-rose-500/10 border border-rose-500/30 rounded-xl p-6 mt-8">
+            <h2 class="text-lg font-semibold text-rose-400 flex items-center gap-2 mb-4">
+                <i data-lucide="alert-circle" class="w-5 h-5"></i>
+                Failed Modules Summary
+            </h2>
+            <div class="space-y-3">
+                {% for name, error in watchers.failed.items %}
+                <div class="bg-rose-500/10 rounded-lg p-4">
+                    <div class="flex items-start gap-3">
+                        <i data-lucide="x-circle" class="w-5 h-5 text-rose-400 mt-0.5"></i>
+                        <div>
+                            <h3 class="font-medium text-rose-300 capitalize">{{ name }}</h3>
+                            <p class="text-sm text-rose-300/70 font-mono mt-1">{{ error }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div class="mt-6 p-4 bg-orbit-bg-primary/50 rounded-lg">
+                <h3 class="text-sm font-medium text-orbit-text-primary mb-2">How to fix failed modules:</h3>
+                <ul class="text-sm text-orbit-text-muted space-y-2">
+                    <li class="flex items-start gap-2">
+                        <i data-lucide="chevron-right" class="w-4 h-4 mt-0.5 text-orbit-accent-cyan"></i>
+                        <span>Install missing dependencies (e.g., <code class="text-orbit-accent-cyan">pip install celery</code> for Celery watcher)</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i data-lucide="chevron-right" class="w-4 h-4 mt-0.5 text-orbit-accent-cyan"></i>
+                        <span>Or disable them in settings: <code class="text-orbit-accent-cyan">ORBIT_CONFIG = {'RECORD_CELERY': False}</code></span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i data-lucide="chevron-right" class="w-4 h-4 mt-0.5 text-orbit-accent-cyan"></i>
+                        <span>Failed modules are isolated and don't affect other Orbit functionality.</span>
+                    </li>
+                </ul>
+            </div>
+        </section>
+        {% endif %}
+        
+        <!-- Quick Links -->
+        <section class="grid grid-cols-2 gap-4 mt-8">
+            <a href="{{ dashboard_url }}" class="bg-orbit-bg-secondary/50 backdrop-blur rounded-xl p-5 border border-orbit-border hover:border-orbit-accent-cyan/50 transition-all group">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-orbit-accent-cyan/10 flex items-center justify-center group-hover:bg-orbit-accent-cyan/20 transition-colors">
+                        <i data-lucide="layout-dashboard" class="w-5 h-5 text-orbit-accent-cyan"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-medium text-orbit-text-primary">Dashboard</h3>
+                        <p class="text-sm text-orbit-text-muted">View all recorded entries</p>
+                    </div>
+                </div>
+            </a>
+            
+            <a href="{{ stats_url }}" class="bg-orbit-bg-secondary/50 backdrop-blur rounded-xl p-5 border border-orbit-border hover:border-violet-500/50 transition-all group">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-violet-500/10 flex items-center justify-center group-hover:bg-violet-500/20 transition-colors">
+                        <i data-lucide="bar-chart-2" class="w-5 h-5 text-violet-400"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-medium text-orbit-text-primary">Performance Stats</h3>
+                        <p class="text-sm text-orbit-text-muted">View analytics and metrics</p>
+                    </div>
+                </div>
+            </a>
+        </section>
+        
+        <!-- Footer with version and credits -->
+        <footer class="mt-12 pt-6 border-t border-orbit-border text-center">
+            <div class="flex items-center justify-center gap-2 text-sm text-orbit-text-muted">
+                <span class="text-orbit-accent-cyan font-semibold">Django Orbit v0.6.3</span>
+                <span>—</span>
+                <span>by</span>
+                <a href="https://github.com/astro-stack" 
+                   target="_blank" 
+                   rel="noopener noreferrer"
+                   class="text-orbit-accent-cyan hover:text-cyan-300 transition-colors font-medium">
+                    astro-stack
+                </a>
+                <span class="text-orbit-text-muted/50">|</span>
+                <a href="mailto:unsapucaienbits@gmail.com" 
+                   class="text-orbit-text-muted hover:text-orbit-accent-cyan transition-colors flex items-center gap-1">
+                    <i data-lucide="mail" class="w-3 h-3"></i>
+                    Contact
+                </a>
+                <span class="text-orbit-text-muted/50">|</span>
+                <a href="https://github.com/astro-stack/django-orbit" 
+                   target="_blank" 
+                   rel="noopener noreferrer"
+                   class="text-orbit-text-muted hover:text-orbit-accent-cyan transition-colors flex items-center gap-1">
+                    <i data-lucide="github" class="w-3 h-3"></i>
+                    GitHub
+                </a>
+            </div>
+            <p class="mt-2 text-xs text-orbit-text-muted/70">
+                Satellite Observability for Django 🛰️
+            </p>
+        </footer>
+    </main>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Lucide icons
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+});
+</script>
+{% endblock %}

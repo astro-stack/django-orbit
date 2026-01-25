@@ -16,9 +16,19 @@
                 <div>
                     <h1 class="text-lg font-semibold text-gradient">Django Orbit</h1>
                     <p class="text-xs text-orbit-text-muted">
-                        Obvservability and Debugging
+                        Observability and Debugging
                     </p>
                 </div>
+            </div>
+            <!-- Version and Contact -->
+            <div class="mt-3 flex items-center gap-2 text-xs text-orbit-text-muted">
+                <span class="text-orbit-accent-cyan font-medium">v0.6.3</span>
+                <span class="text-orbit-text-muted/50">•</span>
+                <a href="mailto:unsapucaienbits@gmail.com" 
+                   class="hover:text-orbit-accent-cyan transition-colors flex items-center gap-1">
+                    <i data-lucide="mail" class="w-3 h-3"></i>
+                    Contact
+                </a>
             </div>
         </div>
         
@@ -259,6 +269,13 @@
                    class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-accent-cyan/10 transition-all">
                     <i data-lucide="bar-chart-2" class="w-4 h-4"></i>
                     <span>Stats</span>
+                </a>
+                
+                <!-- Health Page Link -->
+                <a href="{% url 'orbit:health' %}"
+                   class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-orbit-text-secondary hover:text-emerald-400 hover:bg-emerald-500/10 transition-all">
+                    <i data-lucide="heart-pulse" class="w-4 h-4"></i>
+                    <span>Health</span>
                 </a>
             </div>
         </header>

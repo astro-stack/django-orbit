@@ -7,9 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-01-25
+
+### Added
+
+- **Plug-and-Play Module System**: Each watcher/module now operates independently
+  - If one module fails to initialize, others continue working normally
+  - Failed modules are logged but don't crash the application
+  - Module status is tracked and available for diagnostics
+  
+- **Health Dashboard** (`/orbit/health/`): New diagnostics page showing module status
+  - Visual indicators: Green (healthy), Red (failed), Yellow (disabled)
+  - Expandable error details with full traceback
+  - Summary cards for total/healthy/failed/disabled counts
+  - Instructions for fixing failed modules
+  
+- **New API Functions**:
+  - `orbit.get_watcher_status()` - Get status of all watchers
+  - `orbit.get_installed_watchers()` - List of active watcher names  
+  - `orbit.get_failed_watchers()` - Dict of failed watchers with error messages
+  
+- **Configuration**:
+  - Added `WATCHER_FAIL_SILENTLY` setting (default: True)
+    - When True, module failures are logged but app continues
+    - When False, failures are re-raised for debugging
+
+- **Dashboard Updates**:
+  - New "Health" button in top navigation bar
+  - Fixed missing icons for Transaction and Storage types in feed
+  - Transactions now use `git-branch` icon (teal color)
+  - Storage now uses `archive` icon (sky color)
+
+### Fixed
+
+- **Static files bug**: Removed `listdir` from storage watcher patching
+  - This was causing `NotADirectoryError` when Django's staticfiles handler tried to list directory contents
+- **Closure bug in storage watcher**: Fixed variable capture issue where `delete` and `exists` methods were incorrectly bound
+  - Used factory function pattern to properly capture `method_name` and `original_method`
+- **Test isolation**: Added `force=True` parameter to `install_storage_watcher()` for testing scenarios
+- **Exists test**: Fixed query to use `-created_at` ordering since UUIDs don't preserve insertion order
+
+### Technical
+
+- New `orbit/health.py` module with `ModuleRegistry` class
+- `_install_watcher_safely()` helper for isolated module initialization
+- `create_patched_method()` factory to avoid Python closure bugs in loops
+
 ## [0.6.2] - 2026-01-23
 
 ### Fixed
+
 - **Critical crash with `ATOMIC_REQUESTS=True`** (Issue #5)
   - Fixed `OrbitAtomicWrapper` compatibility with decorator usage
   - Added thread safety for nested atomic blocks

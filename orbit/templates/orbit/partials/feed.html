@@ -33,6 +33,8 @@
                     {% elif entry.type == 'signal' %}bg-yellow-500/10 text-yellow-400
                     {% elif entry.type == 'redis' %}bg-red-500/10 text-red-400
                     {% elif entry.type == 'gate' %}bg-indigo-500/10 text-indigo-400
+                    {% elif entry.type == 'transaction' %}bg-teal-500/10 text-teal-400
+                    {% elif entry.type == 'storage' %}bg-sky-500/10 text-sky-400
                     {% endif %}">
                     {% if entry.type == 'request' %}
                     <i data-lucide="globe" class="w-4 h-4"></i>
@@ -62,6 +64,10 @@
                     <i data-lucide="server" class="w-4 h-4"></i>
                     {% elif entry.type == 'gate' %}
                     <i data-lucide="shield" class="w-4 h-4"></i>
+                    {% elif entry.type == 'transaction' %}
+                    <i data-lucide="git-branch" class="w-4 h-4"></i>
+                    {% elif entry.type == 'storage' %}
+                    <i data-lucide="archive" class="w-4 h-4"></i>
                     {% endif %}
                 </div>
             </td>

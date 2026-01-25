@@ -13,9 +13,6 @@ import logging
 import time
 from typing import Any, Dict, Optional
 
-from django.apps import apps
-from django.conf import settings
-
 from orbit.conf import get_config
 
 logger = logging.getLogger(__name__)
@@ -1880,14 +1877,17 @@ def record_storage_operation(
         pass
 
 
-def install_storage_watcher():
+def install_storage_watcher(force: bool = False):
     """
     Install the storage watcher by patching Storage classes methods.
     Patches base Storage (for save/open) and specific backends for methods that don't call super() (delete/exists).
+    
+    Args:
+        force: If True, re-patch even if already patched (useful for testing)
     """
     global _storage_patched
 
-    if _storage_patched:
+    if _storage_patched and not force:
         return
 
     try:
@@ -1926,7 +1926,7 @@ def install_storage_watcher():
             # BUT, delete and exists are different.
             
             # We iterate methods we want to patch
-            methods = ['delete', 'exists', 'listdir']
+            methods = ['delete', 'exists']
             
             for method_name in methods:
                 if not hasattr(cls, method_name):
@@ -1938,37 +1938,42 @@ def install_storage_watcher():
                 if getattr(original_method, '_orbit_patched', False):
                     continue
                 
-                @functools.wraps(original_method)
-                def patched_method(self, *args, **kwargs):
-                    start_time = time.perf_counter()
-                    
-                    # Call original
-                    try:
-                        result = original_method(self, *args, **kwargs)
-                    except Exception as e:
-                        # Log errors too? For now just propagate
-                        raise e
+                # Use a factory function to capture method_name and original_method by value
+                # This avoids the classic Python closure bug where loop variables are captured by reference
+                def create_patched_method(orig_method, meth_name):
+                    @functools.wraps(orig_method)
+                    def patched_method(self, *args, **kwargs):
+                        start_time = time.perf_counter()
                         
-                    duration_ms = (time.perf_counter() - start_time) * 1000
-                    
-                    try:
-                        # Extract path from first arg if possible
-                        path = args[0] if len(args) > 0 else "?"
-                        backend_name = self.__class__.__name__
+                        # Call original
+                        try:
+                            result = orig_method(self, *args, **kwargs)
+                        except Exception as e:
+                            # Log errors too? For now just propagate
+                            raise e
+                            
+                        duration_ms = (time.perf_counter() - start_time) * 1000
                         
-                        record_storage_operation(
-                            method_name, 
-                            path=str(path),
-                            backend=backend_name, 
-                            duration_ms=duration_ms,
-                            exists=result if method_name == 'exists' else None
-                        )
-                    except Exception:
-                        pass
-                    return result
+                        try:
+                            # Extract path from first arg if possible
+                            path = args[0] if len(args) > 0 else "?"
+                            backend_name = self.__class__.__name__
+                            
+                            record_storage_operation(
+                                meth_name, 
+                                path=str(path),
+                                backend=backend_name, 
+                                duration_ms=duration_ms,
+                                exists=result if meth_name == 'exists' else None
+                            )
+                        except Exception:
+                            pass
+                        return result
+                    return patched_method
                 
-                patched_method._orbit_patched = True
-                setattr(cls, method_name, patched_method)
+                patched = create_patched_method(original_method, method_name)
+                patched._orbit_patched = True
+                setattr(cls, method_name, patched)
 
         # Apply patching
         # 1. Patch Storage.save and Storage.open (base methods)
@@ -1989,7 +1994,7 @@ def install_storage_watcher():
                             size = content.size
                         elif hasattr(content, '__len__'):
                             size = len(content)
-                    except:
+                    except Exception:
                         pass
                         
                 result = original(self, *args, **kwargs)
@@ -2029,48 +2034,130 @@ def install_storage_watcher():
 
 
 # =============================================================================
-# Install All Watchers
+# Install All Watchers - Plug-and-Play System
 # =============================================================================
+
+# Registry of watcher states: {name: {"installed": bool, "error": str|None}}
+_watcher_registry = {}
+
+
+def _install_watcher_safely(name: str, installer_func, config_key: str = None):
+    """
+    Install a single watcher with error isolation.
+    
+    Args:
+        name: Human-readable name of the watcher
+        installer_func: Function to call to install the watcher
+        config_key: Optional config key to check (e.g., "RECORD_CACHE")
+    
+    Returns:
+        bool: True if installed successfully, False otherwise
+    """
+    config = get_config()
+    fail_silently = config.get("WATCHER_FAIL_SILENTLY", True)
+    
+    # Check if this watcher type is enabled
+    if config_key and not config.get(config_key, True):
+        _watcher_registry[name] = {"installed": False, "error": None, "disabled": True}
+        logger.debug(f"Orbit watcher '{name}' is disabled via config")
+        return False
+    
+    try:
+        installer_func()
+        _watcher_registry[name] = {"installed": True, "error": None, "disabled": False}
+        logger.debug(f"Orbit watcher '{name}' installed successfully")
+        return True
+    except Exception as e:
+        error_msg = f"{type(e).__name__}: {str(e)}"
+        _watcher_registry[name] = {"installed": False, "error": error_msg, "disabled": False}
+        
+        if fail_silently:
+            logger.warning(f"Orbit watcher '{name}' failed to install: {error_msg}")
+        else:
+            logger.error(f"Orbit watcher '{name}' failed to install: {error_msg}")
+            raise
+        
+        return False
+
+
+def get_watcher_status() -> Dict[str, Dict[str, Any]]:
+    """
+    Get the status of all watchers.
+    
+    Returns:
+        Dict with watcher names as keys and status dicts as values.
+        Each status dict contains:
+            - installed: bool - whether the watcher is active
+            - error: str|None - error message if installation failed
+            - disabled: bool - whether the watcher is disabled via config
+    
+    Example:
+        >>> get_watcher_status()
+        {
+            'command': {'installed': True, 'error': None, 'disabled': False},
+            'cache': {'installed': True, 'error': None, 'disabled': False},
+            'celery': {'installed': False, 'error': 'ModuleNotFoundError: No module named celery', 'disabled': False},
+            ...
+        }
+    """
+    return _watcher_registry.copy()
+
+
+def get_installed_watchers() -> list:
+    """Get list of successfully installed watcher names."""
+    return [name for name, status in _watcher_registry.items() if status.get("installed")]
+
+
+def get_failed_watchers() -> Dict[str, str]:
+    """Get dict of failed watchers with their error messages."""
+    return {
+        name: status.get("error", "Unknown error")
+        for name, status in _watcher_registry.items()
+        if not status.get("installed") and not status.get("disabled") and status.get("error")
+    }
 
 
 def install_all_watchers():
-    """Install all Phase 1, Phase 2, and Phase 3 watchers."""
-    config = get_config()
-
-    if config.get("RECORD_COMMANDS", True):
-        install_command_watcher()
-
-    if config.get("RECORD_CACHE", True):
-        install_cache_watcher()
-
-    if config.get("RECORD_MODELS", True):
-        install_model_watcher()
-
-    if config.get("RECORD_HTTP_CLIENT", True):
-        install_http_client_watcher()
-
-    if config.get("RECORD_MAIL", True):
-        install_mail_watcher()
-
-    if config.get("RECORD_SIGNALS", True):
-        install_signal_watcher()
-
-    if config.get("RECORD_JOBS", True):
-        install_celery_watcher()
-        install_djangoq_watcher()
-        install_rq_watcher()
-        install_celerybeat_watcher()
-        install_apscheduler_watcher()
-
-    if config.get("RECORD_REDIS", True):
-        install_redis_watcher()
-
-    if config.get("RECORD_GATES", True):
-        install_gates_watcher()
+    """
+    Install all watchers with plug-and-play error isolation.
     
-    if config.get("RECORD_TRANSACTIONS", True):
-        install_transaction_watcher()
-        
-    if config.get("RECORD_STORAGE", True):
-        install_storage_watcher()
+    Each watcher is installed independently. If one fails, the others continue.
+    Use get_watcher_status() to check which watchers are active.
+    """
+    global _watcher_registry
+    _watcher_registry = {}  # Reset registry
+    
+    # Core watchers
+    _install_watcher_safely("command", install_command_watcher, "RECORD_COMMANDS")
+    _install_watcher_safely("cache", install_cache_watcher, "RECORD_CACHE")
+    _install_watcher_safely("model", install_model_watcher, "RECORD_MODELS")
+    _install_watcher_safely("http_client", install_http_client_watcher, "RECORD_HTTP_CLIENT")
+    
+    # Communication watchers
+    _install_watcher_safely("mail", install_mail_watcher, "RECORD_MAIL")
+    _install_watcher_safely("signal", install_signal_watcher, "RECORD_SIGNALS")
+    
+    # Job/Task watchers (these often fail if libraries aren't installed - that's OK)
+    config = get_config()
+    if config.get("RECORD_JOBS", True):
+        _install_watcher_safely("celery", install_celery_watcher)
+        _install_watcher_safely("django_q", install_djangoq_watcher)
+        _install_watcher_safely("rq", install_rq_watcher)
+        _install_watcher_safely("celerybeat", install_celerybeat_watcher)
+        _install_watcher_safely("apscheduler", install_apscheduler_watcher)
+    
+    # Data watchers
+    _install_watcher_safely("redis", install_redis_watcher, "RECORD_REDIS")
+    _install_watcher_safely("gates", install_gates_watcher, "RECORD_GATES")
+    _install_watcher_safely("transaction", install_transaction_watcher, "RECORD_TRANSACTIONS")
+    _install_watcher_safely("storage", install_storage_watcher, "RECORD_STORAGE")
+    
+    # Log summary
+    installed = get_installed_watchers()
+    failed = get_failed_watchers()
+    
+    if installed:
+        logger.debug(f"Orbit watchers installed: {', '.join(installed)}")
+    if failed:
+        logger.warning(f"Orbit watchers failed: {', '.join(failed.keys())}")
 

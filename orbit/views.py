@@ -20,6 +20,7 @@ __all__ = [
     "OrbitClearView",
     "OrbitStatsView",
     "OrbitExportView",
+    "OrbitHealthView",
 ]
 
 from orbit.models import OrbitEntry
@@ -377,6 +378,21 @@ class OrbitStatsView(OrbitProtectedView, TemplateView):
                 context['error'] = str(e)
                 break
         
+        # Add watcher status for diagnostics (plug-and-play system)
+        try:
+            from orbit.watchers import get_watcher_status, get_installed_watchers, get_failed_watchers
+            watcher_status = get_watcher_status()
+            context['watchers'] = {
+                'status': watcher_status,
+                'installed': get_installed_watchers(),
+                'failed': get_failed_watchers(),
+                'total': len(watcher_status),
+                'installed_count': len(get_installed_watchers()),
+                'failed_count': len(get_failed_watchers()),
+            }
+        except Exception as e:
+            context['watchers'] = {'error': str(e)}
+        
         # Add URLs
         from django.urls import reverse
         context['dashboard_url'] = reverse('orbit:dashboard')
@@ -480,3 +496,80 @@ class OrbitExportView(OrbitProtectedView, View):
         )
         response["Content-Disposition"] = 'attachment; filename="orbit_export_all.json"'
         return response
+
+
+class OrbitHealthView(OrbitProtectedView, TemplateView):
+    """
+    Health Dashboard view showing the status of all Orbit modules.
+    
+    This is the plug-and-play diagnostics page that shows:
+    - Which modules are installed and working (green)
+    - Which modules failed and why (red)
+    - Which modules are disabled via configuration
+    """
+    template_name = "orbit/health.html"
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Get health status from the health module
+        try:
+            from orbit.health import get_health_status, is_orbit_healthy
+            health = get_health_status()
+            context['health'] = health
+            context['is_healthy'] = is_orbit_healthy()
+        except Exception as e:
+            context['health'] = {
+                'error': str(e),
+                'total': 0,
+                'healthy_count': 0,
+                'failed_count': 0,
+                'modules': [],
+            }
+            context['is_healthy'] = False
+        
+        # Also get watcher status from the watchers module
+        try:
+            from orbit.watchers import get_watcher_status, get_installed_watchers, get_failed_watchers
+            watcher_status = get_watcher_status()
+            
+            # Convert watcher status to module format for unified display
+            watcher_modules = []
+            for name, status in watcher_status.items():
+                watcher_modules.append({
+                    'name': name,
+                    'description': f'Watcher: {name}',
+                    'category': 'watcher',
+                    'status': 'healthy' if status.get('installed') else ('disabled' if status.get('disabled') else 'failed'),
+                    'is_healthy': status.get('installed', False),
+                    'is_failed': not status.get('installed') and not status.get('disabled') and status.get('error'),
+                    'is_disabled': status.get('disabled', False),
+                    'error': status.get('error'),
+                    'error_traceback': None,
+                })
+            
+            context['watchers'] = {
+                'modules': watcher_modules,
+                'installed': get_installed_watchers(),
+                'failed': get_failed_watchers(),
+                'total': len(watcher_status),
+                'installed_count': len(get_installed_watchers()),
+                'failed_count': len(get_failed_watchers()),
+            }
+        except Exception as e:
+            context['watchers'] = {
+                'error': str(e),
+                'modules': [],
+                'installed': [],
+                'failed': {},
+                'total': 0,
+                'installed_count': 0,
+                'failed_count': 0,
+            }
+        
+        # Add URLs
+        from django.urls import reverse
+        context['dashboard_url'] = reverse('orbit:dashboard')
+        context['stats_url'] = reverse('orbit:stats')
+        
+        return context
