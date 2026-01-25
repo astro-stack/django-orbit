@@ -84,13 +84,15 @@ class TestStorageWatcher(TestCase):
     def test_record_exists_operation(self):
         """Test recording an exists check."""
         from orbit.watchers import install_storage_watcher
-        install_storage_watcher()
+        install_storage_watcher(force=True)  # Force re-patch to ensure latest code is applied
         
         file_name = self.storage.save("exists.txt", ContentFile(b"exist"))
         exists = self.storage.exists(file_name)
         assert exists is True
         
-        entry = OrbitEntry.objects.filter(type="storage", payload__operation="exists").last()
+        # Note: save() internally calls exists() first, so we need to get the LAST exists entry chronologically
+        # which is the explicit exists() call we made after saving
+        entry = OrbitEntry.objects.filter(type="storage", payload__operation="exists").order_by('-created_at').first()
         assert entry is not None
         assert entry.payload["path"] == file_name
         assert entry.payload["exists"] is True

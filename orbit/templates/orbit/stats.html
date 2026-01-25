@@ -432,6 +432,8 @@ document.addEventListener('DOMContentLoaded', function() {
             xaxis: { type: 'datetime', labels: { style: { colors: '#64748b' } } },
             yaxis: { labels: { style: { colors: '#64748b' } } },
         }).render();
+    } else {
+        document.querySelector('#throughput-chart').innerHTML = '<div class="flex items-center justify-center h-full text-orbit-text-muted text-sm">No data available for this time range</div>';
     }
     
     // Error Rate Chart
@@ -458,6 +460,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 yaxis: [{ y: 5, borderColor: '#f43f5e', strokeDashArray: 4, label: { text: 'Threshold' } }]
             }
         }).render();
+    } else {
+        document.querySelector('#error-rate-chart').innerHTML = '<div class="flex items-center justify-center h-full text-orbit-text-muted text-sm">No error data available for this time range</div>';
     }
     
     // Cache Chart
@@ -481,6 +485,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 y: { formatter: v => v + '%' }
             }
         }).render();
+    } else {
+        document.querySelector('#cache-chart').innerHTML = '<div class="flex items-center justify-center h-full text-orbit-text-muted text-xs">No cache data</div>';
     }
     
     // Initialize Lucide icons (check if available)

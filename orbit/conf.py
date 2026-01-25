@@ -39,6 +39,11 @@ DEFAULTS = {
     "RECORD_JOBS": True,
     "RECORD_REDIS": True,
     "RECORD_GATES": True,
+    # Phase 4 watchers (v0.6.0)
+    "RECORD_TRANSACTIONS": True,
+    "RECORD_STORAGE": True,
+    # Plug-and-play: if True, watchers fail silently and don't break the app
+    "WATCHER_FAIL_SILENTLY": True,
     # Command watcher settings
     "IGNORE_COMMANDS": ["runserver", "shell", "dbshell", "showmigrations"],
     "MAX_COMMAND_OUTPUT": 5000,

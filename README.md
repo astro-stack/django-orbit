@@ -49,6 +49,12 @@
 - 🔄 **Database Transactions** - Track atomic blocks, commits, rollbacks
 - 📁 **Storage Operations** - Monitor file saves, reads, deletes (S3/Local)
 
+### New in v0.6.3 - Plug-and-Play System
+- 💚 **Health Dashboard** (`/orbit/health/`) - Visual module status with green/red/yellow indicators
+- 🔌 **Modular Architecture** - Each watcher operates independently; failures don't crash your app
+- 🔍 **Diagnostics API** - `get_watcher_status()`, `get_failed_watchers()` for programmatic checks
+- 🛠️ **Graceful Degradation** - Failed modules auto-disable while others continue working
+
 ### Dashboard Features
 - 🌙 **Beautiful Dark UI** - Space-themed mission control
 - ⚡ **Live Updates** - HTMX-powered real-time feed
@@ -184,6 +190,49 @@ The new Stats Dashboard (`/orbit/stats/`) provides advanced analytics:
 | **Cache** | Hit rate with sparkline chart |
 | **Jobs** | Success rate, failure tracking |
 | **Permissions** | Top denied permissions |
+
+## 💚 Health Dashboard & Plug-and-Play
+
+The Health Dashboard (`/orbit/health/`) shows the status of all Orbit modules:
+
+- 🟢 **Green** - Module is healthy and working
+- 🔴 **Red** - Module failed to initialize (click for details)
+- 🟡 **Yellow** - Module is disabled via configuration
+
+### Modular Architecture
+
+Each watcher/module operates **independently**:
+- If Celery isn't installed, the Celery watcher fails gracefully
+- Other watchers continue working normally
+- Failed modules are logged and visible in the Health dashboard
+
+### Programmatic Access
+
+```python
+from orbit import get_watcher_status, get_failed_watchers
+
+# Get status of all watchers
+status = get_watcher_status()
+# {'cache': {'installed': True, 'error': None, 'disabled': False}, ...}
+
+# Get only failed watchers
+failed = get_failed_watchers()
+# {'celery': 'ModuleNotFoundError: No module named celery'}
+```
+
+### Configuration
+
+```python
+ORBIT_CONFIG = {
+    # Control error behavior
+    'WATCHER_FAIL_SILENTLY': True,  # Default: log errors but continue
+    
+    # Disable specific watchers
+    'RECORD_CACHE': False,
+    'RECORD_REDIS': False,
+    # ... etc
+}
+```
 
 ## 🔧 Background Job Integrations
 

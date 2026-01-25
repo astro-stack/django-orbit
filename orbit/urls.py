@@ -12,6 +12,7 @@ from orbit.views import (
     OrbitDetailPartial,
     OrbitExportView,
     OrbitFeedPartial,
+    OrbitHealthView,
     OrbitStatsView,
 )
 
@@ -27,6 +28,7 @@ urlpatterns = [
     path("clear/", OrbitClearView.as_view(), name="clear"),
     path("export/", OrbitExportView.as_view(), name="export_all"),
     path("export/<uuid:entry_id>/", OrbitExportView.as_view(), name="export"),
-    # API/Stats
+    # Stats & Health
     path("stats/", OrbitStatsView.as_view(), name="stats"),
+    path("health/", OrbitHealthView.as_view(), name="health"),
 ]
