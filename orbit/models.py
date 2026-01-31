@@ -326,7 +326,7 @@ class OrbitEntry(models.Model):
 
         elif self.type == self.TYPE_SIGNAL:
             signal = payload.get("signal", "unknown")
-            sender = payload.get("sender", "?")
+            sender = payload.get("sender") or "?"
             # Clean up sender if it's a class reference
             if sender.startswith("<class '"):
                 sender = sender.replace("<class '", "").replace("'>", "")

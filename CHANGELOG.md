@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.4] - Unreleased
+
+### Fixed
+- **Critical Crash on Anonymous Signals**: Fixed `AttributeError` when a signal is sent with `sender=None` (Issue #7).
+  - Use safe navigation for sender name resolution in dashboard entries.
+
 ## [0.6.3] - 2026-01-25
 
 ### Added
