@@ -236,6 +236,11 @@
                     {% endif %}
                 </div>
                 <span class="text-xs font-mono text-orbit-text-secondary truncate flex-1">{{ related.summary }}</span>
+                <span class="text-xs text-orbit-text-muted
+                    {% if related.type == 'query' and related.is_top_slowest %}text-amber-500
+                    {% endif %}">
+                    {{ related.duration_ms|floatformat }}ms
+                </span>
                 <span class="text-xs text-orbit-text-muted">{{ related.created_at|time:"H:i:s" }}</span>
             </div>
             {% endfor %}
