@@ -284,8 +284,8 @@ class OrbitDetailPartial(OrbitProtectedView, View):
         # Get duplicate queries (same SQL) for query entries
         duplicate_entries = []
         if entry.type == OrbitEntry.TYPE_QUERY:
-            sql = entry.payload.get('sql', '')
-            if sql and entry.payload.get('is_duplicate'):
+            sql = entry.payload.get("sql", "")
+            if sql and entry.payload.get("is_duplicate"):
                 duplicate_entries = (
                     OrbitEntry.objects.filter(
                         type=OrbitEntry.TYPE_QUERY,
@@ -294,6 +294,60 @@ class OrbitDetailPartial(OrbitProtectedView, View):
                     .exclude(id=entry.id)
                     .order_by("-created_at")[:20]
                 )
+
+        # Compute duplicate query stats for REQUEST entries
+        duplicate_query_stats = None
+        if entry.type == OrbitEntry.TYPE_REQUEST and entry.family_hash:
+            # Filter to get only queries from this request
+            query_entries = OrbitEntry.objects.filter(
+                family_hash=entry.family_hash, type=OrbitEntry.TYPE_QUERY
+            ).only("payload")
+
+            total_duplicates = 0
+            query_groups = {}  # Group by SQL to find worst offender
+            query_ids = {}     # Keep track of an ID for each SQL to allow linking
+
+            for query in query_entries:
+                sql = query.payload.get("sql", "")
+                duplicate_count = query.payload.get("duplicate_count", 1)
+                is_duplicate = query.payload.get("is_duplicate", False)
+
+                # Count total duplicate executions
+                if is_duplicate:
+                    total_duplicates += 1
+
+                # Track which queries are duplicated (any query executed more than once)
+                if duplicate_count > 1:
+                    if sql not in query_groups:
+                        query_groups[sql] = duplicate_count
+                        query_ids[sql] = query.id
+                    else:
+                        # Update to the higher count (each execution increments duplicate_count)
+                        if duplicate_count > query_groups[sql]:
+                             query_groups[sql] = duplicate_count
+                             query_ids[sql] = query.id
+
+            # Find the most duplicated query
+            most_duplicated_sql = None
+            most_duplicated_count = 0
+            most_duplicated_query_id = None
+
+            if query_groups:
+                most_duplicated_sql = max(query_groups, key=query_groups.get)
+                most_duplicated_count = query_groups[most_duplicated_sql]
+                most_duplicated_query_id = query_ids.get(most_duplicated_sql)
+
+                # Truncate SQL for display (keep it readable in tooltip)
+                if len(most_duplicated_sql) > 120:
+                    most_duplicated_sql = most_duplicated_sql[:120] + "..."
+
+            duplicate_query_stats = {
+                "total_duplicates": total_duplicates,
+                "unique_duplicate_queries": len(query_groups),
+                "most_duplicated_sql": most_duplicated_sql,
+                "most_duplicated_count": most_duplicated_count,
+                "most_duplicated_query_id": most_duplicated_query_id,
+            }
 
         # Format payload as pretty JSON
         payload_json = json.dumps(
@@ -308,6 +362,7 @@ class OrbitDetailPartial(OrbitProtectedView, View):
                 "payload_json": payload_json,
                 "related_entries": related_entries,
                 "duplicate_entries": duplicate_entries,
+                "duplicate_query_stats": duplicate_query_stats,
             },
         )
 

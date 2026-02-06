@@ -1,6 +1,6 @@
 <!-- Entry Detail Panel -->
 <div class="space-y-6">
-    
+
     <!-- Entry Header -->
     <div class="flex items-start gap-4">
         <div class="w-12 h-12 rounded-xl flex items-center justify-center 
@@ -53,13 +53,13 @@
             <h3 class="text-lg font-medium text-orbit-text-primary capitalize">{{ entry.type }}</h3>
             <p class="text-sm text-orbit-text-muted font-mono">{{ entry.id }}</p>
         </div>
-        <a href="{% url 'orbit:export' entry.id %}" 
-           class="p-2 hover:bg-orbit-bg-tertiary rounded-lg transition-colors text-orbit-text-secondary hover:text-orbit-text-primary group" 
-           title="Export JSON">
+        <a href="{% url 'orbit:export' entry.id %}"
+            class="p-2 hover:bg-orbit-bg-tertiary rounded-lg transition-colors text-orbit-text-secondary hover:text-orbit-text-primary group"
+            title="Export JSON">
             <i data-lucide="download" class="w-5 h-5 group-hover:text-orbit-accent-cyan"></i>
         </a>
     </div>
-    
+
     <!-- Quick Stats -->
     <div class="grid grid-cols-3 gap-3">
         <div class="bg-orbit-bg-tertiary/50 rounded-lg p-3 text-center">
@@ -87,7 +87,7 @@
             </p>
         </div>
     </div>
-    
+
     <!-- Request-specific details -->
     {% if entry.type == 'request' %}
     <div class="space-y-3">
@@ -100,7 +100,7 @@
             <span class="text-sm font-medium text-orbit-accent-cyan">{{ entry.payload.method }}</span>
             <span class="text-sm text-orbit-text-primary font-mono truncate">{{ entry.payload.full_path }}</span>
         </div>
-        
+
         {% if entry.payload.client_ip %}
         <div class="flex items-center gap-2 text-sm">
             <i data-lucide="user" class="w-4 h-4 text-orbit-text-muted"></i>
@@ -111,16 +111,35 @@
             {% endif %}
         </div>
         {% endif %}
-        
+
         {% if entry.payload.query_count %}
         <div class="flex items-center gap-2 text-sm">
             <i data-lucide="database" class="w-4 h-4 text-orbit-text-muted"></i>
             <span class="text-orbit-text-secondary">{{ entry.payload.query_count }} queries</span>
         </div>
         {% endif %}
+
+        <!-- Duplicate Query Stats for REQUEST entries -->
+        {% if duplicate_query_stats and duplicate_query_stats.total_duplicates > 0 %}
+        <div class="space-y-1 mt-2">
+            <div class="flex items-center gap-2 text-sm">
+                <i data-lucide="alert-circle" class="w-4 h-4 text-violet-400"></i>
+                <span class="text-violet-400">{{ duplicate_query_stats.total_duplicates }} duplicate {{ duplicate_query_stats.total_duplicates|pluralize:"query,queries" }}</span>
+            </div>
+            
+            {% if duplicate_query_stats.most_duplicated_sql and duplicate_query_stats.most_duplicated_query_id %}
+            <div 
+                class="bg-slate-950/50 rounded-lg p-3 cursor-pointer hover:bg-slate-900/50 transition-colors border border-violet-500/20"
+                onclick="document.dispatchEvent(new CustomEvent('orbit:open-detail', {detail: {entryId: '{{ duplicate_query_stats.most_duplicated_query_id }}'}}))"
+                title="Click to view query details">
+                <p class="text-xs font-mono text-orbit-text-secondary break-all">{{ duplicate_query_stats.most_duplicated_sql }}</p>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
     </div>
     {% endif %}
-    
+
     <!-- Exception-specific details -->
     {% if entry.type == 'exception' %}
     <div class="bg-rose-500/10 border border-rose-500/20 rounded-lg p-4">
@@ -129,7 +148,7 @@
         </div>
         <p class="text-sm text-orbit-text-primary">{{ entry.payload.message }}</p>
     </div>
-    
+
     {% if entry.payload.traceback %}
     <div class="space-y-2">
         <h4 class="text-sm font-medium text-orbit-text-secondary flex items-center gap-2">
@@ -152,7 +171,7 @@
     </div>
     {% endif %}
     {% endif %}
-    
+
     <!-- Query-specific details -->
     {% if entry.type == 'query' %}
     <div class="space-y-3">
@@ -166,7 +185,7 @@
             {% endif %}
         </div>
         {% endif %}
-        
+
         {% if entry.payload.caller.filename %}
         <div class="flex items-center gap-2 text-sm">
             <i data-lucide="file-code" class="w-4 h-4 text-orbit-text-muted"></i>
@@ -177,7 +196,7 @@
         {% endif %}
     </div>
     {% endif %}
-    
+
     <!-- Full Payload JSON -->
     <div class="space-y-2">
         <h4 class="text-sm font-medium text-orbit-text-secondary flex items-center gap-2">
@@ -188,7 +207,7 @@
             <pre class="text-xs font-mono leading-relaxed" id="json-payload">{{ payload_json }}</pre>
         </div>
     </div>
-    
+
     <!-- Related Entries -->
     {% if related_entries %}
     <div class="space-y-2">
@@ -199,7 +218,7 @@
         <div class="space-y-1">
             {% for related in related_entries %}
             <div 
-                data-entry-id="{{ related.id }}"
+            data-entry-id="{{ related.id }}"
                 class="flex items-center gap-3 p-2 rounded-lg bg-orbit-bg-tertiary/50 hover:bg-orbit-bg-tertiary cursor-pointer transition-colors">
                 <div class="w-6 h-6 rounded flex items-center justify-center 
                     {% if related.type == 'request' %}bg-cyan-500/10 text-cyan-400
@@ -242,7 +261,7 @@
         </div>
     </div>
     {% endif %}
-    
+
     <!-- Duplicate Queries (N+1 Debug) -->
     {% if duplicate_entries %}
     <div class="mt-6">
@@ -257,7 +276,7 @@
         <div class="space-y-1 max-h-40 overflow-y-auto bg-orbit-bg-tertiary/30 rounded-lg p-2">
             {% for dup in duplicate_entries %}
             <div class="flex items-center gap-2 p-2 rounded hover:bg-orbit-bg-tertiary/50 cursor-pointer transition-colors"
-                 onclick="document.dispatchEvent(new CustomEvent('orbit:open-detail', {detail: {entryId: '{{ dup.id }}'}}))">
+                onclick="document.dispatchEvent(new CustomEvent('orbit:open-detail', {detail: {entryId: '{{ dup.id }}'}}))">
                 <div class="w-5 h-5 rounded flex items-center justify-center bg-emerald-500/10 text-emerald-400 flex-shrink-0">
                     <i data-lucide="database" class="w-3 h-3"></i>
                 </div>
@@ -270,7 +289,7 @@
         </div>
     </div>
     {% endif %}
-    
+
 </div>
 
 <script>
