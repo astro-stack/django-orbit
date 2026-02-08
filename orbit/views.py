@@ -283,12 +283,12 @@ class OrbitDetailPartial(OrbitProtectedView, View):
                     slow_rank=Window(
                         expression=RowNumber(),
                         partition_by=F("type"),
-                        order_by=F("duration_ms").desc(),
+                        order_by=F("duration_ms").desc(nulls_last=True),
                     )
                 )
                 .annotate(
                     is_top_slowest=Case(
-                        When(slow_rank__lte=3, then=True),
+                        When(type=OrbitEntry.TYPE_QUERY, slow_rank__lte=3, then=True),
                         default=False,
                         output_field=BooleanField(),
                     )
