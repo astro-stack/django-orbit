@@ -5,7 +5,6 @@ Dashboard views for the Orbit interface.
 """
 
 import json
-from typing import Optional
 
 from django.db.models import Window, F, Case, When, BooleanField
 from django.db.models.functions import RowNumber
@@ -85,8 +84,7 @@ class OrbitDashboardView(OrbitProtectedView, TemplateView):
         context["current_type"] = entry_type
 
         # Calculate statistics for dashboard
-        from django.db.models import Avg, Count, Sum
-        from django.db.models.functions import TruncHour
+        from django.db.models import Avg
         from datetime import timedelta
         from django.utils import timezone
 
