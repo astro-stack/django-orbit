@@ -282,6 +282,7 @@ class OrbitDetailPartial(OrbitProtectedView, View):
                 .annotate(
                     slow_rank=Window(
                         expression=RowNumber(),
+                        partition_by=F("type"),
                         order_by=F("duration_ms").desc(),
                     )
                 )
