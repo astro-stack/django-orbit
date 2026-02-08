@@ -239,7 +239,9 @@
                 <span class="text-xs text-orbit-text-muted
                     {% if related.type == 'query' and related.is_top_slowest %}text-amber-500
                     {% endif %}">
-                    {{ related.duration_ms|floatformat }}ms
+                    {% if related.duration_ms or related.duration_ms == 0 %}
+                    {{ related.duration_ms|floatformat:0 }}ms
+                    {% endif %}
                 </span>
                 <span class="text-xs text-orbit-text-muted">{{ related.created_at|time:"H:i:s" }}</span>
             </div>
