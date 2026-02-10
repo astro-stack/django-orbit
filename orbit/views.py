@@ -5,8 +5,9 @@ Dashboard views for the Orbit interface.
 """
 
 import json
-from typing import Optional
 
+from django.db.models import Window, F, Case, When, BooleanField
+from django.db.models.functions import RowNumber
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
@@ -83,8 +84,7 @@ class OrbitDashboardView(OrbitProtectedView, TemplateView):
         context["current_type"] = entry_type
 
         # Calculate statistics for dashboard
-        from django.db.models import Avg, Count, Sum
-        from django.db.models.functions import TruncHour
+        from django.db.models import Avg
         from datetime import timedelta
         from django.utils import timezone
 
@@ -273,12 +273,27 @@ class OrbitDetailPartial(OrbitProtectedView, View):
         entry = get_object_or_404(OrbitEntry, id=entry_id)
 
         # Get related entries (same family)
+        # Annotate top 3 slowest by duration
         related_entries = []
         if entry.family_hash:
             related_entries = (
                 OrbitEntry.objects.filter(family_hash=entry.family_hash)
                 .exclude(id=entry.id)
-                .order_by("created_at")[:50]
+                .annotate(
+                    slow_rank=Window(
+                        expression=RowNumber(),
+                        partition_by=F("type"),
+                        order_by=F("duration_ms").desc(nulls_last=True),
+                    )
+                )
+                .annotate(
+                    is_top_slowest=Case(
+                        When(type=OrbitEntry.TYPE_QUERY, slow_rank__lte=3, then=True),
+                        default=False,
+                        output_field=BooleanField(),
+                    )
+                )
+                .order_by("created_at")[:100]
             )
 
         # Get duplicate queries (same SQL) for query entries
