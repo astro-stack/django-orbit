@@ -164,7 +164,7 @@ class TestDuplicateQueryStatsBackend:
                 "method": "GET",
                 "path": "/test/",
                 "status_code": 200,
-                "query_count": 7,
+                "query_count": 8,
             },
             duration_ms=100.0,
         )
