@@ -57,7 +57,7 @@ def get_config():
     Returns:
         dict: Complete configuration dictionary
     """
-    user_config = getattr(settings, "ORBIT_CONFIG", {})
+    user_config = getattr(settings, "ORBIT", {}) or getattr(settings, "ORBIT_CONFIG", {})
     config = DEFAULTS.copy()
     config.update(user_config)
     return config

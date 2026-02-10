@@ -9,11 +9,12 @@ import threading
 import time
 import traceback
 from contextlib import contextmanager
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from django.db import connection
 
 from orbit.conf import get_config
+from orbit.watchers import cachalot_disabled
 
 # Thread-local storage for tracking queries per request
 _local = threading.local()
@@ -203,4 +204,8 @@ def save_queries_to_orbit(
         entries.append(entry)
 
     if entries:
-        OrbitEntry.objects.bulk_create(entries)
+        try:
+            with cachalot_disabled():
+                OrbitEntry.objects.bulk_create(entries)
+        except Exception:
+            pass

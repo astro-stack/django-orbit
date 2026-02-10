@@ -6,9 +6,10 @@ Custom Python logging handler that captures logs to OrbitEntry.
 
 import logging
 import threading
-from typing import Any, Dict, Optional
+from typing import Optional
 
-from orbit.conf import get_config, is_enabled
+from orbit.conf import get_config
+from orbit.watchers import cachalot_disabled
 
 # Thread-local storage for current family hash
 _local = threading.local()
@@ -69,7 +70,6 @@ class OrbitLogHandler(logging.Handler):
         try:
             self._save_log_entry(record)
         except Exception:
-            # Don't let logging errors crash the application
             pass
 
     def _save_log_entry(self, record: logging.LogRecord) -> None:
@@ -144,11 +144,15 @@ class OrbitLogHandler(logging.Handler):
         family_hash = get_current_family_hash()
 
         # Create entry
-        OrbitEntry.objects.create(
-            type=OrbitEntry.TYPE_LOG,
-            family_hash=family_hash,
-            payload=payload,
-        )
+        try:
+            with cachalot_disabled():
+                OrbitEntry.objects.create(
+                    type=OrbitEntry.TYPE_LOG,
+                    family_hash=family_hash,
+                    payload=payload,
+                )
+        except Exception:
+            pass
 
 
 class OrbitLogContext:
