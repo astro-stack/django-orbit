@@ -13,6 +13,7 @@ from django.http import HttpRequest, HttpResponse
 
 from orbit.conf import get_config, should_ignore_path
 from orbit.handlers import set_current_family_hash
+from orbit.watchers import cachalot_disabled
 from orbit.recorders import (
     OrbitQueryWrapper,
     clear_current_context,
@@ -225,12 +226,16 @@ class OrbitMiddleware:
             payload["had_exception"] = False
 
         # Create entry
-        OrbitEntry.objects.create(
-            type=OrbitEntry.TYPE_REQUEST,
-            family_hash=family_hash,
-            payload=payload,
-            duration_ms=duration_ms,
-        )
+        try:
+            with cachalot_disabled():
+                OrbitEntry.objects.create(
+                    type=OrbitEntry.TYPE_REQUEST,
+                    family_hash=family_hash,
+                    payload=payload,
+                    duration_ms=duration_ms,
+                )
+        except Exception:
+            pass
 
     def _save_queries(self, queries: list, family_hash: str) -> None:
         """
@@ -249,7 +254,11 @@ class OrbitMiddleware:
             entries.append(entry)
 
         if entries:
-            OrbitEntry.objects.bulk_create(entries)
+            try:
+                with cachalot_disabled():
+                    OrbitEntry.objects.bulk_create(entries)
+            except Exception:
+                pass
 
     def _save_exception(
         self,
@@ -271,11 +280,15 @@ class OrbitMiddleware:
             "request_host": request_data.get("host"),
         }
 
-        OrbitEntry.objects.create(
-            type=OrbitEntry.TYPE_EXCEPTION,
-            family_hash=family_hash,
-            payload=payload,
-        )
+        try:
+            with cachalot_disabled():
+                OrbitEntry.objects.create(
+                    type=OrbitEntry.TYPE_EXCEPTION,
+                    family_hash=family_hash,
+                    payload=payload,
+                )
+        except Exception:
+            pass
 
     def _cleanup_if_needed(self, config: dict) -> None:
         """
@@ -289,7 +302,11 @@ class OrbitMiddleware:
         import random
 
         if random.random() < 0.1:
-            OrbitEntry.objects.cleanup_old_entries(limit=limit)
+            try:
+                with cachalot_disabled():
+                    OrbitEntry.objects.cleanup_old_entries(limit=limit)
+            except Exception:
+                pass
 
     def process_exception(self, request: HttpRequest, exception: Exception) -> None:
         """
