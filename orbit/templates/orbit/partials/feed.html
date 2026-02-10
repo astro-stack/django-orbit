@@ -86,6 +86,9 @@
                             {% endif %}">{{ status }}</span>
                         {% endwith %}
                         <span class="text-xs font-medium text-orbit-accent-cyan">{{ entry.payload.method }}</span>
+                        {% if entry.payload.duplicate_query_count > 0 %}
+                        <span class="text-xs font-mono px-2 py-0.5 rounded bg-violet-500/20 text-violet-400">DUP</span>
+                        {% endif %}
                     {% elif entry.type == 'log' %}
                         {% with level=entry.payload.level %}
                         <span class="text-xs font-mono px-2 py-0.5 rounded 

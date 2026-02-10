@@ -6,18 +6,16 @@ and coordinates SQL query recording.
 """
 
 import time
-import traceback
 from typing import Callable, Optional
 
 from django.db import connection
 from django.http import HttpRequest, HttpResponse
 
-from orbit.conf import get_config, is_enabled, should_ignore_path
-from orbit.handlers import OrbitLogContext, set_current_family_hash
+from orbit.conf import get_config, should_ignore_path
+from orbit.handlers import set_current_family_hash
 from orbit.recorders import (
     OrbitQueryWrapper,
     clear_current_context,
-    get_current_queries,
 )
 from orbit.utils import (
     extract_client_ip,
@@ -108,12 +106,18 @@ class OrbitMiddleware:
 
             # Save request entry
             if config.get("RECORD_REQUESTS", True):
+                # Check for duplicates across all queries in this request
+                duplicate_query_count = sum(
+                    count - 1 for count in query_wrapper.query_hashes.values() if count > 1
+                )
+                
                 self._save_request(
                     request_data=request_data,
                     response=response,
                     family_hash=family_hash,
                     duration_ms=duration_ms,
                     query_count=len(query_wrapper.queries),
+                    duplicate_query_count=duplicate_query_count,
                     exception_info=exception_info,
                 )
 
@@ -176,6 +180,7 @@ class OrbitMiddleware:
         family_hash: str,
         duration_ms: float,
         query_count: int,
+        duplicate_query_count: int = 0,
         exception_info: Optional[dict] = None,
     ) -> None:
         """
@@ -188,6 +193,7 @@ class OrbitMiddleware:
             **request_data,
             "duration_ms": round(duration_ms, 3),
             "query_count": query_count,
+            "duplicate_query_count": duplicate_query_count,
         }
 
         # Add response data if available
