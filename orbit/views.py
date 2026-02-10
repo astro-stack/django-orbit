@@ -352,7 +352,7 @@ class OrbitDetailPartial(OrbitProtectedView, View):
                 most_duplicated_count = query_groups[most_duplicated_sql]
                 most_duplicated_query_id = query_ids.get(most_duplicated_sql)
 
-                # Truncate SQL for display (keep it readable in tooltip)
+                # Truncate SQL for display to keep it readable in the UI
                 if len(most_duplicated_sql) > 120:
                     most_duplicated_sql = most_duplicated_sql[:120] + "..."
 
