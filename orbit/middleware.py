@@ -226,7 +226,6 @@ class OrbitMiddleware:
             payload["had_exception"] = False
 
         # Create entry
-        # Create entry
         try:
             with cachalot_disabled():
                 OrbitEntry.objects.create(
