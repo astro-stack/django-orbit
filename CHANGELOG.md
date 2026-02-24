@@ -9,7 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.6.4] - Unreleased
 
+### Added
+- **Duplicate Query Detection (N+1)**: Identify and highlight repeated SQL queries in a single request
+  - "DUP" badge in request feed
+  - Detailed duplicate stats in entry details (count, most repeated query)
+  - Interactive filter to view only duplicate queries
+- **Top Slowest Queries**: Highlight the most expensive queries in the detail view
+  - Visual warning for slow queries
+  - Execution time sorting
+- **Configuration**: Added support for standard `ORBIT` setting in `settings.py` (backwards compatible with `ORBIT_CONFIG`)
+
 ### Fixed
+- **Critical Recursion Error with django-cachalot**: Fixed infinite loop when using django-cachalot
+  - Wrapped all internal Orbit writes in `cachalot_disabled()` context manager
 - **Critical Crash on Anonymous Signals**: Fixed `AttributeError` when a signal is sent with `sender=None` (Issue #7).
   - Use safe navigation for sender name resolution in dashboard entries.
 

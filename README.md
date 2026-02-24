@@ -6,7 +6,10 @@
 
 *A modern debugging and observability tool that orbits your Django application without touching it.*
 
-![Demo](demo.gif)
+## Preview
+<img width="1919" height="905" alt="image" src="https://github.com/user-attachments/assets/2a88b143-3a25-4da4-aa6c-f61226536221" />
+<img width="1919" height="904" alt="image" src="https://github.com/user-attachments/assets/3887ffd3-bfc2-443f-927d-a633bb9f9242" />
+<img width="1919" height="905" alt="image" src="https://github.com/user-attachments/assets/195ae1ca-5ea4-4eac-bb26-8ddf8d52fe2a" />
 
 [![Star on GitHub](https://img.shields.io/github/stars/astro-stack/django-orbit?style=social)](https://github.com/astro-stack/django-orbit)
 
