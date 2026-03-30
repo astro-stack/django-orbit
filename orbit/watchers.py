@@ -18,6 +18,36 @@ from orbit.conf import get_config
 logger = logging.getLogger(__name__)
 
 
+_orbit_table_ready: bool = False
+
+
+def _table_exists() -> bool:
+    """Return True if the orbit_orbitentry table exists in the database.
+
+    During `manage.py migrate` on a fresh database the table has not been
+    created yet.  Any attempt to write to it would raise an InternalError
+    that poisons the surrounding PostgreSQL transaction and causes all
+    subsequent DDL to fail.  Call this guard before every OrbitEntry write.
+
+    The result is cached permanently once the table is confirmed to exist,
+    so the introspection query is issued at most once per process lifetime.
+    This prevents excessive connection usage when many watcher events fire
+    per request (Issue #15).
+    """
+    global _orbit_table_ready
+    if _orbit_table_ready:
+        return True
+    from django.db import connection
+
+    try:
+        exists = "orbit_orbitentry" in connection.introspection.table_names()
+    except Exception:
+        return False
+    if exists:
+        _orbit_table_ready = True
+    return exists
+
+
 # =============================================================================
 # Command Watcher
 # =============================================================================
@@ -57,6 +87,9 @@ def record_command(
         "IGNORE_COMMANDS", ["runserver", "shell", "dbshell", "showmigrations"]
     )
     if command_name in ignore_commands:
+        return
+
+    if not _table_exists():
         return
 
     from orbit.models import OrbitEntry
@@ -237,6 +270,9 @@ def record_cache_operation(
         return
 
     if not config.get("RECORD_CACHE", True):
+        return
+
+    if not _table_exists():
         return
 
     from orbit.models import OrbitEntry
@@ -515,6 +551,9 @@ def record_model_event(sender, instance, action: str, changes: Optional[Dict] = 
     if sender.__name__ == "OrbitEntry":
         return
 
+    if not _table_exists():
+        return
+
     from orbit.models import OrbitEntry
 
     model_name = f"{sender._meta.app_label}.{sender._meta.model_name}"
@@ -546,6 +585,11 @@ def record_model_event(sender, instance, action: str, changes: Optional[Dict] = 
 def _on_pre_save(sender, instance, raw, using, update_fields, **kwargs):
     """Pre-save signal handler to capture field changes."""
     if raw:
+        return
+
+    # Skip Orbit's own model to avoid extra SELECT on every OrbitEntry write
+    if sender.__name__ == "OrbitEntry":
+        instance._orbit_original = None
         return
 
     # Store original values for comparison in post_save
