@@ -12,6 +12,14 @@ import functools
 import logging
 import time
 from typing import Any, Dict, Optional
+from contextlib import contextmanager
+
+try:
+    from cachalot.api import cachalot_disabled
+except ImportError:
+    @contextmanager
+    def cachalot_disabled(all_queries=False):
+        yield
 
 from orbit.conf import get_config
 
@@ -115,11 +123,12 @@ def record_command(
     }
 
     try:
-        OrbitEntry.objects.create(
-            type=OrbitEntry.TYPE_COMMAND,
-            payload=payload,
-            duration_ms=duration_ms,
-        )
+        with cachalot_disabled():
+            OrbitEntry.objects.create(
+                type=OrbitEntry.TYPE_COMMAND,
+                payload=payload,
+                duration_ms=duration_ms,
+            )
     except Exception:
         pass
 
@@ -294,11 +303,12 @@ def record_cache_operation(
         payload["keys_count"] = keys_count
 
     try:
-        OrbitEntry.objects.create(
-            type=OrbitEntry.TYPE_CACHE,
-            payload=payload,
-            duration_ms=duration_ms,
-        )
+        with cachalot_disabled():
+            OrbitEntry.objects.create(
+                type=OrbitEntry.TYPE_CACHE,
+                payload=payload,
+                duration_ms=duration_ms,
+            )
     except Exception:
         pass
 
@@ -574,10 +584,11 @@ def record_model_event(sender, instance, action: str, changes: Optional[Dict] = 
         pass
 
     try:
-        OrbitEntry.objects.create(
-            type=OrbitEntry.TYPE_MODEL,
-            payload=payload,
-        )
+        with cachalot_disabled():
+            OrbitEntry.objects.create(
+                type=OrbitEntry.TYPE_MODEL,
+                payload=payload,
+            )
     except Exception:
         pass
 
@@ -718,11 +729,12 @@ def record_http_client_request(
         payload["error"] = error
 
     try:
-        OrbitEntry.objects.create(
-            type=OrbitEntry.TYPE_HTTP_CLIENT,
-            payload=payload,
-            duration_ms=duration_ms,
-        )
+        with cachalot_disabled():
+            OrbitEntry.objects.create(
+                type=OrbitEntry.TYPE_HTTP_CLIENT,
+                payload=payload,
+                duration_ms=duration_ms,
+            )
     except Exception:
         pass
 
@@ -839,9 +851,10 @@ def record_mail(message):
                 break
 
     try:
-        OrbitEntry.objects.create(
-            type=OrbitEntry.TYPE_MAIL,
-            payload=payload,
+        with cachalot_disabled():
+            OrbitEntry.objects.create(
+                type=OrbitEntry.TYPE_MAIL,
+                payload=payload,
         )
     except Exception:
         pass
@@ -963,10 +976,11 @@ def record_signal(signal, sender, **kwargs):
     }
 
     try:
-        OrbitEntry.objects.create(
-            type=OrbitEntry.TYPE_SIGNAL,
-            payload=payload,
-        )
+        with cachalot_disabled():
+            OrbitEntry.objects.create(
+                type=OrbitEntry.TYPE_SIGNAL,
+                payload=payload,
+            )
     except Exception:
         pass
 
@@ -1083,11 +1097,12 @@ def record_celery_task(
         payload["error"] = exception
 
     try:
-        OrbitEntry.objects.create(
-            type=OrbitEntry.TYPE_JOB,
-            payload=payload,
-            duration_ms=duration_ms,
-        )
+        with cachalot_disabled():
+            OrbitEntry.objects.create(
+                type=OrbitEntry.TYPE_JOB,
+                payload=payload,
+                duration_ms=duration_ms,
+            )
     except Exception:
         pass
 
@@ -1206,11 +1221,12 @@ def record_redis_operation(
         payload["error"] = error
 
     try:
-        OrbitEntry.objects.create(
-            type=OrbitEntry.TYPE_REDIS,
-            payload=payload,
-            duration_ms=duration_ms,
-        )
+        with cachalot_disabled():
+            OrbitEntry.objects.create(
+                type=OrbitEntry.TYPE_REDIS,
+                payload=payload,
+                duration_ms=duration_ms,
+            )
     except Exception:
         pass
 
@@ -1340,10 +1356,11 @@ def record_permission_check(
         payload["backend"] = backend
 
     try:
-        OrbitEntry.objects.create(
-            type=OrbitEntry.TYPE_GATE,
-            payload=payload,
-        )
+        with cachalot_disabled():
+            OrbitEntry.objects.create(
+                type=OrbitEntry.TYPE_GATE,
+                payload=payload,
+            )
     except Exception:
         pass
 
@@ -1444,11 +1461,12 @@ def install_djangoq_watcher():
                 payload["error"] = task.get('result', 'Unknown error')
 
             try:
-                OrbitEntry.objects.create(
-                    type=OrbitEntry.TYPE_JOB,
-                    payload=payload,
-                    duration_ms=duration_ms,
-                )
+                with cachalot_disabled():
+                    OrbitEntry.objects.create(
+                        type=OrbitEntry.TYPE_JOB,
+                        payload=payload,
+                        duration_ms=duration_ms,
+                    )
             except Exception:
                 pass
 
@@ -1512,11 +1530,12 @@ def install_rq_watcher():
                 payload["error"] = str(job.exc_info) if job.exc_info else "Unknown error"
 
             try:
-                OrbitEntry.objects.create(
-                    type=OrbitEntry.TYPE_JOB,
-                    payload=payload,
-                    duration_ms=duration_ms,
-                )
+                with cachalot_disabled():
+                    OrbitEntry.objects.create(
+                        type=OrbitEntry.TYPE_JOB,
+                        payload=payload,
+                        duration_ms=duration_ms,
+                    )
             except Exception:
                 pass
 
@@ -1589,11 +1608,12 @@ def install_apscheduler_watcher():
                 payload["error"] = error[:500]
 
             try:
-                OrbitEntry.objects.create(
-                    type=OrbitEntry.TYPE_JOB,
-                    payload=payload,
-                    duration_ms=duration_ms,
-                )
+                with cachalot_disabled():
+                    OrbitEntry.objects.create(
+                        type=OrbitEntry.TYPE_JOB,
+                        payload=payload,
+                        duration_ms=duration_ms,
+                    )
             except Exception:
                 pass
 
@@ -1674,11 +1694,12 @@ def install_celerybeat_watcher():
             }
 
             try:
-                OrbitEntry.objects.create(
-                    type=OrbitEntry.TYPE_JOB,
-                    payload=payload,
-                    duration_ms=0,
-                )
+                with cachalot_disabled():
+                    OrbitEntry.objects.create(
+                        type=OrbitEntry.TYPE_JOB,
+                        payload=payload,
+                        duration_ms=0,
+                    )
             except Exception:
                 pass
 
@@ -1696,11 +1717,12 @@ def install_celerybeat_watcher():
             }
 
             try:
-                OrbitEntry.objects.create(
-                    type=OrbitEntry.TYPE_JOB,
-                    payload=payload,
-                    duration_ms=0,
-                )
+                with cachalot_disabled():
+                    OrbitEntry.objects.create(
+                        type=OrbitEntry.TYPE_JOB,
+                        payload=payload,
+                        duration_ms=0,
+                    )
             except Exception:
                 pass
 
@@ -1760,11 +1782,12 @@ def record_transaction(
         payload["exception"] = exception
 
     try:
-        OrbitEntry.objects.create(
-            type=OrbitEntry.TYPE_TRANSACTION,
-            payload=payload,
-            duration_ms=duration_ms,
-        )
+        with cachalot_disabled():
+            OrbitEntry.objects.create(
+                type=OrbitEntry.TYPE_TRANSACTION,
+                payload=payload,
+                duration_ms=duration_ms,
+            )
     except Exception:
         pass
 
@@ -1912,11 +1935,12 @@ def record_storage_operation(
         payload["exists"] = exists
 
     try:
-        OrbitEntry.objects.create(
-            type=OrbitEntry.TYPE_STORAGE,
-            payload=payload,
-            duration_ms=duration_ms,
-        )
+        with cachalot_disabled():
+            OrbitEntry.objects.create(
+                type=OrbitEntry.TYPE_STORAGE,
+                payload=payload,
+                duration_ms=duration_ms,
+            )
     except Exception:
         pass
 
