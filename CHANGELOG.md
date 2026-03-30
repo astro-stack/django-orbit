@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.6.4] - Unreleased
+## [0.6.4] - 2026-03-30
 
 ### Added
 - **Duplicate Query Detection (N+1)**: Identify and highlight repeated SQL queries in a single request
@@ -20,10 +20,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Configuration**: Added support for standard `ORBIT` setting in `settings.py` (backwards compatible with `ORBIT_CONFIG`)
 
 ### Fixed
-- **Critical Recursion Error with django-cachalot**: Fixed infinite loop when using django-cachalot
+- **Critical Recursion Error with django-cachalot** (Issue #10): Fixed infinite loop when using django-cachalot
   - Wrapped all internal Orbit writes in `cachalot_disabled()` context manager
 - **Critical Crash on Anonymous Signals**: Fixed `AttributeError` when a signal is sent with `sender=None` (Issue #7).
   - Use safe navigation for sender name resolution in dashboard entries.
+- **Database connections exhausted** (Issue #15): `_table_exists()` was running a full schema
+  introspection query on every watcher event (cache hit, model save, etc.), spiking DB connections
+  under load.  The result is now cached at process level so the introspection query runs at most once.
+  - Added missing `_table_exists()` guard to `record_model_event()`.
+  - `_on_pre_save` now skips `OrbitEntry` to eliminate a spurious SELECT on every internal write.
+- **`migrate` fails on fresh database** (Issue #16): Added `_table_exists()` guard to
+  `record_command()` and `record_cache_operation()` so Orbit never tries to INSERT into
+  `orbit_orbitentry` before migrations have created it, preventing PostgreSQL transaction poisoning.
 
 ## [0.6.3] - 2026-01-25
 
