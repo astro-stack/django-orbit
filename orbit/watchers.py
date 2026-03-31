@@ -706,6 +706,9 @@ def record_http_client_request(
     if not config.get("RECORD_HTTP_CLIENT", True):
         return
 
+    if not _table_exists():
+        return
+
     from orbit.models import OrbitEntry
     from orbit.utils import filter_sensitive_data
 
@@ -816,6 +819,9 @@ def record_mail(message):
         return
 
     if not config.get("RECORD_MAIL", True):
+        return
+
+    if not _table_exists():
         return
 
     from orbit.models import OrbitEntry
@@ -937,6 +943,9 @@ def record_signal(signal, sender, **kwargs):
     # Check if signal should be ignored
     ignore_signals = config.get("IGNORE_SIGNALS", [])
     if signal_name in ignore_signals:
+        return
+
+    if not _table_exists():
         return
 
     from orbit.models import OrbitEntry
@@ -1063,6 +1072,9 @@ def record_celery_task(
         return
 
     if not config.get("RECORD_JOBS", True):
+        return
+
+    if not _table_exists():
         return
 
     from orbit.models import OrbitEntry
@@ -1207,6 +1219,9 @@ def record_redis_operation(
     if not config.get("RECORD_REDIS", True):
         return
 
+    if not _table_exists():
+        return
+
     from orbit.models import OrbitEntry
 
     payload = {
@@ -1341,6 +1356,9 @@ def record_permission_check(
     if not config.get("RECORD_GATES", True):
         return
 
+    if not _table_exists():
+        return
+
     from orbit.models import OrbitEntry
 
     payload = {
@@ -1441,6 +1459,9 @@ def install_djangoq_watcher():
             if not config.get("ENABLED", True) or not config.get("RECORD_JOBS", True):
                 return
 
+            if not _table_exists():
+                return
+
             task_id = task.get('id', '')
             start_time = getattr(_task_start_times, 'times', {}).get(task_id)
             duration_ms = 0
@@ -1507,6 +1528,9 @@ def install_rq_watcher():
         def patched_perform_job(self, job, queue, *args, **kwargs):
             config = get_config()
             if not config.get("ENABLED", True) or not config.get("RECORD_JOBS", True):
+                return original_perform_job(self, job, queue, *args, **kwargs)
+
+            if not _table_exists():
                 return original_perform_job(self, job, queue, *args, **kwargs)
 
             start_time = time.time()
@@ -1577,6 +1601,9 @@ def install_apscheduler_watcher():
         def job_listener(event):
             config = get_config()
             if not config.get("ENABLED", True) or not config.get("RECORD_JOBS", True):
+                return
+
+            if not _table_exists():
                 return
 
             if not isinstance(event, JobExecutionEvent):
@@ -1681,6 +1708,9 @@ def install_celerybeat_watcher():
             if not config.get("ENABLED", True) or not config.get("RECORD_JOBS", True):
                 return
 
+            if not _table_exists():
+                return
+
             action = "created" if created else "updated"
             
             payload = {
@@ -1706,6 +1736,9 @@ def install_celerybeat_watcher():
         def periodic_task_deleted(sender, instance, **kwargs):
             config = get_config()
             if not config.get("ENABLED", True) or not config.get("RECORD_JOBS", True):
+                return
+
+            if not _table_exists():
                 return
 
             payload = {
@@ -1766,6 +1799,9 @@ def record_transaction(
         return
 
     if not config.get("RECORD_TRANSACTIONS", True):
+        return
+
+    if not _table_exists():
         return
 
     from orbit.models import OrbitEntry
