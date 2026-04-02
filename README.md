@@ -6,7 +6,7 @@
 
 *A debugging and observability dashboard that orbits your app without touching it.*
 
-<img width="1919" height="905" alt="Django Orbit Dashboard" src="https://github.com/user-attachments/assets/2a88b143-3a25-4da4-aa6c-f61226536221" />
+<img width="100%" alt="Django Orbit Dashboard" src="https://github.com/user-attachments/assets/2a88b143-3a25-4da4-aa6c-f61226536221" />
 
 [![PyPI version](https://img.shields.io/pypi/v/django-orbit?style=flat-square)](https://pypi.org/project/django-orbit/)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue?style=flat-square&logo=python)](https://python.org)
