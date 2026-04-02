@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-04-02
+
+### Added
+
+- **MCP Server** (`python manage.py orbit_mcp`): Expose Orbit telemetry as an
+  [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server so AI
+  assistants like Claude, Cursor, and Copilot can query your app's observability
+  data directly.
+
+  Tools available to the AI:
+  - `get_recent_requests` — last N HTTP requests with status, path, duration
+  - `get_slow_queries` — SQL queries above the slow-query threshold, sorted by duration
+  - `get_exceptions` — exceptions in a given time window with full traceback
+  - `get_n1_patterns` — requests where N+1 duplicate queries were detected
+  - `search_entries` — keyword search across all entry types
+  - `get_request_detail` — every event (queries, logs, exceptions) for one request via `family_hash`
+  - `get_stats_summary` — error rate, avg response time, cache hit rate, top error paths
+
+- **New optional dependency**: `pip install django-orbit[mcp]` installs the `mcp>=1.0` package.
+  The core package remains dependency-free.
+
+### Configuration
+
+```python
+ORBIT_CONFIG = {
+    'MCP_ENABLED': True,  # default
+}
+```
+
+### AI assistant setup
+
+```json
+// claude_desktop_config.json  or  .cursor/mcp.json
+{
+  "mcpServers": {
+    "django-orbit": {
+      "command": "python",
+      "args": ["manage.py", "orbit_mcp"],
+      "cwd": "/path/to/your/project"
+    }
+  }
+}
+```
+
 ## [0.6.4] - 2026-03-30
 
 ### Added

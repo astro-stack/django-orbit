@@ -47,6 +47,8 @@ DEFAULTS = {
     # Command watcher settings
     "IGNORE_COMMANDS": ["runserver", "shell", "dbshell", "showmigrations"],
     "MAX_COMMAND_OUTPUT": 5000,
+    # MCP server (v0.7.0+)
+    "MCP_ENABLED": True,
 }
 
 

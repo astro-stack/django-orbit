@@ -76,6 +76,10 @@ Each watcher is registered via `@module_registry.register(name)`. If initializat
 
 Every watcher's write path calls `_table_exists()` before touching the DB. The result is cached permanently once `True`. This prevents `InternalError` during `migrate` on a fresh DB (issue #15/#16) and avoids excessive DB connections.
 
+### MCP Server (`orbit/mcp_server.py`, `orbit/management/commands/orbit_mcp.py`)
+
+`create_mcp_server()` builds a `FastMCP` instance (from the optional `mcp>=1.0` package) that exposes 7 tools for AI assistants: `get_recent_requests`, `get_slow_queries`, `get_exceptions`, `get_n1_patterns`, `get_request_detail`, `search_entries`, `get_stats_summary`. Launched via `python manage.py orbit_mcp` using stdio transport. Install with `pip install django-orbit[mcp]`.
+
 ### Configuration (`orbit/conf.py`)
 
 All behavior is controlled via `ORBIT_CONFIG` in Django settings. `get_config()` merges user config with defaults. Important keys: `ENABLED`, `RECORD_*` flags, `AUTH_CHECK` (callable), `SLOW_QUERY_THRESHOLD_MS`, `STORAGE_LIMIT`, `WATCHER_FAIL_SILENTLY`.

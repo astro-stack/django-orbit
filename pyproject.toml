@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "django-orbit"
-version = "0.6.4"
+version = "0.7.0"
 description = "Satellite Observability for Django - A modern debugging and observability tool"
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
 authors = [
     {name = "Django Orbit Contributors"}
 ]
@@ -32,7 +32,7 @@ classifiers = [
     "Framework :: Django :: 4.2",
     "Framework :: Django :: 5.0",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
@@ -50,6 +50,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+mcp = [
+    "mcp>=1.0",
+]
 dev = [
     "pytest>=7.0",
     "pytest-django>=4.5",
@@ -59,6 +62,7 @@ dev = [
     "flake8>=6.0",
     "mypy>=1.0",
     "django-stubs>=4.0",
+    "mcp>=1.0",
 ]
 
 [project.urls]
