@@ -8,6 +8,7 @@ Regression test for GitHub issue #16.
 
 import pytest
 from unittest.mock import patch
+from django.test import override_settings
 from orbit.models import OrbitEntry
 import orbit.watchers as watchers
 
@@ -180,6 +181,7 @@ def test_record_http_client_request_attempts_write_when_table_present(monkeypatc
                                 status_code=201, duration_ms=80.0)
 
 
+@override_settings(ORBIT_CONFIG={"ENABLED": True, "RECORD_TRANSACTIONS": True})
 def test_record_transaction_attempts_write_when_table_present(monkeypatch):
     monkeypatch.setattr(watchers, "_table_exists", lambda: True)
     _assert_db_write_attempted(watchers.record_transaction,

@@ -16,6 +16,7 @@ This file documents and regression-tests that behaviour.
 import pytest
 from unittest.mock import patch, call
 from django.db import connection
+from django.test import override_settings
 import orbit.watchers as watchers
 from orbit.models import OrbitEntry
 
@@ -77,6 +78,12 @@ def test_table_names_not_called_when_cache_is_warm(monkeypatch):
     mock_table_names.assert_not_called()
 
 
+@pytest.mark.django_db
+@override_settings(ORBIT_CONFIG={
+    "ENABLED": True,
+    "RECORD_TRANSACTIONS": True,  # Must be True here; disabled globally to avoid pytest-django noise
+    "RECORD_SIGNALS": False,
+})
 def test_each_record_function_calls_table_exists_once(monkeypatch):
     """
     Each record_* function must call _table_exists() before writing.

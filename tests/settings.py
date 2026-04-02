@@ -25,5 +25,6 @@ ORBIT_CONFIG = {
     "RECORD_HTTP_CLIENT": True,
     "RECORD_DUMPS": True,
     "RECORD_MAIL": True,
-    "RECORD_SIGNALS": False,  # Disable signals in tests to avoid noise
+    "RECORD_SIGNALS": False,      # Disable signals in tests to avoid noise
+    "RECORD_TRANSACTIONS": False, # Transaction watcher intercepts pytest-django's own atomic wrapper
 }

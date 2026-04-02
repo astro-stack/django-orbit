@@ -2000,17 +2000,19 @@ def install_storage_watcher(force: bool = False):
         classes_to_patch = [Storage, FileSystemStorage]
         
         # Try to include django-storages S3 backend if available
+        # Note: storages raises ImproperlyConfigured (not ImportError) when boto3 is missing,
+        # so we catch any Exception here to avoid killing the entire storage watcher.
         try:
             from storages.backends.s3boto3 import S3Boto3Storage
             classes_to_patch.append(S3Boto3Storage)
-        except ImportError:
+        except Exception:
             pass
-            
+
         # Try to include Google Cloud Storage if available
         try:
             from storages.backends.gcloud import GoogleCloudStorage
             classes_to_patch.append(GoogleCloudStorage)
-        except ImportError:
+        except Exception:
             pass
         
         # Helper to patch a class

@@ -198,10 +198,20 @@ class TestCacheOperationRecording(TestCase):
 
 class TestCacheWatcherIntegration(TestCase):
     """Integration tests for the cache watcher."""
-    
+
     def setUp(self):
         from orbit.models import OrbitEntry
         OrbitEntry.objects.all().delete()
+
+    def tearDown(self):
+        # These tests reset _cache_patched and patch a temporary CACHES override.
+        # After the @override_settings on each method reverts, Django creates a fresh
+        # cache instance that is no longer patched. Re-install here (with original
+        # settings already restored) so subsequent tests see a patched cache.
+        import orbit.watchers as watchers
+        watchers._cache_patched = False
+        watchers.install_cache_watcher()
+        super().tearDown()
     
     @override_settings(
         ORBIT_CONFIG={"ENABLED": True, "RECORD_CACHE": True},
