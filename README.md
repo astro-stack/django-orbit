@@ -32,6 +32,7 @@
 - [MCP Server — AI Assistant Integration](#-mcp-server--ai-assistant-integration)
 - [Background Job Integrations](#-background-job-integrations)
 - [Health & Plug-and-Play](#-health--plug-and-play)
+- [Storage Backends](#️-storage-backends)
 - [Security](#️-security)
 - [Roadmap](#️-roadmap)
 - [Contributing](#-contributing)
@@ -295,6 +296,37 @@ get_failed_watchers()
 
 ---
 
+## 🗄️ Storage Backends
+
+By default Orbit stores events in your project's `default` database. For production you can route all Orbit writes to a dedicated database so telemetry doesn't compete with application traffic.
+
+```python
+# settings.py
+DATABASES = {
+    "default": { ... },
+    "orbit": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "orbit.sqlite3",
+    },
+}
+
+ORBIT_CONFIG = {
+    "STORAGE_BACKEND": "orbit.backends.django_db.DjangoDBBackend",
+    "STORAGE_DB_ALIAS": "orbit",
+}
+```
+
+```bash
+python manage.py migrate orbit --database=orbit
+```
+
+| Backend | Description |
+|---|---|
+| `orbit.backends.database.DatabaseBackend` | **Default** — uses `default` DB, no config needed |
+| `orbit.backends.django_db.DjangoDBBackend` | Dedicated Django database alias |
+
+---
+
 ## 🛡️ Security
 
 Restrict access using any callable:
@@ -317,7 +349,6 @@ Orbit automatically redacts sensitive fields (passwords, tokens, API keys) from 
 
 ### What's next
 
-- **External storage backends** — persist events to PostgreSQL or Redis instead of SQLite
 - **AI Insights engine** — automatic pattern detection and plain-English summaries powered by LLMs
 - **VS Code / Cursor extension** — surface Orbit data in your editor sidebar while you code
 - **Alerting** — Slack, email, and webhook notifications for exceptions and slow requests

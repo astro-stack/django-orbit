@@ -45,10 +45,13 @@ def _table_exists() -> bool:
     global _orbit_table_ready
     if _orbit_table_ready:
         return True
-    from django.db import connection
+    from django.db import connections
+
+    from orbit.backends import get_storage_db_alias
 
     try:
-        exists = "orbit_orbitentry" in connection.introspection.table_names()
+        alias = get_storage_db_alias()
+        exists = "orbit_orbitentry" in connections[alias].introspection.table_names()
     except Exception:
         return False
     if exists:
