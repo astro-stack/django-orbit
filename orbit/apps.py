@@ -42,3 +42,13 @@ class OrbitConfig(AppConfig):
             from orbit.watchers import install_all_watchers
 
             install_all_watchers()
+
+            # Configure storage backend (v0.8.0+)
+            from orbit.backends import get_backend
+
+            try:
+                get_backend().setup()
+            except Exception as exc:
+                logging.getLogger(__name__).error(
+                    "Django Orbit: storage backend setup failed: %s", exc
+                )

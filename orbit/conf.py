@@ -49,6 +49,9 @@ DEFAULTS = {
     "MAX_COMMAND_OUTPUT": 5000,
     # MCP server (v0.7.0+)
     "MCP_ENABLED": True,
+    # Storage backend (v0.8.0+)
+    "STORAGE_BACKEND": "orbit.backends.database.DatabaseBackend",
+    "STORAGE_DB_ALIAS": "orbit",  # only used by DjangoDBBackend
 }
 
 

@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-04-02
+
+### Added
+
+- **External Storage Backends** (`orbit.backends`): Route all Orbit writes to a
+  dedicated database alias instead of the project's `default` database.
+
+  Two backends are included:
+
+  | Backend | Description |
+  |---|---|
+  | `orbit.backends.database.DatabaseBackend` | **Default** — uses `default` DB, zero configuration |
+  | `orbit.backends.django_db.DjangoDBBackend` | Dedicated Django database alias |
+
+  **Usage** (dedicated SQLite file for Orbit data):
+
+  ```python
+  # settings.py
+  DATABASES = {
+      "default": { ... },
+      "orbit": {
+          "ENGINE": "django.db.backends.sqlite3",
+          "NAME": BASE_DIR / "orbit.sqlite3",
+      },
+  }
+
+  ORBIT_CONFIG = {
+      "STORAGE_BACKEND": "orbit.backends.django_db.DjangoDBBackend",
+      "STORAGE_DB_ALIAS": "orbit",
+  }
+  ```
+
+  Run migrations for the new alias:
+
+  ```bash
+  python manage.py migrate orbit --database=orbit
+  ```
+
+  All existing users are unaffected — the `DatabaseBackend` is the default and
+  behaves identically to previous versions.
+
+- New `orbit.backends` public API:
+  - `get_backend()` — returns the configured backend singleton
+  - `get_storage_db_alias()` — returns the DB alias used for all Orbit writes
+
 ## [0.7.0] - 2026-04-02
 
 ### Added
