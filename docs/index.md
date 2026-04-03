@@ -11,11 +11,13 @@ Welcome to the Django Orbit documentation. This guide covers installation, confi
 3. [Configuration](configuration.md)
 4. [Running the Demo](running-demo.md)
 5. [Dashboard Guide](dashboard.md)
-6. [Stats Dashboard](stats.md) ✨ **New in v0.5.0**
-7. [API Reference](api.md)
-8. [Customization](customization.md)
-9. [Security](security.md)
-10. [Troubleshooting](troubleshooting.md)
+6. [Stats Dashboard](stats.md)
+7. [MCP Server](mcp.md) ✨ **New in v0.7.0**
+8. [Storage Backends](storage-backends.md) ✨ **New in v0.8.0**
+9. [API Reference](api.md)
+10. [Customization](customization.md)
+11. [Security](security.md)
+12. [Troubleshooting](troubleshooting.md)
 
 ## What is Django Orbit?
 
@@ -39,6 +41,14 @@ Django Orbit is a debugging and observability tool for Django applications. Unli
 | Historical Data | No | Yes |
 | Stats & Analytics | No | Yes |
 | Modern UI | Basic | Space-themed |
+
+### What's New in v0.8.0
+
+- **External Storage Backends**: Route all Orbit writes to a dedicated Django database alias — keep telemetry out of your app's main database. See [Storage Backends](storage-backends.md).
+
+### What's New in v0.7.0
+
+- **MCP Server**: Connect Claude, Cursor, Windsurf, or any MCP-compatible AI assistant to your live Django telemetry. Ask questions like *"Why is this endpoint slow?"* directly against real data. See [MCP Server](mcp.md).
 
 ### What's New in v0.6.0
 

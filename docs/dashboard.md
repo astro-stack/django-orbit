@@ -38,6 +38,13 @@ The sidebar groups events by type. The number in the badge indicates the total c
 | **Redis** | 🔴 | Redis operations (GET, SET, DEL, HGET, etc.) |
 | **Gates** | 🛡️ | Permission/authorization checks |
 
+#### Phase 4 Events (v0.6.0+)
+
+| Type | Icon | Description |
+|------|------|-------------|
+| **Transactions** | 🔷 | Database `atomic()` blocks — commits and rollbacks with duration |
+| **Storage** | 📦 | File storage operations — save, open, delete (local + S3) |
+
 ### Search
 
 Use the search bar in the header to find specific entries:

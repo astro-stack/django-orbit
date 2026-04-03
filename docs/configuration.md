@@ -37,6 +37,16 @@ ORBIT_CONFIG = {
     'RECORD_TRANSACTIONS': True,  # Database transaction blocks
     'RECORD_STORAGE': True,       # File storage operations
     
+    # MCP Server (v0.7.0+)
+    'MCP_ENABLED': True,
+
+    # Storage Backend (v0.8.0+)
+    'STORAGE_BACKEND': 'orbit.backends.database.DatabaseBackend',
+    'STORAGE_DB_ALIAS': 'orbit',  # only used by DjangoDBBackend
+
+    # Resilience
+    'WATCHER_FAIL_SILENTLY': True,  # failed watchers log errors but don't crash
+
     # Performance Settings
     'SLOW_QUERY_THRESHOLD_MS': 500,
     
@@ -220,8 +230,54 @@ ORBIT_CONFIG = {
 }
 ```
 
+### Resilience
+
+#### `WATCHER_FAIL_SILENTLY`
+- **Type**: `bool`
+- **Default**: `True`
+- **Description**: If a watcher raises an exception during recording, log the error and continue instead of propagating it to the host app.
+
+When `False`, watcher failures will surface as exceptions. Useful during development to catch misconfigured watchers early.
+
+### MCP Server (v0.7.0+)
+
+#### `MCP_ENABLED`
+- **Type**: `bool`
+- **Default**: `True`
+- **Description**: Enables the MCP server data exposure.
+
+See [MCP Server](mcp.md) for full setup instructions.
+
+### Storage Backend (v0.8.0+)
+
+#### `STORAGE_BACKEND`
+- **Type**: `str` (dotted import path)
+- **Default**: `"orbit.backends.database.DatabaseBackend"`
+- **Description**: The backend class used to store all `OrbitEntry` records.
+
+| Value | Description |
+|-------|-------------|
+| `orbit.backends.database.DatabaseBackend` | Default — uses Django's `default` database |
+| `orbit.backends.django_db.DjangoDBBackend` | Dedicated Django database alias |
+
+#### `STORAGE_DB_ALIAS`
+- **Type**: `str`
+- **Default**: `"orbit"`
+- **Description**: The database alias used by `DjangoDBBackend`. Must match a key in `DATABASES`. Ignored by `DatabaseBackend`.
+
+```python
+ORBIT_CONFIG = {
+    "STORAGE_BACKEND": "orbit.backends.django_db.DjangoDBBackend",
+    "STORAGE_DB_ALIAS": "orbit",
+}
+```
+
+See [Storage Backends](storage-backends.md) for the full setup guide.
+
 ## Next Steps
 
 - [Dashboard Guide](dashboard.md)
 - [Stats Dashboard](stats.md)
+- [MCP Server](mcp.md)
+- [Storage Backends](storage-backends.md)
 - [Security Best Practices](security.md)
