@@ -42,6 +42,11 @@ Django Orbit is a debugging and observability tool for Django applications. Unli
 | Stats & Analytics | No | Yes |
 | Modern UI | Basic | Space-themed |
 
+### What's New in v0.8.1
+
+- **HTML Email Preview**: Emails sent with `EmailMultiAlternatives` now show a **Plain text / HTML preview** tab switcher in the dashboard. The HTML body renders in a sandboxed iframe — great for testing email templates. See [Email Preview](dashboard.md#mail-html-preview).
+- **MySQL `max_allowed_packet` fix**: New `BULK_CREATE_BATCH_SIZE` config key prevents `OperationalError (2006, 'Server has gone away')` on requests that trigger thousands of SQL queries. See [`BULK_CREATE_BATCH_SIZE`](configuration.md#bulk_create_batch_size).
+
 ### What's New in v0.8.0
 
 - **External Storage Backends**: Route all Orbit writes to a dedicated Django database alias — keep telemetry out of your app's main database. See [Storage Backends](storage-backends.md).

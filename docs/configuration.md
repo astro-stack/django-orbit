@@ -44,6 +44,9 @@ ORBIT_CONFIG = {
     'STORAGE_BACKEND': 'orbit.backends.database.DatabaseBackend',
     'STORAGE_DB_ALIAS': 'orbit',  # only used by DjangoDBBackend
 
+    # Query recording (v0.8.1+)
+    'BULK_CREATE_BATCH_SIZE': None,  # set to e.g. 500 to avoid MySQL max_allowed_packet errors
+
     # Resilience
     'WATCHER_FAIL_SILENTLY': True,  # failed watchers log errors but don't crash
 
@@ -273,6 +276,25 @@ ORBIT_CONFIG = {
 ```
 
 See [Storage Backends](storage-backends.md) for the full setup guide.
+
+### Query Recording (v0.8.1+)
+
+#### `BULK_CREATE_BATCH_SIZE`
+- **Type**: `int | None`
+- **Default**: `None`
+- **Description**: Splits the `bulk_create` call used to save SQL query entries into batches of this size. `None` (default) inserts all entries in a single statement — the original behaviour.
+
+**When to use this:** If you're on MySQL and a single request triggers a very large number of SQL queries, the default single `INSERT` can exceed the database's `max_allowed_packet` limit, causing `OperationalError: (2006, 'Server has gone away')`. Setting this to `500` (or lower) breaks the insert into smaller chunks.
+
+```python
+ORBIT_CONFIG = {
+    # Split query inserts into batches of 500 rows
+    'BULK_CREATE_BATCH_SIZE': 500,
+}
+```
+
+!!! note
+    This setting has no effect on PostgreSQL or SQLite — they do not have a per-packet size limit. It is a MySQL-specific workaround.
 
 ## Next Steps
 
