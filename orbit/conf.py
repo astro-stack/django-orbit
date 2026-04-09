@@ -52,6 +52,11 @@ DEFAULTS = {
     # Storage backend (v0.8.0+)
     "STORAGE_BACKEND": "orbit.backends.database.DatabaseBackend",
     "STORAGE_DB_ALIAS": "orbit",  # only used by DjangoDBBackend
+    # bulk_create batch size for query recording (v0.9.0+)
+    # None = single INSERT (original behaviour).
+    # Set to a positive integer (e.g. 500) to split large requests into
+    # multiple smaller INSERTs, avoiding MySQL's max_allowed_packet limit.
+    "BULK_CREATE_BATCH_SIZE": None,
 }
 
 

@@ -848,15 +848,16 @@ def record_mail(message):
         "to": list(getattr(message, "to", [])),
         "cc": list(getattr(message, "cc", [])),
         "bcc": list(getattr(message, "bcc", [])),
-        "body": getattr(message, "body", "")[:2000],
+        "body": getattr(message, "body", "")[:10000],
         "attachments": attachments,
     }
 
-    # Check for HTML alternative
+    # Check for HTML alternative (EmailMultiAlternatives stores them in .alternatives)
     if hasattr(message, "alternatives"):
         for content, mimetype in message.alternatives:
             if mimetype == "text/html":
-                payload["html_body"] = content[:5000]
+                # 100 KB — enough for any real HTML email template
+                payload["html_body"] = content[:100000]
                 break
 
     try:

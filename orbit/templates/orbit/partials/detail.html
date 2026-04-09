@@ -198,6 +198,128 @@
     </div>
     {% endif %}
     
+    <!-- Mail-specific details -->
+    {% if entry.type == 'mail' %}
+    <div class="space-y-3">
+
+        <!-- Headers card -->
+        <div class="bg-orbit-bg-tertiary/50 rounded-lg divide-y divide-orbit-border">
+            <div class="flex gap-3 px-4 py-2.5">
+                <span class="text-xs text-orbit-text-muted w-16 shrink-0 pt-0.5">From</span>
+                <span class="text-sm font-mono text-orbit-text-primary">{{ entry.payload.from_email }}</span>
+            </div>
+            <div class="flex gap-3 px-4 py-2.5">
+                <span class="text-xs text-orbit-text-muted w-16 shrink-0 pt-0.5">To</span>
+                <span class="text-sm font-mono text-orbit-text-primary">{{ entry.payload.to|join:", " }}</span>
+            </div>
+            {% if entry.payload.cc %}
+            <div class="flex gap-3 px-4 py-2.5">
+                <span class="text-xs text-orbit-text-muted w-16 shrink-0 pt-0.5">CC</span>
+                <span class="text-sm font-mono text-orbit-text-primary">{{ entry.payload.cc|join:", " }}</span>
+            </div>
+            {% endif %}
+            {% if entry.payload.bcc %}
+            <div class="flex gap-3 px-4 py-2.5">
+                <span class="text-xs text-orbit-text-muted w-16 shrink-0 pt-0.5">BCC</span>
+                <span class="text-sm font-mono text-orbit-text-primary">{{ entry.payload.bcc|join:", " }}</span>
+            </div>
+            {% endif %}
+            <div class="flex gap-3 px-4 py-2.5">
+                <span class="text-xs text-orbit-text-muted w-16 shrink-0 pt-0.5">Subject</span>
+                <span class="text-sm font-medium text-orbit-text-primary">{{ entry.payload.subject }}</span>
+            </div>
+            {% if entry.payload.attachments %}
+            <div class="flex gap-3 px-4 py-2.5">
+                <span class="text-xs text-orbit-text-muted w-16 shrink-0 pt-0.5">Files</span>
+                <div class="flex flex-wrap gap-2">
+                    {% for att in entry.payload.attachments %}
+                    <span class="text-xs bg-orbit-bg-tertiary border border-orbit-border rounded px-2 py-0.5 font-mono text-orbit-text-secondary">
+                        {{ att.name }} ({{ att.size|filesizeformat }})
+                    </span>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Body — tab switcher when HTML is available -->
+        {% if entry.payload.html_body %}
+        <div>
+            <!-- Tabs -->
+            <div class="flex gap-1 mb-2" id="mail-tabs">
+                <button
+                    onclick="orbitMailTab('plain')"
+                    id="mail-tab-plain"
+                    class="text-xs px-3 py-1.5 rounded-md font-medium transition-colors bg-orbit-bg-tertiary text-orbit-text-primary">
+                    Plain text
+                </button>
+                <button
+                    onclick="orbitMailTab('html')"
+                    id="mail-tab-html"
+                    class="text-xs px-3 py-1.5 rounded-md font-medium transition-colors text-orbit-text-muted hover:text-orbit-text-secondary">
+                    HTML preview
+                </button>
+            </div>
+
+            <!-- Plain text panel -->
+            <div id="mail-panel-plain">
+                <div class="bg-orbit-bg-tertiary rounded-lg p-4 overflow-x-auto max-h-64 overflow-y-auto">
+                    <pre class="text-xs font-mono leading-relaxed text-orbit-text-secondary whitespace-pre-wrap">{{ entry.payload.body }}</pre>
+                </div>
+            </div>
+
+            <!-- HTML preview panel (hidden by default) -->
+            <div id="mail-panel-html" class="hidden">
+                <iframe
+                    sandbox
+                    id="mail-html-frame"
+                    class="w-full rounded-lg bg-white"
+                    style="height: 500px; border: none;"
+                    title="HTML email preview">
+                </iframe>
+            </div>
+        </div>
+
+        {{ entry.payload.html_body|json_script:"mail-html-body" }}
+        <script>
+        (function() {
+            // Inject via JS so Django template engine never escapes the HTML
+            var el = document.getElementById('mail-html-body');
+            var frame = document.getElementById('mail-html-frame');
+            if (el && frame) {
+                frame.srcdoc = JSON.parse(el.textContent);
+            }
+        })();
+
+        function orbitMailTab(tab) {
+            var isHtml = tab === 'html';
+            document.getElementById('mail-panel-plain').classList.toggle('hidden', isHtml);
+            document.getElementById('mail-panel-html').classList.toggle('hidden', !isHtml);
+            document.getElementById('mail-tab-plain').className = isHtml
+                ? 'text-xs px-3 py-1.5 rounded-md font-medium transition-colors text-orbit-text-muted hover:text-orbit-text-secondary'
+                : 'text-xs px-3 py-1.5 rounded-md font-medium transition-colors bg-orbit-bg-tertiary text-orbit-text-primary';
+            document.getElementById('mail-tab-html').className = isHtml
+                ? 'text-xs px-3 py-1.5 rounded-md font-medium transition-colors bg-orbit-bg-tertiary text-orbit-text-primary'
+                : 'text-xs px-3 py-1.5 rounded-md font-medium transition-colors text-orbit-text-muted hover:text-orbit-text-secondary';
+        }
+        </script>
+
+        {% else %}
+        <!-- Plain text only -->
+        <div class="space-y-2">
+            <h4 class="text-sm font-medium text-orbit-text-secondary flex items-center gap-2">
+                <i data-lucide="align-left" class="w-4 h-4"></i>
+                Body
+            </h4>
+            <div class="bg-orbit-bg-tertiary rounded-lg p-4 overflow-x-auto max-h-64 overflow-y-auto">
+                <pre class="text-xs font-mono leading-relaxed text-orbit-text-secondary whitespace-pre-wrap">{{ entry.payload.body }}</pre>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+    {% endif %}
+
     <!-- Full Payload JSON -->
     <div class="space-y-2">
         <h4 class="text-sm font-medium text-orbit-text-secondary flex items-center gap-2">

@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-04-08
+
+### Added
+
+- **HTML email preview** (Issue #14): When an email is sent via `EmailMultiAlternatives`,
+  the HTML alternative is now captured and rendered in a sandboxed `<iframe>` in the
+  dashboard detail panel. A Plain text / HTML preview tab switcher appears automatically.
+  The HTML body is capped at 100 KB. Plain-text-only emails are unaffected.
+
+- **`BULK_CREATE_BATCH_SIZE` config key** (Issue #19): New optional setting to split the
+  `bulk_create` call in `_save_queries` into smaller batches. Prevents MySQL
+  `OperationalError: (2006, 'Server has gone away')` on requests that trigger a very large
+  number of SQL queries (caused by exceeding `max_allowed_packet`).
+
+  ```python
+  ORBIT_CONFIG = {
+      "BULK_CREATE_BATCH_SIZE": 500,  # None = single INSERT (default, original behaviour)
+  }
+  ```
+
+### Fixed
+
+- **MySQL crash on high-query requests** (Issue #19): `bulk_create` with thousands of
+  `OrbitEntry` rows exceeded the database's `max_allowed_packet` limit, raising
+  `OperationalError (2006, 'Server has gone away')` and surfacing through the middleware
+  into the host app. Setting `BULK_CREATE_BATCH_SIZE` resolves this.
+
 ## [0.8.0] - 2026-04-02
 
 ### Added

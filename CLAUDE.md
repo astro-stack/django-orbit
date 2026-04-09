@@ -97,6 +97,25 @@ HTMX-powered dark UI at `/orbit/`. Main views: entry list, entry detail, stats (
 - Signals watcher is disabled in tests (`RECORD_SIGNALS: False`) to avoid noise
 - `conftest.py` lives in `tests/`
 
+## Release process
+
+After implementing and testing any change:
+
+1. Update `CHANGELOG.md` — add entry under `## [Unreleased]` or the new version section
+2. Bump `version` in `pyproject.toml`
+3. Run full test suite: `pytest --tb=short -q`
+4. Commit and push to `main`
+5. Build: `python -m build`
+6. Publish: `python -m twine upload dist/django_orbit-X.Y.Z*`
+7. **Update the MkDocs documentation** for any user-visible change:
+   - New feature → new page in `docs/` + add to `mkdocs.yml` nav
+   - Config key added/changed → update `docs/configuration.md`
+   - Dashboard change → update `docs/dashboard.md`
+   - "What's New" → update `docs/index.md`
+8. Deploy the docs: `mkdocs gh-deploy`
+
+Documentation must be updated in the **same commit or PR** as the code change. Never ship a feature without updating the docs.
+
 ## Commit style
 
 Follow Conventional Commits: `feat:`, `fix:`, `test:`, `chore:`, `docs:`, `refactor:`. Reference GitHub issues with `(#N)` in the commit body or title.

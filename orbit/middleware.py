@@ -255,8 +255,9 @@ class OrbitMiddleware:
 
         if entries:
             try:
+                batch_size = get_config().get("BULK_CREATE_BATCH_SIZE")
                 with cachalot_disabled():
-                    OrbitEntry.objects.bulk_create(entries)
+                    OrbitEntry.objects.bulk_create(entries, batch_size=batch_size)
             except Exception:
                 pass
 
