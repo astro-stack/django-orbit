@@ -84,6 +84,20 @@ Orbit groups events by "Family". For example, if an HTTP Request triggers 5 SQL 
 
 When viewing the Request, you'll see the queries and logs listed in the "Related Entries" section.
 
+### Mail HTML Preview
+
+When an email is sent via `EmailMultiAlternatives` with an HTML alternative, the Mail detail panel shows two tabs:
+
+- **Plain text** — the raw text body
+- **HTML preview** — the HTML body rendered in a sandboxed `<iframe>`
+
+The iframe uses the `sandbox` attribute, so external scripts and forms are blocked. This is useful for testing and visually reviewing HTML email templates without sending real emails.
+
+Plain-text-only emails (sent via `EmailMessage`) display the body directly with no tab switcher.
+
+!!! note
+    HTML bodies are capped at **100 KB** during capture. Templates larger than this will be truncated.
+
 ### Duplicate Queries (N+1 Detection)
 
 When viewing a query marked as duplicate, a special section appears showing all queries with the same SQL. This helps debug N+1 query issues:
