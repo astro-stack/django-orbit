@@ -1,25 +1,71 @@
 # Customization
 
-!!! info "Coming Soon"
-    This page is under construction. We're working hard to bring you comprehensive documentation!
+Use customization to tune what Orbit records and how visible it is in your environment.
 
-## Configuration Options
+## Common Patterns
+
+### Reduce noise
 
 ```python
 # settings.py
-ORBIT = {
-    'ENABLED': True,
-    'RECORD_REQUESTS': True,
-    'RECORD_QUERIES': True,
-    'RECORD_LOGS': True,
-    'RECORD_EXCEPTIONS': True,
-    'IGNORE_PATHS': ['/health/', '/metrics/'],
-    'SLOW_QUERY_THRESHOLD_MS': 100,
+ORBIT_CONFIG = {
+    "ENABLED": True,
+    "RECORD_QUERIES": True,
+    "RECORD_LOGS": True,
+    "IGNORE_PATHS": [
+        "/orbit/",
+        "/health/",
+        "/metrics/",
+        "/static/",
+    ],
+    "SLOW_QUERY_THRESHOLD_MS": 100,
 }
 ```
 
-See the [Configuration Guide](configuration.md) for all available options.
+### Restrict dashboard access
 
----
+```python
+ORBIT_CONFIG = {
+    "AUTH_CHECK": lambda request: request.user.is_staff,
+}
+```
 
-*Full customization guide coming soon!*
+### Disable expensive watchers
+
+```python
+ORBIT_CONFIG = {
+    "RECORD_HTTP_CLIENT": False,
+    "RECORD_STORAGE": False,
+    "RECORD_JOBS": False,
+}
+```
+
+### Route telemetry to a separate database
+
+```python
+ORBIT_CONFIG = {
+    "STORAGE_BACKEND": "orbit.backends.django_db.DjangoDBBackend",
+    "STORAGE_DB_ALIAS": "orbit",
+}
+```
+
+### Keep Orbit disabled outside development
+
+```python
+ORBIT_CONFIG = {
+    "ENABLED": DEBUG,
+}
+```
+
+## When To Customize
+
+- Tighten `AUTH_CHECK` before sharing a staging environment.
+- Lower `SLOW_QUERY_THRESHOLD_MS` when profiling local performance issues.
+- Expand `IGNORE_PATHS` for health checks, metrics, and internal endpoints.
+- Disable watchers selectively if you are debugging overhead or isolating an issue.
+
+## Next Steps
+
+- [Configuration Reference](configuration.md)
+- [Security](security.md)
+- [Storage Backends](storage-backends.md)

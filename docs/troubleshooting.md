@@ -10,7 +10,7 @@
 **Possible causes:**
 
 1. **Middleware not configured** - Make sure `OrbitMiddleware` is in your `MIDDLEWARE` list
-2. **Orbit disabled** - Check that `ORBIT['ENABLED']` is `True`
+2. **Orbit disabled** - Check that `ORBIT_CONFIG['ENABLED']` is `True`
 3. **No requests made** - Make some requests to your app first
 
 ### Queries not being captured

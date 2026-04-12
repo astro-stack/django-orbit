@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Hardened filesystem-related tests on Windows so the suite no longer depends on writable temp/cache directories with unstable permissions.
+- Fixed the Health dashboard guidance to use `RECORD_JOBS` instead of the nonexistent `RECORD_CELERY`.
+- Updated pytest collection settings to ignore local transient directories such as `.pytest_cache` and `orbit_test_storage`.
+
+### Documentation
+
+- Replaced placeholder Quick Start, API, and Customization pages with current project documentation.
+- Corrected the docs metadata URL to point to the published MkDocs site.
+- Updated troubleshooting and contributing docs to match the current configuration and docs workflow.
+
 ## [0.8.1] - 2026-04-08
 
 ### Added

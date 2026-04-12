@@ -55,6 +55,10 @@ coverage.xml
 # Django stuff:
 *.log
 local_settings.py
+*.sqlite3
+*.sqlite3-journal
+*.db
+*.db-journal
 db.sqlite3
 db.sqlite3-journal
 
@@ -145,6 +149,7 @@ Thumbs.db
 # Project specific
 example_project/db.sqlite3
 test_db.sqlite3
+orbit_test_storage/
 django_orbit-*/
 PLANNING.md
 

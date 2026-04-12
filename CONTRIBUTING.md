@@ -180,7 +180,7 @@ Request → OrbitMiddleware → Your App → Response
 
 ### Building Documentation
 
-Currently, documentation is maintained in Markdown files. A full documentation site may be added in the future.
+Documentation is maintained in the Markdown files under `docs/` and published with MkDocs Material.
 
 ## Release Process
 
@@ -194,7 +194,7 @@ Currently, documentation is maintained in Markdown files. A full documentation s
 
 - Open an issue for bugs or feature requests
 - Use discussions for questions and ideas
-- Join our community chat (link TBD)
+- Use GitHub Discussions for community conversation
 
 ## Code of Conduct
 
