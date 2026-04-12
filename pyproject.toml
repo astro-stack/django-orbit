@@ -67,7 +67,7 @@ dev = [
 
 [project.urls]
 Homepage = "https://github.com/astro-stack/django-orbit"
-Documentation = "https://github.com/astro-stack/django-orbit#readme"
+Documentation = "https://astro-stack.github.io/django-orbit"
 Repository = "https://github.com/astro-stack/django-orbit"
 Changelog = "https://github.com/astro-stack/django-orbit/blob/main/CHANGELOG.md"
 "Bug Tracker" = "https://github.com/astro-stack/django-orbit/issues"
@@ -122,6 +122,7 @@ django_settings_module = "tests.settings"
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "tests.settings"
 python_files = ["test_*.py", "*_test.py"]
+norecursedirs = [".pytest_cache", "orbit_test_storage"]
 addopts = [
     "--strict-markers",
     "-ra",

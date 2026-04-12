@@ -7,8 +7,9 @@ Tests the enhanced cache watcher that supports:
 - Additional operations (incr, decr, clear)
 - Duration tracking
 """
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 from django.test import TestCase, override_settings
 
 
@@ -27,13 +28,13 @@ class TestCacheBackendDetection(TestCase):
     def test_detect_filebased_backend(self):
         """Test detection of FileBasedCache backend."""
         from orbit.watchers import _detect_cache_backend_type
-        from django.core.cache.backends.filebased import FileBasedCache
-        import tempfile
-        
-        with tempfile.TemporaryDirectory() as tmpdir:
-            cache = FileBasedCache(tmpdir, {})
-            backend_type = _detect_cache_backend_type(cache)
-            assert backend_type == "file"
+
+        mock_cache = MagicMock()
+        mock_cache.__class__.__name__ = "FileBasedCache"
+        mock_cache.__class__.__module__ = "django.core.cache.backends.filebased"
+
+        backend_type = _detect_cache_backend_type(mock_cache)
+        assert backend_type == "file"
     
     def test_detect_dummy_backend(self):
         """Test detection of DummyCache backend."""
