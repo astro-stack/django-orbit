@@ -302,10 +302,18 @@ class OrbitFeedPartial(OrbitProtectedView, View):
 
         query = request.GET.get("q")
 
+        # Tag filter (B1): explicit ?tag=foo, or a "tag:foo" prefix typed in the search box.
+        tag = request.GET.get("tag")
+        if not tag and query and query.lower().startswith("tag:"):
+            tag = query[4:].strip()
+            query = None
+        if tag:
+            queryset = queryset.filter(tags__contains="," + tag + ",")
+
         # Exception grouping (B3): on the plain Exceptions view, collapse identical
         # exceptions into one row with a count + first/last seen. Skipped when searching
         # or drilling into a family so those flows still show individual occurrences.
-        if entry_type == OrbitEntry.TYPE_EXCEPTION and not family_hash and not query:
+        if entry_type == OrbitEntry.TYPE_EXCEPTION and not family_hash and not query and not tag:
             return self._exception_groups_response(request, per_page, page)
 
         # Filter by search query "q"

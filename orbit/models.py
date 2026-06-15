@@ -258,6 +258,16 @@ class OrbitEntry(models.Model):
         help_text="Stable hash used to group identical events (e.g. exceptions)",
     )
 
+    # Searchable tags, stored comma-wrapped (",slow,checkout,") so a single indexed
+    # ``tags__contains=',tag,'`` lookup matches a whole tag without false positives.
+    tags = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text="Comma-wrapped tags for filtering (e.g. ',slow,checkout,')",
+    )
+
     # Flexible payload storage
     payload = models.JSONField(
         default=dict, help_text="JSON payload containing event-specific data"
@@ -290,23 +300,54 @@ class OrbitEntry(models.Model):
         ]
 
     def save(self, *args, **kwargs):
-        # Optional defense-in-depth: scrub sensitive values from every payload at write
-        # time (B5). Off by default; request headers/body are masked upstream regardless.
-        # Only on insert, and never allowed to break recording.
-        if self._state.adding and self.payload:
+        # On insert only, and never allowed to break recording.
+        if self._state.adding:
             try:
                 from orbit.conf import get_config
 
-                if get_config().get("MASK_ALL_PAYLOADS", False):
+                config = get_config()
+                # B5: optional defense-in-depth masking of the whole payload.
+                if self.payload and config.get("MASK_ALL_PAYLOADS", False):
                     from orbit.utils import mask_sensitive_data
 
                     self.payload = mask_sensitive_data(self.payload)
+
+                # B1: auto-tagging via a user-supplied callback (Telescope-style).
+                self._apply_tag_callback(config)
             except Exception:
                 pass
         super().save(*args, **kwargs)
 
+    def _apply_tag_callback(self, config):
+        """Merge tags returned by the optional TAG_CALLBACK into self.tags."""
+        callback = config.get("TAG_CALLBACK")
+        if not callback:
+            return
+        if isinstance(callback, str):
+            from django.utils.module_loading import import_string
+
+            try:
+                callback = import_string(callback)
+            except Exception:
+                return
+        try:
+            extra = callback(self) or []
+        except Exception:
+            return
+        from orbit.utils import normalize_tags, parse_tags
+
+        merged = parse_tags(self.tags) + list(extra)
+        self.tags = normalize_tags(merged)
+
     def __str__(self):
         return f"[{self.type.upper()}] {self.created_at.strftime('%H:%M:%S')}"
+
+    @property
+    def tag_list(self):
+        """Tags as a clean list (for display/filtering)."""
+        from orbit.utils import parse_tags
+
+        return parse_tags(self.tags)
 
     @property
     def icon(self):

@@ -222,6 +222,22 @@ masked too.
 - **Description**: When `True`, every entry's payload is recursively masked at write time
   (defense in depth across all watchers). Request headers/body are always masked regardless.
 
+#### `TAG_CALLBACK`
+- **Type**: `callable | str | None`
+- **Default**: `None`
+- **Description**: A callable (or dotted import path) receiving an `OrbitEntry` and returning
+  a list of tags to attach. Use it to tag entries by tenant, feature or status. Filter by tag
+  with `?tag=foo` or by typing `tag:foo` in the dashboard search box. Errors in the callback
+  are swallowed so recording is never affected.
+
+```python
+ORBIT_CONFIG = {
+    'TAG_CALLBACK': lambda entry: (
+        ['5xx'] if entry.type == 'request' and (entry.payload or {}).get('status_code', 0) >= 500 else []
+    ),
+}
+```
+
 #### `MAX_BODY_SIZE`
 - **Type**: `int`
 - **Default**: `65536` (64KB)

@@ -27,6 +27,9 @@ DEFAULTS = {
     # depth across all watchers). Off by default to avoid over-redaction; request
     # headers/body are always masked regardless.
     "MASK_ALL_PAYLOADS": False,
+    # B1: optional callable (or dotted path) receiving an OrbitEntry and returning a list
+    # of tags to attach. Lets you tag entries (e.g. by tenant, feature, status) for search.
+    "TAG_CALLBACK": None,
     "MAX_BODY_SIZE": 65536,  # 64KB
     "STORAGE_LIMIT": 1000,  # Max entries to keep
     # Original watchers

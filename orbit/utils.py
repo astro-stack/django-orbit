@@ -112,6 +112,33 @@ def generate_family_hash() -> str:
 MASK_PLACEHOLDER = "***HIDDEN***"
 
 
+def normalize_tags(tags) -> str:
+    """
+    Normalize a list/iterable (or comma string) of tags into the comma-wrapped storage
+    form ``,a,b,`` used by OrbitEntry.tags. Empty/blank tags are dropped; order preserved
+    with duplicates removed. Returns "" for no tags.
+    """
+    if not tags:
+        return ""
+    if isinstance(tags, str):
+        items = tags.split(",")
+    else:
+        items = list(tags)
+    seen = []
+    for raw in items:
+        t = str(raw).strip()
+        if t and t not in seen:
+            seen.append(t)
+    return "," + ",".join(seen) + "," if seen else ""
+
+
+def parse_tags(value: str) -> List[str]:
+    """Parse the comma-wrapped storage form back into a clean list of tags."""
+    if not value:
+        return []
+    return [t for t in value.strip(",").split(",") if t]
+
+
 def _key_is_sensitive(key: str, keys_lower: List[str]) -> bool:
     """True if ``key`` contains any sensitive term (case-insensitive substring match)."""
     k = str(key).lower()

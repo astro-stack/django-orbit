@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Tagging + tag search** — entries can carry tags (indexed, comma-wrapped). A
+  `TAG_CALLBACK` setting attaches tags automatically (e.g. by tenant, feature, status).
+  Filter by tag via `?tag=foo` or by typing `tag:foo` in the search box; tags show as
+  clickable chips in the detail panel.
 - **Exception grouping** — identical exceptions (same type + raise location) are collapsed
   into a single row on the Exceptions view, with an occurrence count and first/last seen.
   Grouping/counting is done in the database via a new indexed `fingerprint` column, so it

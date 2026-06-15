@@ -87,7 +87,20 @@
             </p>
         </div>
     </div>
-    
+
+    <!-- Tags (B1) — click to filter the feed by that tag -->
+    {% if entry.tag_list %}
+    <div class="flex flex-wrap items-center gap-2">
+        <span class="orbit-section-title">Tags</span>
+        {% for tag in entry.tag_list %}
+        <button onclick="document.dispatchEvent(new CustomEvent('orbit:tag', {detail: {tag: '{{ tag|escapejs }}'}}))"
+                class="orbit-badge hover:bg-orbit-accent-cyan/15 hover:text-orbit-accent-cyan transition-colors cursor-pointer">
+            <i data-lucide="tag" class="w-3 h-3"></i>{{ tag }}
+        </button>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <!-- Request-specific details -->
     {% if entry.type == 'request' %}
     <div class="space-y-3">

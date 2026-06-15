@@ -368,6 +368,15 @@ function orbitDashboard() {
                 }
             });
 
+            // Filter the feed by a tag (clicked from the detail panel)
+            document.addEventListener('orbit:tag', (e) => {
+                if (e.detail && e.detail.tag) {
+                    this.searchQuery = 'tag:' + e.detail.tag;
+                    this.closeDetail();
+                    this.search();
+                }
+            });
+
             // Keyboard shortcuts: Esc closes, j/k move between entries (Vim-style)
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
