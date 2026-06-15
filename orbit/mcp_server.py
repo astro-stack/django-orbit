@@ -420,13 +420,13 @@ def create_mcp_server():
         """
         limit = min(limit, 100)
         groups = list(OrbitEntry.objects.exception_groups()[:limit])
-        latest = OrbitEntry.objects.latest_for_fingerprints([g["fingerprint"] for g in groups])
+        latest = OrbitEntry.objects.latest_for_groups([g["group_key"] for g in groups])
         result = []
         for g in groups:
-            rep = latest.get(g["fingerprint"])
+            rep = latest.get(g["group_key"])
             p = (rep.payload if rep else {}) or {}
             result.append({
-                "fingerprint": g["fingerprint"],
+                "fingerprint": g["group_key"],
                 "count": g["count"],
                 "first_seen": g["first_seen"].isoformat() if g["first_seen"] else None,
                 "last_seen": g["last_seen"].isoformat() if g["last_seen"] else None,
