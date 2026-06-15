@@ -335,4 +335,188 @@ def create_mcp_server():
             "top_error_paths": list(top_errors),
         })
 
+    # -------------------------------------------------------------------------
+    # Tool: explain_query  (agentic — backed by B2)
+    # -------------------------------------------------------------------------
+    @mcp.tool()
+    def explain_query(entry_id: str) -> str:
+        """
+        Run the database EXPLAIN plan for a captured SQL query.
+
+        Use this to understand why a query is slow — it returns the planner's access
+        path (index/seq scan, joins, estimated rows). Pass the id of a query entry
+        (from get_slow_queries or get_request_detail).
+
+        Args:
+            entry_id: The id of an OrbitEntry of type 'query'
+        """
+        from orbit.explain import explain_query as run_explain
+
+        entry = OrbitEntry.objects.filter(id=entry_id, type=OrbitEntry.TYPE_QUERY).first()
+        if entry is None:
+            return _format_output({"error": f"No query entry found with id: {entry_id}"})
+        payload = entry.payload or {}
+        result = run_explain(
+            payload.get("sql", ""),
+            params=payload.get("params"),
+            analyze=config.get("EXPLAIN_ANALYZE", False),
+        )
+        return _format_output({"sql": payload.get("sql"), "explain": result})
+
+    # -------------------------------------------------------------------------
+    # Tool: get_request_timeline  (agentic — backed by B4)
+    # -------------------------------------------------------------------------
+    @mcp.tool()
+    def get_request_timeline(family_hash: str) -> str:
+        """
+        Get the query timeline (waterfall) for a request.
+
+        Returns each SQL query's start offset and duration relative to the request,
+        so you can see what ran when and which queries dominate the response time.
+
+        Args:
+            family_hash: The family_hash of the request
+        """
+        request = (
+            OrbitEntry.objects.filter(family_hash=family_hash, type=OrbitEntry.TYPE_REQUEST)
+            .order_by("created_at")
+            .first()
+        )
+        queries = (
+            OrbitEntry.objects.filter(family_hash=family_hash, type=OrbitEntry.TYPE_QUERY)
+            .order_by("created_at")
+        )
+        spans = []
+        for q in queries:
+            p = q.payload or {}
+            spans.append({
+                "id": str(q.id),
+                "start_offset_ms": p.get("start_offset_ms"),
+                "duration_ms": q.duration_ms,
+                "is_slow": p.get("is_slow", False),
+                "is_duplicate": p.get("is_duplicate", False),
+                "sql": (p.get("sql", "") or "")[:200],
+            })
+        return _format_output({
+            "family_hash": family_hash,
+            "request_duration_ms": request.duration_ms if request else None,
+            "query_count": len(spans),
+            "spans": spans,
+        })
+
+    # -------------------------------------------------------------------------
+    # Tool: get_exception_groups  (agentic — backed by B3)
+    # -------------------------------------------------------------------------
+    @mcp.tool()
+    def get_exception_groups(limit: int = 20) -> str:
+        """
+        Get exceptions grouped by type + raise location, with occurrence counts.
+
+        Far more useful than a flat list when the same error fires many times: shows
+        how often each distinct error happened and when it was first/last seen.
+
+        Args:
+            limit: Number of groups to return (max 100, default 20)
+        """
+        limit = min(limit, 100)
+        groups = list(OrbitEntry.objects.exception_groups()[:limit])
+        latest = OrbitEntry.objects.latest_for_fingerprints([g["fingerprint"] for g in groups])
+        result = []
+        for g in groups:
+            rep = latest.get(g["fingerprint"])
+            p = (rep.payload if rep else {}) or {}
+            result.append({
+                "fingerprint": g["fingerprint"],
+                "count": g["count"],
+                "first_seen": g["first_seen"].isoformat() if g["first_seen"] else None,
+                "last_seen": g["last_seen"].isoformat() if g["last_seen"] else None,
+                "exception_type": p.get("exception_type"),
+                "message": p.get("message"),
+                "latest_id": str(rep.id) if rep else None,
+            })
+        return _format_output({"count": len(result), "groups": result})
+
+    # -------------------------------------------------------------------------
+    # Tool: propose_n1_fix  (agentic — backed by N+1 detection)
+    # -------------------------------------------------------------------------
+    @mcp.tool()
+    def propose_n1_fix(family_hash: str) -> str:
+        """
+        Detect N+1 query patterns in a request and suggest how to fix them.
+
+        Groups the request's duplicate queries and, for each repeated query, suggests
+        the likely Django remedy (select_related for FK/one-to-one, prefetch_related for
+        reverse/many-to-many) plus the source location to change.
+
+        Args:
+            family_hash: The family_hash of the request to analyze
+        """
+        queries = OrbitEntry.objects.filter(
+            family_hash=family_hash, type=OrbitEntry.TYPE_QUERY
+        ).only("payload", "duration_ms")
+
+        groups: dict = {}
+        for q in queries:
+            p = q.payload or {}
+            sql = p.get("sql", "")
+            if not sql:
+                continue
+            g = groups.setdefault(sql, {"count": 0, "total_ms": 0.0, "caller": p.get("caller")})
+            g["count"] += 1
+            g["total_ms"] += q.duration_ms or 0
+
+        suggestions = []
+        for sql, g in groups.items():
+            if g["count"] < 2:
+                continue
+            lowered = sql.lower()
+            remedy = (
+                "Use select_related() for the foreign-key/one-to-one this query loads"
+                if " join " not in lowered and lowered.startswith("select")
+                else "Use prefetch_related() to batch this related lookup"
+            )
+            caller = g.get("caller") or {}
+            suggestions.append({
+                "sql": sql[:200],
+                "repeated": g["count"],
+                "total_ms": round(g["total_ms"], 1),
+                "suggestion": remedy,
+                "source": f"{caller.get('filename', '?')}:{caller.get('lineno', '?')}",
+            })
+        suggestions.sort(key=lambda s: s["repeated"], reverse=True)
+        return _format_output({
+            "family_hash": family_hash,
+            "n1_patterns": len(suggestions),
+            "suggestions": suggestions,
+        })
+
+    # -------------------------------------------------------------------------
+    # Tool: get_entry_source_context  (agentic)
+    # -------------------------------------------------------------------------
+    @mcp.tool()
+    def get_entry_source_context(entry_id: str) -> str:
+        """
+        Get the source code location for an entry, so you can open the right file.
+
+        For a query: the caller file/line/function. For an exception: the traceback
+        frames (deepest last). Lets an agent jump straight to the code to change.
+
+        Args:
+            entry_id: The id of a query or exception OrbitEntry
+        """
+        entry = OrbitEntry.objects.filter(id=entry_id).first()
+        if entry is None:
+            return _format_output({"error": f"No entry found with id: {entry_id}"})
+        p = entry.payload or {}
+        if entry.type == OrbitEntry.TYPE_QUERY:
+            return _format_output({"type": "query", "caller": p.get("caller"), "sql": p.get("sql")})
+        if entry.type == OrbitEntry.TYPE_EXCEPTION:
+            return _format_output({
+                "type": "exception",
+                "exception_type": p.get("exception_type"),
+                "message": p.get("message"),
+                "traceback": p.get("traceback", []),
+            })
+        return _format_output({"type": entry.type, "caller": p.get("caller")})
+
     return mcp

@@ -78,7 +78,7 @@ Every watcher's write path calls `_table_exists()` before touching the DB. The r
 
 ### MCP Server (`orbit/mcp_server.py`, `orbit/management/commands/orbit_mcp.py`)
 
-`create_mcp_server()` builds a `FastMCP` instance (from the optional `mcp>=1.0` package) that exposes 7 tools for AI assistants: `get_recent_requests`, `get_slow_queries`, `get_exceptions`, `get_n1_patterns`, `get_request_detail`, `search_entries`, `get_stats_summary`. Launched via `python manage.py orbit_mcp` using stdio transport. Install with `pip install django-orbit[mcp]`.
+`create_mcp_server()` builds a `FastMCP` instance (from the optional `mcp>=1.0` package) that exposes tools for AI assistants. Core: `get_recent_requests`, `get_slow_queries`, `get_exceptions`, `get_n1_patterns`, `get_request_detail`, `search_entries`, `get_stats_summary`. Agentic (M3/C5): `explain_query`, `get_request_timeline`, `get_exception_groups`, `propose_n1_fix`, `get_entry_source_context`. Launched via `python manage.py orbit_mcp` using stdio transport. Install with `pip install django-orbit[mcp]`.
 
 ### Configuration (`orbit/conf.py`)
 
