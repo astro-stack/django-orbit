@@ -53,6 +53,9 @@ dependencies = [
 mcp = [
     "mcp>=1.0",
 ]
+ai = [
+    "anthropic>=0.40",
+]
 docs = [
     "mkdocs>=1.5",
     "mkdocs-material>=9.0",

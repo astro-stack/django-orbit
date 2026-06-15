@@ -101,11 +101,26 @@
     </div>
     {% endif %}
 
+    <!-- AI explain & fix (C1), on demand -->
+    {% if ai_available %}
+    <div>
+        <button hx-get="{% url 'orbit:ai_explain' entry.id %}"
+                hx-target="#ai-{{ entry.id }}" hx-swap="innerHTML"
+                hx-indicator="#ai-spin-{{ entry.id }}"
+                class="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-violet-500/10 text-violet-300 hover:bg-violet-500/20 transition-colors">
+            <i data-lucide="sparkles" class="w-4 h-4"></i>
+            <span>Explain &amp; fix with AI</span>
+            <i id="ai-spin-{{ entry.id }}" data-lucide="loader-2" class="htmx-indicator w-4 h-4 animate-spin"></i>
+        </button>
+        <div id="ai-{{ entry.id }}" class="mt-2"></div>
+    </div>
+    {% endif %}
+
     <!-- Request-specific details -->
     {% if entry.type == 'request' %}
     <div class="space-y-3">
         <div class="flex items-center gap-3 bg-orbit-bg-tertiary/50 rounded-lg p-3">
-            <span class="text-xs font-mono px-2 py-0.5 rounded 
+            <span class="text-xs font-mono px-2 py-0.5 rounded
                 {% if entry.payload.status_code >= 500 %}bg-rose-500/20 text-rose-400
                 {% elif entry.payload.status_code >= 400 %}bg-amber-500/20 text-amber-400
                 {% else %}bg-emerald-500/20 text-emerald-400

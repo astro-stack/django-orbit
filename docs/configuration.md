@@ -250,6 +250,26 @@ ORBIT_CONFIG = {
   timings. Only ever applied to read-only `SELECT`s and wrapped in a rolled-back savepoint.
   Leave off unless you understand the implications.
 
+#### `AI`
+- **Type**: `dict`
+- **Default**: `{}` (disabled)
+- **Description**: Opt-in AI "Explain & fix" for exceptions, slow/duplicate queries and N+1
+  requests, shown as a button in the detail panel. Disabled until enabled with a key. Entry
+  data is **masked** (see `MASK_KEYS`) before being sent, the call happens **on demand only**,
+  and the result is cached on the entry. Defaults to Anthropic Claude (`pip install
+  django-orbit[ai]`); plug any provider via a `handler` callable.
+
+```python
+ORBIT_CONFIG = {
+    'AI': {
+        'enabled': True,
+        'api_key': env('ANTHROPIC_API_KEY'),
+        'model': 'claude-opus-4-8',   # optional
+        # 'handler': my_callable,     # optional: (system, user, cfg) -> str, for any provider
+    },
+}
+```
+
 #### `MAX_BODY_SIZE`
 - **Type**: `int`
 - **Default**: `65536` (64KB)

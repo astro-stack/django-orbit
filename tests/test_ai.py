@@ -1,0 +1,91 @@
+"""
+Tests for M4 (C1) — the AI assist layer. A fake handler is injected via config so no
+network call or API key is needed.
+"""
+
+import pytest
+from django.urls import reverse
+
+from orbit import ai as ai_mod
+from orbit.models import OrbitEntry
+
+pytestmark = pytest.mark.django_db
+
+
+def _ai_config(captured):
+    """Return an ORBIT_CONFIG AI block whose handler records the prompt it received."""
+    def handler(system, user, cfg):
+        captured["system"] = system
+        captured["user"] = user
+        return "Root cause: X.\n\nFix: do Y."
+
+    return {"enabled": True, "api_key": "test", "handler": handler, "model": "test-model"}
+
+
+def test_ai_disabled_by_default():
+    assert ai_mod.ai_enabled() is False
+
+
+def test_analyze_entry_disabled_returns_error():
+    e = OrbitEntry.objects.create(type=OrbitEntry.TYPE_EXCEPTION, payload={"exception_type": "X"})
+    out = ai_mod.analyze_entry(e)
+    assert out["ok"] is False
+    assert "disabled" in out["error"].lower()
+
+
+def test_analyze_entry_uses_handler_and_caches(settings):
+    captured = {}
+    settings.ORBIT_CONFIG = {**getattr(settings, "ORBIT_CONFIG", {}), "AI": _ai_config(captured)}
+    e = OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_EXCEPTION,
+        payload={"exception_type": "ValueError", "message": "bad", "traceback": []},
+    )
+    out = ai_mod.analyze_entry(e)
+    assert out["ok"] is True and out["cached"] is False
+    assert "Fix:" in out["text"]
+    assert "ValueError" in captured["user"]  # prompt built from the entry
+
+    # Cached on the entry: second call doesn't re-run the handler
+    captured.clear()
+    out2 = ai_mod.analyze_entry(OrbitEntry.objects.get(id=e.id))
+    assert out2["cached"] is True
+    assert captured == {}
+
+
+def test_analyze_entry_masks_sensitive_data(settings):
+    captured = {}
+    settings.ORBIT_CONFIG = {**getattr(settings, "ORBIT_CONFIG", {}), "AI": _ai_config(captured)}
+    e = OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_DUMP,
+        payload={"password": "supersecret", "note": "ok"},
+    )
+    ai_mod.analyze_entry(e)
+    assert "supersecret" not in captured["user"]  # masked before sending
+    assert "***HIDDEN***" in captured["user"]
+
+
+def test_entry_supports_ai():
+    exc = OrbitEntry.objects.create(type=OrbitEntry.TYPE_EXCEPTION, payload={})
+    slow = OrbitEntry.objects.create(type=OrbitEntry.TYPE_QUERY, payload={"is_slow": True})
+    normal_q = OrbitEntry.objects.create(type=OrbitEntry.TYPE_QUERY, payload={"is_slow": False})
+    assert ai_mod.entry_supports_ai(exc) is True
+    assert ai_mod.entry_supports_ai(slow) is True
+    assert ai_mod.entry_supports_ai(normal_q) is False
+
+
+def test_ai_explain_view_disabled(client):
+    e = OrbitEntry.objects.create(type=OrbitEntry.TYPE_EXCEPTION, payload={})
+    html = client.get(reverse("orbit:ai_explain", args=[e.id])).content.decode()
+    assert "off" in html.lower() or "disabled" in html.lower()
+
+
+def test_ai_explain_view_enabled(client, settings):
+    captured = {}
+    settings.ORBIT_CONFIG = {**getattr(settings, "ORBIT_CONFIG", {}), "AI": _ai_config(captured)}
+    e = OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_EXCEPTION,
+        payload={"exception_type": "KeyError", "message": "x", "traceback": []},
+    )
+    html = client.get(reverse("orbit:ai_explain", args=[e.id])).content.decode()
+    assert "AI analysis" in html
+    assert "Fix:" in html
