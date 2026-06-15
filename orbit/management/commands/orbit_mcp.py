@@ -30,6 +30,14 @@ class Command(BaseCommand):
             self.stderr.write(self.style.ERROR(str(e)))
             return
 
+        # FastMCP runs tool callables inside its async event loop, but Orbit's tools use
+        # the synchronous Django ORM — which otherwise raises SynchronousOnlyOperation
+        # ("You cannot call this from an async context"). This is a local, single-user
+        # stdio server, so allowing the ORM in the loop is safe and is the simplest fix.
+        import os
+
+        os.environ.setdefault("DJANGO_ALLOW_ASYNC_UNSAFE", "true")
+
         self.stderr.write(
             self.style.SUCCESS("Starting Django Orbit MCP server (stdio)...")
         )
