@@ -1,0 +1,16 @@
+{% comment %}AI explain & fix result (C1), loaded on demand into the detail panel.{% endcomment %}
+{% if error %}
+<div class="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded p-2">{{ error }}</div>
+{% elif result.ok %}
+<div class="rounded-lg border border-violet-500/30 bg-violet-500/5 p-3">
+    <div class="flex items-center gap-2 mb-2">
+        <i data-lucide="sparkles" class="w-4 h-4 text-violet-400"></i>
+        <span class="text-xs font-semibold uppercase tracking-wide text-violet-400">AI analysis</span>
+        {% if result.cached %}<span class="orbit-badge">cached</span>{% endif %}
+    </div>
+    <div class="text-sm text-orbit-text-secondary whitespace-pre-wrap leading-relaxed">{{ result.text }}</div>
+    <p class="mt-2 text-[11px] text-orbit-text-muted">AI-generated — verify before applying. Data was masked before sending.</p>
+</div>
+{% else %}
+<div class="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded p-2">{{ result.error }}</div>
+{% endif %}

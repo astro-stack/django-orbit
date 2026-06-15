@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **AI "Explain & fix"** — an opt-in, bring-your-own-key button in the detail panel for
+  exceptions, slow/duplicate queries and N+1 requests. It sends a **masked** view of the
+  entry to an LLM (Anthropic Claude by default; any provider via a `handler` callable),
+  returns a root-cause explanation + concrete fix, and caches the result on the entry.
+  Disabled by default; configure via `ORBIT_CONFIG['AI']`. Install with `django-orbit[ai]`.
 - **Agentic MCP tools** — the MCP server gains five tools that make Orbit the
   observability layer an AI agent reasons over while fixing bugs, usable from any MCP
   client (Claude Code, Cursor, Codex, Claude Desktop): `explain_query` (EXPLAIN plan),

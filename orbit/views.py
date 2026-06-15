@@ -22,6 +22,7 @@ __all__ = [
     "OrbitStatsView",
     "OrbitStatsSectionView",
     "OrbitExplainView",
+    "OrbitAIExplainView",
     "OrbitExportView",
     "OrbitHealthView",
 ]
@@ -527,6 +528,11 @@ class OrbitDetailPartial(OrbitProtectedView, View):
         # Request waterfall (B4): position child query spans on the request timeline.
         waterfall = self._build_waterfall(entry, related_entries)
 
+        # AI assist (C1): show the button only when AI is enabled and this entry type qualifies.
+        from orbit.ai import ai_enabled, entry_supports_ai
+
+        ai_available = ai_enabled() and entry_supports_ai(entry)
+
         # Format payload as pretty JSON
         payload_json = json.dumps(
             entry.payload, indent=2, ensure_ascii=False, default=str
@@ -542,6 +548,7 @@ class OrbitDetailPartial(OrbitProtectedView, View):
                 "duplicate_entries": duplicate_entries,
                 "duplicate_query_stats": duplicate_query_stats,
                 "waterfall": waterfall,
+                "ai_available": ai_available,
             },
         )
 
@@ -721,6 +728,26 @@ class OrbitExplainView(OrbitProtectedView, View):
             analyze=config.get("EXPLAIN_ANALYZE", False),
         )
         return TemplateResponse(request, "orbit/partials/explain.html", ctx)
+
+
+class OrbitAIExplainView(OrbitProtectedView, View):
+    """AI 'explain & fix' for an entry, on demand (C1). Opt-in, masking-aware, cached."""
+
+    def get(self, request: HttpRequest, entry_id: str) -> HttpResponse:
+        from orbit.ai import ai_enabled, analyze_entry
+
+        ctx = {}
+        if not ai_enabled():
+            ctx["error"] = (
+                "AI assist is off. Enable it with "
+                "ORBIT_CONFIG['AI'] = {'enabled': True, 'api_key': '...'}."
+            )
+            return TemplateResponse(request, "orbit/partials/ai_explain.html", ctx)
+
+        entry = get_object_or_404(OrbitEntry, id=entry_id)
+        force = request.GET.get("force") == "1"
+        ctx["result"] = analyze_entry(entry, force=force)
+        return TemplateResponse(request, "orbit/partials/ai_explain.html", ctx)
 
 
 class OrbitExportView(OrbitProtectedView, View):

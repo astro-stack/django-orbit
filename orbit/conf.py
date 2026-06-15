@@ -35,6 +35,9 @@ DEFAULTS = {
     # by default.
     "ENABLE_EXPLAIN": True,
     "EXPLAIN_ANALYZE": False,
+    # C1: opt-in AI assist. Disabled by default. Entry data is masked before being sent.
+    # e.g. {"enabled": True, "api_key": "sk-ant-...", "model": "claude-opus-4-8"}
+    "AI": {},
     "MAX_BODY_SIZE": 65536,  # 64KB
     "STORAGE_LIMIT": 1000,  # Max entries to keep
     # Original watchers
