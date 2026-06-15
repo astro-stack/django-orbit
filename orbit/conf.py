@@ -15,6 +15,18 @@ DEFAULTS = {
     "IGNORE_PATHS": ["/orbit/", "/static/", "/admin/jsi18n/", "/favicon.ico"],
     "HIDE_REQUEST_HEADERS": ["Authorization", "Cookie", "X-CSRFToken"],
     "HIDE_REQUEST_BODY_KEYS": ["password", "token", "secret", "api_key"],
+    # Sensitive-data masking (B5). Any payload key *containing* one of these terms
+    # (case-insensitive) has its value redacted. Used to strengthen request masking and,
+    # importantly, to scrub data before it is ever sent to an AI provider (Track C).
+    "MASK_KEYS": [
+        "password", "passwd", "secret", "token", "api_key", "apikey", "access_key",
+        "authorization", "auth", "cookie", "csrf", "credential", "private_key",
+        "client_secret", "session", "ssn", "card_number",
+    ],
+    # When True, every entry's payload is recursively masked at write time (defense in
+    # depth across all watchers). Off by default to avoid over-redaction; request
+    # headers/body are always masked regardless.
+    "MASK_ALL_PAYLOADS": False,
     "MAX_BODY_SIZE": 65536,  # 64KB
     "STORAGE_LIMIT": 1000,  # Max entries to keep
     # Original watchers

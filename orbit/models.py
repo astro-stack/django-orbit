@@ -289,6 +289,22 @@ class OrbitEntry(models.Model):
             models.Index(fields=["type", "fingerprint", "-created_at"]),
         ]
 
+    def save(self, *args, **kwargs):
+        # Optional defense-in-depth: scrub sensitive values from every payload at write
+        # time (B5). Off by default; request headers/body are masked upstream regardless.
+        # Only on insert, and never allowed to break recording.
+        if self._state.adding and self.payload:
+            try:
+                from orbit.conf import get_config
+
+                if get_config().get("MASK_ALL_PAYLOADS", False):
+                    from orbit.utils import mask_sensitive_data
+
+                    self.payload = mask_sensitive_data(self.payload)
+            except Exception:
+                pass
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"[{self.type.upper()}] {self.created_at.strftime('%H:%M:%S')}"
 

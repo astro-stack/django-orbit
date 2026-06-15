@@ -206,6 +206,22 @@ Values are replaced with `***HIDDEN***`.
 
 Works recursively on nested objects.
 
+Matching is **substring + case-insensitive**, so `user_password` and `access_token` are
+masked too.
+
+#### `MASK_KEYS`
+- **Type**: `list[str]`
+- **Default**: `['password', 'passwd', 'secret', 'token', 'api_key', 'apikey', 'access_key', 'authorization', 'auth', 'cookie', 'csrf', 'credential', 'private_key', 'client_secret', 'session', 'ssn', 'card_number']`
+- **Description**: Terms used for sensitive-data masking. Any payload key *containing* one of
+  these (case-insensitive) has its value replaced with `***HIDDEN***`. This is also the list
+  used to scrub data before it is sent to an AI provider.
+
+#### `MASK_ALL_PAYLOADS`
+- **Type**: `bool`
+- **Default**: `False`
+- **Description**: When `True`, every entry's payload is recursively masked at write time
+  (defense in depth across all watchers). Request headers/body are always masked regardless.
+
 #### `MAX_BODY_SIZE`
 - **Type**: `int`
 - **Default**: `65536` (64KB)

@@ -109,6 +109,43 @@ def generate_family_hash() -> str:
     return hashlib.sha256(unique_id.encode()).hexdigest()[:16]
 
 
+MASK_PLACEHOLDER = "***HIDDEN***"
+
+
+def _key_is_sensitive(key: str, keys_lower: List[str]) -> bool:
+    """True if ``key`` contains any sensitive term (case-insensitive substring match)."""
+    k = str(key).lower()
+    return any(term in k for term in keys_lower)
+
+
+def mask_sensitive_data(data: Any, keys: Optional[List[str]] = None) -> Any:
+    """
+    Recursively redact values whose key looks sensitive.
+
+    Substring + case-insensitive matching (so ``access_token``, ``user_password`` and
+    ``X-Api-Key`` are all caught), applied through dicts and lists. Returns a new
+    structure; the input is left untouched. Cheap enough to run on the write path, and
+    the single source of truth for scrubbing data before it reaches an AI provider.
+    """
+    if keys is None:
+        from orbit.conf import get_config
+
+        keys = get_config().get("MASK_KEYS", [])
+    keys_lower = [k.lower() for k in keys]
+
+    def _walk(value):
+        if isinstance(value, dict):
+            return {
+                k: (MASK_PLACEHOLDER if _key_is_sensitive(k, keys_lower) else _walk(v))
+                for k, v in value.items()
+            }
+        if isinstance(value, (list, tuple)):
+            return [_walk(item) for item in value]
+        return value
+
+    return _walk(data)
+
+
 def sanitize_headers(
     headers: Dict[str, str], hide_keys: Optional[List[str]] = None
 ) -> Dict[str, str]:
@@ -129,8 +166,8 @@ def sanitize_headers(
     sanitized = {}
 
     for key, value in headers.items():
-        if key.lower() in hide_keys_lower:
-            sanitized[key] = "***HIDDEN***"
+        if _key_is_sensitive(key, hide_keys_lower):
+            sanitized[key] = MASK_PLACEHOLDER
         else:
             sanitized[key] = value
 
@@ -157,8 +194,8 @@ def filter_sensitive_data(
     filtered = {}
 
     for key, value in data.items():
-        if key.lower() in hide_keys_lower:
-            filtered[key] = "***HIDDEN***"
+        if _key_is_sensitive(key, hide_keys_lower):
+            filtered[key] = MASK_PLACEHOLDER
         else:
             filtered[key] = value
 
@@ -187,8 +224,8 @@ def sanitize_body(
         if isinstance(data, dict):
             result = {}
             for key, value in data.items():
-                if key.lower() in hide_keys_lower:
-                    result[key] = "***HIDDEN***"
+                if _key_is_sensitive(key, hide_keys_lower):
+                    result[key] = MASK_PLACEHOLDER
                 else:
                     result[key] = _sanitize(value)
             return result

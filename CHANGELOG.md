@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **Sensitive-data masking** — values whose key contains a sensitive term (`password`,
+  `token`, `api_key`, `authorization`, `secret`, `cookie`, …) are redacted. Matching is now
+  substring + case-insensitive (so `access_token`, `user_password`, `X-Api-Key` are all
+  caught) and recursive. Configurable via `MASK_KEYS`. New `mask_sensitive_data()` helper is
+  the single point used to scrub data before it is sent to an AI provider. Optional
+  `MASK_ALL_PAYLOADS` masks every entry payload at write time (off by default).
+
 ### Added
 
 - **Exception grouping** — identical exceptions (same type + raise location) are collapsed
