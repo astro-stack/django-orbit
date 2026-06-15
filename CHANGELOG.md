@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Agentic MCP tools** — the MCP server gains five tools that make Orbit the
+  observability layer an AI agent reasons over while fixing bugs, usable from any MCP
+  client (Claude Code, Cursor, Codex, Claude Desktop): `explain_query` (EXPLAIN plan),
+  `get_request_timeline` (query waterfall), `get_exception_groups` (grouped errors with
+  counts), `propose_n1_fix` (detect N+1s and suggest select/prefetch_related + source
+  line), and `get_entry_source_context` (caller/traceback to open the right file).
+
 ## [0.9.0] - 2026-06-15
 
 ### Security
