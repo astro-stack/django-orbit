@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-06-15
+
+### Fixed
+
+- Exceptions without a fingerprint are no longer hidden from the grouped Exceptions view —
+  the sidebar badge could show a count while the list said "No exceptions". They now appear
+  individually (one row each); fingerprinted exceptions still group together. Grouping uses
+  `COALESCE(NULLIF(fingerprint, ''), id)`, portable across SQLite / MySQL / PostgreSQL.
+
 ## [0.9.0] - 2026-06-15
 
 ### Security
