@@ -37,6 +37,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (the sidebar badge could show a count while the list said "No exceptions"). They now
   appear individually; fingerprinted exceptions still group together.
 
+## [0.9.1] - 2026-06-15
+
+### Fixed
+
+- **MCP server runtime crash** — every tool call failed with *"You cannot call this from an
+  async context"* because the tools use the synchronous Django ORM inside FastMCP's async
+  loop. The `orbit_mcp` command now sets `DJANGO_ALLOW_ASYNC_UNSAFE` (safe for this local,
+  single-user stdio server), so AI assistants can actually query Orbit.
+- Exceptions without a fingerprint are no longer hidden from the grouped Exceptions view —
+  the sidebar badge could show a count while the list said "No exceptions". They now appear
+  individually (one row each); fingerprinted exceptions still group together. Grouping uses
+  `COALESCE(NULLIF(fingerprint, ''), id)`, portable across SQLite / MySQL / PostgreSQL.
+
 ## [0.9.0] - 2026-06-15
 
 ### Security
