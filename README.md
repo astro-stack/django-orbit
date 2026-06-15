@@ -48,8 +48,11 @@ Unlike Django Debug Toolbar — which injects HTML into your templates — Djang
 | Template injection | ✅ Yes | ❌ No |
 | Works with APIs / SPAs | ❌ No | ✅ Yes |
 | SQL + logs + exceptions | Partial | ✅ All in one |
+| Exception grouping (fingerprint + counts) | ❌ | ✅ |
+| Query `EXPLAIN` + request waterfall | ❌ | ✅ |
 | Background jobs | ❌ | ✅ Celery, RQ, Django-Q |
-| AI assistant integration | ❌ | ✅ MCP Server |
+| AI explain & fix (opt-in) | ❌ | ✅ |
+| Agentic MCP server (Claude Code, Cursor, Codex) | ❌ | ✅ |
 | Health / module status | ❌ | ✅ |
 
 Inspired by [Laravel Telescope](https://laravel.com/docs/telescope).
@@ -85,8 +88,11 @@ All events are linked by `family_hash`, so you can see every query, log, and exc
 ```bash
 pip install django-orbit
 
-# With MCP support (AI assistant integration — Claude, Cursor, Copilot)
+# Agentic MCP server (Claude Code, Cursor, Codex, Claude Desktop)
 pip install django-orbit[mcp]
+
+# In-dashboard AI "Explain & fix" (Anthropic Claude)
+pip install django-orbit[ai]
 ```
 
 ---
@@ -194,7 +200,14 @@ ORBIT_CONFIG = {
 
 ### Main Dashboard — `/orbit/`
 
-HTMX-powered live feed with 3-second polling. Filter by event type, search by keyword, export to JSON, and click any entry to see its full detail in a slide-over panel.
+A minimal, dark, HTMX-powered live feed with 3-second polling. Highlights:
+
+- **Grouped sidebar** (Core / Infrastructure / Application) — browse by event type without a wall of items.
+- **Exception grouping** — identical errors collapse into one row with an occurrence count and first/last seen.
+- **Query `EXPLAIN`** on demand and a **request waterfall** showing which queries dominate response time.
+- **Keyboard-first detail panel** — `j`/`k` to move between entries, `Esc` to close, prev/next + position.
+- **Tagging + tag search** (`tag:foo`), JSON export per entry, and a compact metrics strip.
+- **Natural-language search** (✨) and **AI "Explain & fix"** when AI is enabled (see below).
 
 ### Stats Dashboard — `/orbit/stats/`
 
@@ -265,6 +278,46 @@ The MCP server launches on-demand when your AI assistant needs it. No extra proc
 | `get_request_detail` | Every event for one request via `family_hash` |
 | `search_entries` | Keyword search across all event types |
 | `get_stats_summary` | Error rate, avg response time, cache hit rate |
+| `explain_query` | Database `EXPLAIN` plan for a captured query |
+| `get_request_timeline` | Query waterfall (offset + duration) for a request |
+| `get_exception_groups` | Exceptions grouped by type + location, with counts |
+| `propose_n1_fix` | Detects N+1s and suggests `select/prefetch_related` + the source line |
+| `get_entry_source_context` | Caller / traceback so the agent can open the right file |
+
+> These turn Orbit into the **observability layer an AI agent reasons over** while it fixes a
+> bug: query a slow request → get its `EXPLAIN` plan and timeline → find the N+1 and its source
+> line → apply the fix. Works with any MCP client (Claude Code, Cursor, Codex, Claude Desktop).
+
+---
+
+## 🧠 AI Assist (opt-in)
+
+Orbit can call an LLM **on demand** to explain and fix issues, right from the detail panel.
+It's **off by default**, **bring-your-own-key**, and **privacy-first**: entry data is masked
+(see [Security](#️-security)) before anything is sent, calls happen only when you click, and
+results are cached on the entry.
+
+```python
+ORBIT_CONFIG = {
+    'AI': {
+        'enabled': True,
+        'api_key': env('ANTHROPIC_API_KEY'),
+        'model': 'claude-opus-4-8',   # optional
+        # 'handler': my_callable,     # optional: plug ANY provider — (system, user, cfg) -> str
+    },
+}
+```
+
+```bash
+pip install django-orbit[ai]
+```
+
+| Feature | Where |
+|---|---|
+| **Explain & fix** | Root cause + concrete patch for an exception, slow/duplicate query, or N+1 request |
+| **Summarize** | One-paragraph summary of a whole request (what ran, where time went, what's suspicious) |
+| **Triage** | Severity, category and next step for an exception |
+| **Natural-language search** | Type *"500s on /checkout in the last hour"* → Orbit translates it to feed filters |
 
 ---
 
@@ -341,17 +394,29 @@ ORBIT_CONFIG = {
 }
 ```
 
-Orbit automatically redacts sensitive fields (passwords, tokens, API keys) from request bodies and headers.
+**Sensitive-data masking.** Orbit redacts values whose key looks sensitive (`password`,
+`token`, `api_key`, `authorization`, `secret`, `cookie`, …). Matching is substring +
+case-insensitive (so `access_token` and `user_password` are caught too) and recursive.
+Tune the term list with `MASK_KEYS`, mask every payload at write time with
+`MASK_ALL_PAYLOADS`, and note the same masking scrubs data before it's ever sent to an AI
+provider.
 
 ---
 
 ## 🗺️ Roadmap
 
+### Recently shipped
+
+- ✅ **Dashboard overhaul** — grouped nav, exception grouping, query `EXPLAIN`, request waterfall, keyboard-first detail panel
+- ✅ **AI assist** — opt-in Explain & fix, summarize, triage, and natural-language search
+- ✅ **Agentic MCP** — five new tools so any MCP client can debug over live Orbit data
+
 ### What's next
 
-- **AI Insights engine** — automatic pattern detection and plain-English summaries powered by LLMs
-- **VS Code / Cursor extension** — surface Orbit data in your editor sidebar while you code
-- **Alerting** — Slack, email, and webhook notifications for exceptions and slow requests
+- **Alerting** — Slack, email, and webhook notifications for new exceptions and slow requests
+- **Sampling** — fractional recording for very high-traffic apps
+- **Request replay** — generate a `curl` / `pytest` snippet to reproduce a captured request
+- **Broader ecosystem** — first-class DRF, ASGI/async, and GraphQL coverage
 - **Orbit Cloud** — shared team dashboards with historical data retention
 
 ---
