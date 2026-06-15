@@ -101,17 +101,33 @@
     </div>
     {% endif %}
 
-    <!-- AI explain & fix (C1), on demand -->
-    {% if ai_available %}
+    <!-- AI assist (C1/C3/C4), on demand -->
+    {% if ai_on %}
     <div>
-        <button hx-get="{% url 'orbit:ai_explain' entry.id %}"
-                hx-target="#ai-{{ entry.id }}" hx-swap="innerHTML"
-                hx-indicator="#ai-spin-{{ entry.id }}"
-                class="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-violet-500/10 text-violet-300 hover:bg-violet-500/20 transition-colors">
-            <i data-lucide="sparkles" class="w-4 h-4"></i>
-            <span>Explain &amp; fix with AI</span>
-            <i id="ai-spin-{{ entry.id }}" data-lucide="loader-2" class="htmx-indicator w-4 h-4 animate-spin"></i>
-        </button>
+        <div class="flex flex-wrap items-center gap-2">
+            {% if ai_available %}
+            <button hx-get="{% url 'orbit:ai_explain' entry.id %}"
+                    hx-target="#ai-{{ entry.id }}" hx-swap="innerHTML" hx-indicator="#ai-spin-{{ entry.id }}"
+                    class="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-violet-500/10 text-violet-300 hover:bg-violet-500/20 transition-colors">
+                <i data-lucide="sparkles" class="w-4 h-4"></i><span>Explain &amp; fix</span>
+            </button>
+            {% endif %}
+            {% if entry.type == 'request' %}
+            <button hx-get="{% url 'orbit:ai_summarize' entry.id %}"
+                    hx-target="#ai-{{ entry.id }}" hx-swap="innerHTML" hx-indicator="#ai-spin-{{ entry.id }}"
+                    class="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-violet-500/10 text-violet-300 hover:bg-violet-500/20 transition-colors">
+                <i data-lucide="text" class="w-4 h-4"></i><span>Summarize</span>
+            </button>
+            {% endif %}
+            {% if entry.type == 'exception' %}
+            <button hx-get="{% url 'orbit:ai_triage' entry.id %}"
+                    hx-target="#ai-{{ entry.id }}" hx-swap="innerHTML" hx-indicator="#ai-spin-{{ entry.id }}"
+                    class="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-violet-500/10 text-violet-300 hover:bg-violet-500/20 transition-colors">
+                <i data-lucide="triangle-alert" class="w-4 h-4"></i><span>Triage</span>
+            </button>
+            {% endif %}
+            <i id="ai-spin-{{ entry.id }}" data-lucide="loader-2" class="htmx-indicator w-4 h-4 animate-spin text-violet-300"></i>
+        </div>
         <div id="ai-{{ entry.id }}" class="mt-2"></div>
     </div>
     {% endif %}

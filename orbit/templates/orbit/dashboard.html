@@ -116,8 +116,14 @@
                         x-model="searchQuery"
                         @input.debounce.300ms="search()"
                         placeholder="Search entries (UUID or text content)..."
-                        class="w-full bg-orbit-bg-primary border border-orbit-border rounded-lg pl-9 pr-4 py-1.5 text-sm text-orbit-text-primary placeholder-orbit-text-muted focus:outline-none focus:border-orbit-accent-cyan transition-colors"
+                        class="w-full bg-orbit-bg-primary border border-orbit-border rounded-lg pl-9 pr-10 py-1.5 text-sm text-orbit-text-primary placeholder-orbit-text-muted focus:outline-none focus:border-orbit-accent-cyan transition-colors"
                     >
+                    {% if ai_on %}
+                    <button @click="aiSearch()" title="Ask in natural language (AI)"
+                            class="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-violet-300 hover:bg-violet-500/15 transition-colors">
+                        <i data-lucide="sparkles" class="w-4 h-4"></i>
+                    </button>
+                    {% endif %}
                 </div>
             </div>
 
@@ -318,7 +324,8 @@ function orbitDashboard() {
     const URLS = {
         feed: '{{ orbit_urls.feed }}',
         detail: '{{ orbit_urls.detail_base }}',
-        clear: '{{ orbit_urls.clear }}'
+        clear: '{{ orbit_urls.clear }}',
+        ai_search: '{{ orbit_urls.ai_search }}'
     };
 
     return {
@@ -331,13 +338,40 @@ function orbitDashboard() {
         pollingInterval: null,
         currentPage: 1,
         searchQuery: '',
+        extraFilters: {},
         showOnboarding: false,
         isLoading: false,
         isLoadingDetail: false,
         
         search() {
             this.currentPage = 1;
+            this.extraFilters = {};  // a manual search clears AI filters
             this.refreshFeed().then(() => this.syncDetailWithFeed());
+        },
+
+        async aiSearch() {
+            const question = window.prompt('Ask in natural language\n(e.g. "500s on /checkout in the last hour")');
+            if (!question) return;
+            this.isLoading = true;
+            try {
+                const r = await fetch(`${URLS.ai_search}?q=` + encodeURIComponent(question));
+                const data = await r.json();
+                if (!data.ok) { window.alert(data.error || 'Could not interpret that.'); return; }
+                const f = data.filters || {};
+                this.currentType = f.type || 'all';
+                this.extraFilters = {};
+                if (f.status_min) this.extraFilters.status_min = f.status_min;
+                if (f.path_contains) this.extraFilters.path_contains = f.path_contains;
+                if (f.since_minutes) this.extraFilters.since_minutes = f.since_minutes;
+                this.searchQuery = f.tag ? ('tag:' + f.tag) : (f.q || '');
+                this.currentPage = 1;
+                await this.refreshFeed(false, true);
+                this.syncDetailWithFeed();
+            } catch (e) {
+                window.alert('AI search failed: ' + e.message);
+            } finally {
+                this.isLoading = false;
+            }
         },
         
         init() {
@@ -412,6 +446,7 @@ function orbitDashboard() {
         setType(type) {
             this.currentType = type;
             this.currentPage = 1;  // Reset to page 1 when changing type
+            this.extraFilters = {};  // clear AI search filters when picking a type
             // Don't preserve page, show loading; then drop the panel if its entry is gone
             this.refreshFeed(false, true).then(() => this.syncDetailWithFeed());
         },
@@ -460,6 +495,10 @@ function orbitDashboard() {
                     page: page,
                     q: this.searchQuery
                 });
+                // AI natural-language search may add structured filters (C2)
+                for (const [k, v] of Object.entries(this.extraFilters || {})) {
+                    if (v !== null && v !== undefined && v !== '') queryParams.set(k, v);
+                }
                 const response = await fetch(`${URLS.feed}?${queryParams}`);
                 if (response.ok) {
                     container.innerHTML = await response.text();

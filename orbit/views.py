@@ -23,6 +23,9 @@ __all__ = [
     "OrbitStatsSectionView",
     "OrbitExplainView",
     "OrbitAIExplainView",
+    "OrbitAISummaryView",
+    "OrbitAITriageView",
+    "OrbitAISearchView",
     "OrbitExportView",
     "OrbitHealthView",
 ]
@@ -271,7 +274,12 @@ class OrbitDashboardView(OrbitProtectedView, TemplateView):
             + "detail/",  # Base path for details
             "clear": reverse("orbit:clear"),
             "export_all": reverse("orbit:export_all"),
+            "ai_search": reverse("orbit:ai_search"),
         }
+
+        from orbit.ai import ai_enabled
+
+        context["ai_on"] = ai_enabled()
 
         return context
 
@@ -312,10 +320,33 @@ class OrbitFeedPartial(OrbitProtectedView, View):
         if tag:
             queryset = queryset.filter(tags__contains="," + tag + ",")
 
+        # Extra filters (also produced by AI natural-language search — C2)
+        status_min = request.GET.get("status_min")
+        if status_min:
+            try:
+                queryset = queryset.filter(payload__status_code__gte=int(status_min))
+            except ValueError:
+                pass
+        path_contains = request.GET.get("path_contains")
+        if path_contains:
+            queryset = queryset.filter(payload__path__icontains=path_contains)
+        since_minutes = request.GET.get("since_minutes")
+        if since_minutes:
+            try:
+                from datetime import timedelta
+                from django.utils import timezone
+
+                queryset = queryset.filter(
+                    created_at__gte=timezone.now() - timedelta(minutes=int(since_minutes))
+                )
+            except ValueError:
+                pass
+        has_extra_filters = bool(status_min or path_contains or since_minutes)
+
         # Exception grouping (B3): on the plain Exceptions view, collapse identical
         # exceptions into one row with a count + first/last seen. Skipped when searching
         # or drilling into a family so those flows still show individual occurrences.
-        if entry_type == OrbitEntry.TYPE_EXCEPTION and not family_hash and not query and not tag:
+        if entry_type == OrbitEntry.TYPE_EXCEPTION and not family_hash and not query and not tag and not has_extra_filters:
             return self._exception_groups_response(request, per_page, page)
 
         # Filter by search query "q"
@@ -531,7 +562,8 @@ class OrbitDetailPartial(OrbitProtectedView, View):
         # AI assist (C1): show the button only when AI is enabled and this entry type qualifies.
         from orbit.ai import ai_enabled, entry_supports_ai
 
-        ai_available = ai_enabled() and entry_supports_ai(entry)
+        ai_on = ai_enabled()
+        ai_available = ai_on and entry_supports_ai(entry)
 
         # Format payload as pretty JSON
         payload_json = json.dumps(
@@ -549,6 +581,7 @@ class OrbitDetailPartial(OrbitProtectedView, View):
                 "duplicate_query_stats": duplicate_query_stats,
                 "waterfall": waterfall,
                 "ai_available": ai_available,
+                "ai_on": ai_on,
             },
         )
 
@@ -748,6 +781,43 @@ class OrbitAIExplainView(OrbitProtectedView, View):
         force = request.GET.get("force") == "1"
         ctx["result"] = analyze_entry(entry, force=force)
         return TemplateResponse(request, "orbit/partials/ai_explain.html", ctx)
+
+
+class OrbitAISummaryView(OrbitProtectedView, View):
+    """AI summary of a request/family (C3)."""
+
+    def get(self, request: HttpRequest, entry_id: str) -> HttpResponse:
+        from orbit.ai import ai_enabled, summarize_family
+
+        if not ai_enabled():
+            return TemplateResponse(request, "orbit/partials/ai_explain.html",
+                                    {"error": "AI assist is off."})
+        entry = get_object_or_404(OrbitEntry, id=entry_id)
+        result = summarize_family(entry, force=request.GET.get("force") == "1")
+        return TemplateResponse(request, "orbit/partials/ai_explain.html", {"result": result})
+
+
+class OrbitAITriageView(OrbitProtectedView, View):
+    """AI triage of an exception (C4)."""
+
+    def get(self, request: HttpRequest, entry_id: str) -> HttpResponse:
+        from orbit.ai import ai_enabled, triage_exception
+
+        if not ai_enabled():
+            return TemplateResponse(request, "orbit/partials/ai_explain.html",
+                                    {"error": "AI assist is off."})
+        entry = get_object_or_404(OrbitEntry, id=entry_id)
+        result = triage_exception(entry, force=request.GET.get("force") == "1")
+        return TemplateResponse(request, "orbit/partials/ai_explain.html", {"result": result})
+
+
+class OrbitAISearchView(OrbitProtectedView, View):
+    """Natural-language search → feed filters (C2). Returns JSON for the dashboard."""
+
+    def get(self, request: HttpRequest) -> HttpResponse:
+        from orbit.ai import nl_search
+
+        return JsonResponse(nl_search(request.GET.get("q", "")))
 
 
 class OrbitExportView(OrbitProtectedView, View):
