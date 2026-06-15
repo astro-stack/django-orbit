@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-06-15
+
 ### Added
 
 - **AI "Explain & fix"** — an opt-in, bring-your-own-key button in the detail panel for
@@ -25,6 +27,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `get_request_timeline` (query waterfall), `get_exception_groups` (grouped errors with
   counts), `propose_n1_fix` (detect N+1s and suggest select/prefetch_related + source
   line), and `get_entry_source_context` (caller/traceback to open the right file).
+
+### Fixed
+
+- Exceptions without a fingerprint are no longer hidden from the grouped Exceptions view
+  (the sidebar badge could show a count while the list said "No exceptions"). They now
+  appear individually; fingerprinted exceptions still group together.
 
 ## [0.9.0] - 2026-06-15
 
