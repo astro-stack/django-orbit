@@ -63,13 +63,23 @@ def test_exception_groups_aggregate_in_db():
 
 
 @pytest.mark.django_db
-def test_latest_for_fingerprints_returns_representative():
+def test_latest_for_groups_returns_representative():
     e1 = _make_exception("ValueError", "app/views.py", "checkout", "first")
     e2 = _make_exception("ValueError", "app/views.py", "checkout", "second")
-    latest = OrbitEntry.objects.latest_for_fingerprints([e1.fingerprint])
+    latest = OrbitEntry.objects.latest_for_groups([e1.fingerprint])
     assert e1.fingerprint in latest
     # Most recent occurrence is the representative
     assert latest[e1.fingerprint].id == e2.id
+
+
+@pytest.mark.django_db
+def test_fingerprintless_exceptions_are_not_hidden():
+    """Regression: exceptions without a fingerprint must still appear (one group each)."""
+    OrbitEntry.objects.create(type=OrbitEntry.TYPE_EXCEPTION, payload={"exception_type": "A", "message": "a"})
+    OrbitEntry.objects.create(type=OrbitEntry.TYPE_EXCEPTION, payload={"exception_type": "B", "message": "b"})
+    groups = list(OrbitEntry.objects.exception_groups())
+    assert len(groups) == 2  # each ungrouped exception is its own group, not hidden
+    assert all(g["count"] == 1 for g in groups)
 
 
 @pytest.mark.django_db
