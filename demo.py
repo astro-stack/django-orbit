@@ -64,6 +64,7 @@ REVIEWER_NAMES = [
 def generate_historical_data():
     """Generate historical data spread over time for stats charts."""
     from orbit.models import OrbitEntry
+    from orbit.utils import compute_exception_fingerprint
     from datetime import timedelta
     from django.utils import timezone
     
@@ -107,11 +108,15 @@ def generate_historical_data():
             time_offset = timedelta(hours=hours_ago, minutes=random.randint(0, 59))
             created_time = now - time_offset
             
+            etype = random.choice(exception_types)
+            fingerprint = compute_exception_fingerprint({'exception_type': etype, 'traceback': []})
             entries_to_create.append(OrbitEntry(
                 type='exception',
+                fingerprint=fingerprint,
                 payload={
-                    'exception_type': random.choice(exception_types),
+                    'exception_type': etype,
                     'message': f'Error in operation at {created_time.strftime("%H:%M")}',
+                    'fingerprint': fingerprint,
                     'request_method': 'POST',
                     'request_path': '/api/action/',
                 },

@@ -1,0 +1,48 @@
+{% comment %}Lazy-loaded Stats section: cache performance.{% endcomment %}
+{% if error %}
+<div class="orbit-card p-4 text-rose-400 text-sm">Could not load cache metrics: {{ error }}</div>
+{% else %}
+<div class="orbit-card p-5 h-full">
+    <h2 class="text-sm font-medium text-orbit-text-primary mb-4 flex items-center gap-2">
+        <i data-lucide="hard-drive" class="w-4 h-4 text-orange-400"></i>
+        Cache Performance
+    </h2>
+    <div class="grid grid-cols-3 gap-4 mb-4">
+        <div class="p-3 bg-orbit-bg-primary/50 rounded-lg text-center">
+            <div class="text-2xl font-bold {% if cache.hit_rate >= 80 %}text-emerald-400{% elif cache.hit_rate >= 50 %}text-amber-400{% else %}text-rose-400{% endif %}">{{ cache.hit_rate }}%</div>
+            <div class="text-xs text-orbit-text-muted">Hit Rate</div>
+        </div>
+        <div class="p-3 bg-orbit-bg-primary/50 rounded-lg text-center">
+            <div class="text-2xl font-bold text-emerald-400">{{ cache.hits }}</div>
+            <div class="text-xs text-orbit-text-muted">Hits</div>
+        </div>
+        <div class="p-3 bg-orbit-bg-primary/50 rounded-lg text-center">
+            <div class="text-2xl font-bold text-rose-400">{{ cache.misses }}</div>
+            <div class="text-xs text-orbit-text-muted">Misses</div>
+        </div>
+    </div>
+    <div id="cache-chart" class="h-32"></div>
+</div>
+<script>
+(function () {
+    if (typeof ApexCharts === 'undefined') return;
+    const D = window.ORBIT_CHART_DEFAULTS || {};
+    const cacheData = {{ cache.trend|safe }};
+    if (cacheData && cacheData.length) {
+        new ApexCharts(document.querySelector('#cache-chart'), {
+            ...D,
+            chart: { ...D.chart, type: 'area', height: 128, sparkline: { enabled: true } },
+            series: [{ name: 'Hit Rate', data: cacheData.map(d => d.hit_rate) }],
+            stroke: { curve: 'smooth', width: 2 },
+            fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.35, opacityTo: 0.05 } },
+            colors: ['#34d399'],
+            tooltip: { fixed: { enabled: false }, y: { formatter: v => v + '%' } },
+        }).render();
+    } else {
+        document.querySelector('#cache-chart').innerHTML =
+            '<div class="flex items-center justify-center h-full text-orbit-text-muted text-xs">No cache data</div>';
+    }
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+})();
+</script>
+{% endif %}

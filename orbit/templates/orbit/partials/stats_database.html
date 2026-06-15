@@ -1,0 +1,48 @@
+{% comment %}Lazy-loaded Stats section: database performance.{% endcomment %}
+{% if error %}
+<div class="orbit-card p-4 text-rose-400 text-sm">Could not load database metrics: {{ error }}</div>
+{% else %}
+<div class="orbit-card p-5 h-full">
+    <h2 class="text-sm font-medium text-orbit-text-primary mb-4 flex items-center gap-2">
+        <i data-lucide="database" class="w-4 h-4 text-emerald-400"></i>
+        Database Performance
+    </h2>
+    <div class="grid grid-cols-2 gap-4 mb-4">
+        <div class="p-3 bg-orbit-bg-primary/50 rounded-lg">
+            <div class="text-xl font-bold text-orbit-text-primary">{{ database.total_queries }}</div>
+            <div class="text-xs text-orbit-text-muted">Total Queries</div>
+        </div>
+        <div class="p-3 bg-orbit-bg-primary/50 rounded-lg">
+            <div class="text-xl font-bold text-emerald-400">{{ database.avg_time }}<span class="text-sm text-orbit-text-muted">ms</span></div>
+            <div class="text-xs text-orbit-text-muted">Avg Duration</div>
+        </div>
+        <div class="p-3 bg-orbit-bg-primary/50 rounded-lg">
+            <div class="text-xl font-bold {% if database.slow_pct > 10 %}text-rose-400{% elif database.slow_pct > 5 %}text-amber-400{% else %}text-emerald-400{% endif %}">{{ database.slow_count }}</div>
+            <div class="text-xs text-orbit-text-muted">Slow Queries ({{ database.slow_pct }}%)</div>
+        </div>
+        <div class="p-3 bg-orbit-bg-primary/50 rounded-lg">
+            <div class="text-xl font-bold {% if database.duplicate_count > 5 %}text-amber-400{% else %}text-orbit-text-primary{% endif %}">{{ database.duplicate_count }}</div>
+            <div class="text-xs text-orbit-text-muted">Duplicate (N+1)</div>
+        </div>
+    </div>
+
+    {% if database.top_slow %}
+    <h3 class="orbit-section-title mb-2">Top Slow Queries</h3>
+    <div class="space-y-2 max-h-40 overflow-y-auto">
+        {% for query in database.top_slow %}
+        <div @click="openDetail('{{ query.id }}')"
+             class="p-2 bg-orbit-bg-primary/30 rounded text-xs cursor-pointer hover:bg-orbit-accent-cyan/10 border border-transparent hover:border-orbit-accent-cyan/30 transition-all">
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-rose-400 font-mono">{{ query.duration_ms }}ms</span>
+                <span class="text-orbit-text-muted">{{ query.timestamp|slice:":19" }}</span>
+            </div>
+            <div class="text-orbit-text-secondary font-mono truncate">{{ query.sql }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-xs text-orbit-text-muted">No slow queries in this range.</p>
+    {% endif %}
+</div>
+<script>if (typeof lucide !== 'undefined') lucide.createIcons();</script>
+{% endif %}

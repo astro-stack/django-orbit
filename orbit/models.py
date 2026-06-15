@@ -28,6 +28,51 @@ class OrbitEntryManager(models.Manager):
         """Get all exception entries."""
         return self.filter(type=OrbitEntry.TYPE_EXCEPTION)
 
+    def exception_groups(self):
+        """
+        Aggregate exceptions by fingerprint entirely in the database.
+
+        Returns one row per distinct error (``fingerprint``, ``count``, ``first_seen``,
+        ``last_seen``) ordered by recency. Scales to large volumes because the
+        grouping/counting is done by the DB via the (type, fingerprint, -created_at)
+        index — never by loading rows into Python. The representative (latest) occurrence
+        for each group is fetched separately and only for the current page (see
+        ``latest_for_fingerprints``).
+        """
+        from django.db.models import Count, Max, Min
+
+        return (
+            self.filter(type=OrbitEntry.TYPE_EXCEPTION)
+            .exclude(fingerprint="")
+            .values("fingerprint")
+            .annotate(
+                count=Count("id"),
+                last_seen=Max("created_at"),
+                first_seen=Min("created_at"),
+            )
+            .order_by("-last_seen")
+        )
+
+    def latest_for_fingerprints(self, fingerprints):
+        """
+        Return {fingerprint: latest OrbitEntry} for the given fingerprints.
+
+        Attaches a representative (most recent) occurrence to each group on the *current
+        page* only. Cost is bounded by page size: one indexed single-row lookup per
+        fingerprint (uses the (type, fingerprint, -created_at) index), and portable across
+        SQLite / MySQL / PostgreSQL (no DISTINCT ON / window-function dependency).
+        """
+        latest = {}
+        for fp in fingerprints:
+            entry = (
+                self.filter(type=OrbitEntry.TYPE_EXCEPTION, fingerprint=fp)
+                .order_by("-created_at")
+                .first()
+            )
+            if entry is not None:
+                latest[fp] = entry
+        return latest
+
     def jobs(self):
         """Get all job/task entries."""
         return self.filter(type=OrbitEntry.TYPE_JOB)
@@ -203,6 +248,26 @@ class OrbitEntry(models.Model):
         help_text="Hash to group related entries (e.g., all queries for one request)",
     )
 
+    # Grouping fingerprint (e.g. exception type + raise location) for deduplicating
+    # repeated events. Indexed so grouping/counting happens in the DB, not in Python.
+    fingerprint = models.CharField(
+        max_length=32,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text="Stable hash used to group identical events (e.g. exceptions)",
+    )
+
+    # Searchable tags, stored comma-wrapped (",slow,checkout,") so a single indexed
+    # ``tags__contains=',tag,'`` lookup matches a whole tag without false positives.
+    tags = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text="Comma-wrapped tags for filtering (e.g. ',slow,checkout,')",
+    )
+
     # Flexible payload storage
     payload = models.JSONField(
         default=dict, help_text="JSON payload containing event-specific data"
@@ -230,10 +295,59 @@ class OrbitEntry(models.Model):
         indexes = [
             models.Index(fields=["-created_at", "type"]),
             models.Index(fields=["family_hash", "created_at"]),
+            # Backs exception grouping: filter by type, group by fingerprint
+            models.Index(fields=["type", "fingerprint", "-created_at"]),
         ]
+
+    def save(self, *args, **kwargs):
+        # On insert only, and never allowed to break recording.
+        if self._state.adding:
+            try:
+                from orbit.conf import get_config
+
+                config = get_config()
+                # B5: optional defense-in-depth masking of the whole payload.
+                if self.payload and config.get("MASK_ALL_PAYLOADS", False):
+                    from orbit.utils import mask_sensitive_data
+
+                    self.payload = mask_sensitive_data(self.payload)
+
+                # B1: auto-tagging via a user-supplied callback (Telescope-style).
+                self._apply_tag_callback(config)
+            except Exception:
+                pass
+        super().save(*args, **kwargs)
+
+    def _apply_tag_callback(self, config):
+        """Merge tags returned by the optional TAG_CALLBACK into self.tags."""
+        callback = config.get("TAG_CALLBACK")
+        if not callback:
+            return
+        if isinstance(callback, str):
+            from django.utils.module_loading import import_string
+
+            try:
+                callback = import_string(callback)
+            except Exception:
+                return
+        try:
+            extra = callback(self) or []
+        except Exception:
+            return
+        from orbit.utils import normalize_tags, parse_tags
+
+        merged = parse_tags(self.tags) + list(extra)
+        self.tags = normalize_tags(merged)
 
     def __str__(self):
         return f"[{self.type.upper()}] {self.created_at.strftime('%H:%M:%S')}"
+
+    @property
+    def tag_list(self):
+        """Tags as a clean list (for display/filtering)."""
+        from orbit.utils import parse_tags
+
+        return parse_tags(self.tags)
 
     @property
     def icon(self):

@@ -1,0 +1,63 @@
+{% comment %}
+Grouped Exceptions feed (B3). Each row is a distinct error (one fingerprint) with an
+occurrence count and first/last seen. Clicking opens the latest occurrence's detail
+(rows carry data-entry-id so the existing click + j/k navigation work unchanged).
+{% endcomment %}
+{% if groups %}
+<table class="w-full">
+    <thead class="sticky top-0 z-[1] bg-orbit-bg-secondary/95 backdrop-blur border-b border-orbit-border">
+        <tr class="text-left text-xs font-semibold text-orbit-text-muted uppercase tracking-wider">
+            <th class="px-4 py-2.5 w-12">Type</th>
+            <th class="px-4 py-2.5">Exception</th>
+            <th class="px-4 py-2.5 w-20 text-right">Count</th>
+            <th class="px-4 py-2.5 w-44 text-right">Seen</th>
+        </tr>
+    </thead>
+    <tbody class="divide-y divide-orbit-border/40">
+        {% for group in groups %}
+        <tr
+            data-entry-id="{{ group.entry.id }}"
+            class="entry-row cursor-pointer border-l-2 border-transparent hover:border-orbit-accent-cyan transition-colors bg-rose-500/5">
+            <!-- Type icon -->
+            <td class="px-4 py-2.5">
+                <div title="Exception" class="w-8 h-8 rounded-lg flex items-center justify-center bg-rose-500/10 text-rose-400">
+                    <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+                </div>
+            </td>
+            <!-- Exception type + message -->
+            <td class="px-4 py-2.5">
+                <div class="flex items-center gap-2.5">
+                    <span class="text-sm font-semibold text-rose-400 font-mono">{{ group.entry.payload.exception_type }}</span>
+                    <span class="text-sm text-orbit-text-secondary font-mono truncate flex-1">{{ group.entry.payload.message }}</span>
+                </div>
+                {% if group.entry.payload.request_path %}
+                <div class="mt-0.5 text-xs text-orbit-text-muted font-mono truncate">
+                    {{ group.entry.payload.request_method }} {{ group.entry.payload.request_path }}
+                </div>
+                {% endif %}
+            </td>
+            <!-- Occurrence count -->
+            <td class="px-4 py-2.5 text-right">
+                <span class="text-xs font-mono px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-400">&times;{{ group.count }}</span>
+            </td>
+            <!-- First / last seen -->
+            <td class="px-4 py-2.5 text-right">
+                <div class="text-xs text-orbit-text-secondary font-mono">{{ group.last_seen|date:"H:i:s" }}</div>
+                <div class="text-xs text-orbit-text-muted">first {{ group.first_seen|date:"M j, H:i" }}</div>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% include "orbit/partials/_pagination.html" %}
+
+{% else %}
+<div class="flex flex-col items-center justify-center h-full text-orbit-text-muted py-20">
+    <div class="w-16 h-16 rounded-2xl bg-orbit-bg-tertiary flex items-center justify-center mb-4">
+        <i data-lucide="shield-check" class="w-8 h-8 text-emerald-400"></i>
+    </div>
+    <p class="text-lg font-medium mb-2">No exceptions</p>
+    <p class="text-sm text-orbit-text-muted">Unhandled exceptions will appear here, grouped by type and location.</p>
+</div>
+{% endif %}

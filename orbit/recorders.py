@@ -90,8 +90,9 @@ class OrbitQueryWrapper:
     Works with Django's connection.execute_wrapper() mechanism.
     """
 
-    def __init__(self, family_hash: Optional[str] = None):
+    def __init__(self, family_hash: Optional[str] = None, request_start: Optional[float] = None):
         self.family_hash = family_hash
+        self.request_start = request_start  # perf_counter() at request start (for waterfall)
         self.queries = []
         self.query_hashes = {}  # For duplicate detection
 
@@ -145,6 +146,10 @@ class OrbitQueryWrapper:
                 "database": context.get("alias", "default") if context else "default",
                 "caller": caller,
             }
+
+            # Offset from request start, for the request waterfall (B4)
+            if self.request_start is not None:
+                query_info["start_offset_ms"] = round((start_time - self.request_start) * 1000, 3)
 
             self.queries.append(query_info)
 

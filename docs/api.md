@@ -1,21 +1,28 @@
 # API Reference
 
-!!! info "Coming Soon"
-    This page is under construction. We're working hard to bring you comprehensive documentation!
+Orbit ships a dashboard UI plus a small set of internal routes used by that interface.
 
-## Available Endpoints
+## Dashboard Routes
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/orbit/` | GET | Dashboard interface |
-| `/orbit/api/entries/` | GET | List all entries (JSON) |
-| `/orbit/api/counts/` | GET | Entry counts by type |
+| `/orbit/` | GET | Main dashboard |
+| `/orbit/feed/` | GET | HTMX feed partial used by the live list |
+| `/orbit/detail/<uuid:entry_id>/` | GET | HTMX detail partial for a single entry |
+| `/orbit/clear/` | POST | Clear all recorded entries |
+| `/orbit/export/` | GET | Export all entries |
+| `/orbit/export/<uuid:entry_id>/` | GET | Export a single entry |
+| `/orbit/stats/` | GET | Stats dashboard |
+| `/orbit/health/` | GET | Health and watcher status dashboard |
+
+!!! note
+    Orbit does not currently expose a public REST API for entries. The routes above are the dashboard and its internal UI endpoints.
 
 ## Models
 
 ### OrbitEntry
 
-The main model for storing captured events.
+`OrbitEntry` is the central model used to store all telemetry.
 
 ```python
 from orbit.models import OrbitEntry
@@ -30,6 +37,21 @@ queries = OrbitEntry.objects.queries()
 exceptions = OrbitEntry.objects.exceptions()
 ```
 
----
+## Common Queries
 
-*Full API documentation coming soon!*
+```python
+# Recent slow queries
+slow_queries = OrbitEntry.objects.queries().filter(duration_ms__gte=500)
+
+# Latest exceptions
+latest_exceptions = OrbitEntry.objects.exceptions().order_by("-created_at")[:20]
+
+# A single request family
+family_entries = OrbitEntry.objects.filter(family_hash="...")
+```
+
+## Related References
+
+- [Dashboard Guide](dashboard.md)
+- [Stats Dashboard](stats.md)
+- [MCP Server](mcp.md)

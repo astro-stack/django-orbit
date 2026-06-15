@@ -22,7 +22,7 @@
             </div>
             <!-- Version and Contact -->
             <div class="mt-3 flex items-center gap-2 text-xs text-orbit-text-muted">
-                <span class="text-orbit-accent-cyan font-medium">v0.6.3</span>
+                <span class="text-orbit-accent-cyan font-medium">v{{ orbit_version }}</span>
                 <span class="text-orbit-text-muted/50">•</span>
                 <a href="mailto:unsapucaienbits@gmail.com" 
                    class="hover:text-orbit-accent-cyan transition-colors flex items-center gap-1">
@@ -32,162 +32,45 @@
             </div>
         </div>
         
-        <!-- Navigation Links (scrollable) -->
-        <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
-            <button 
+        <!-- Navigation Links (grouped, collapsible — see DESIGN.md › Layout) -->
+        <nav class="flex-1 px-3 py-4 space-y-4 overflow-y-auto">
+            <!-- All Events: standalone meta-filter, above the type groups -->
+            <button
                @click="setType('all')"
-               :class="currentType === 'all' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
-               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
-                <i data-lucide="layers" class="w-4 h-4"></i>
-                <span class="flex-1">All Events</span>
-                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.all }}</span>
+               :class="currentType === 'all' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50 border-l-2 border-transparent'"
+               class="w-full flex items-center gap-3 pl-3 pr-2 py-2 rounded-r-lg transition-all text-left text-sm">
+                <i data-lucide="layers" class="w-4 h-4 shrink-0"></i>
+                <span class="flex-1 truncate font-medium">All Events</span>
+                <span class="text-xs bg-orbit-bg-tertiary text-orbit-text-muted px-2 py-0.5 rounded-full">{{ counts.all }}</span>
             </button>
-            
-            <button
-               @click="setType('cache')"
-               :class="currentType === 'cache' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
-               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
-                <i data-lucide="hard-drive" class="w-4 h-4 text-orange-400"></i>
-                <span class="flex-1">Cache</span>
-                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.cache }}</span>
-            </button>
-            
-            <button
-               @click="setType('command')"
-               :class="currentType === 'command' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
-               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
-                <i data-lucide="terminal" class="w-4 h-4 text-violet-400"></i>
-                <span class="flex-1">Commands</span>
-                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.command }}</span>
-            </button>
-            
-            <button
-               @click="setType('dump')"
-               :class="currentType === 'dump' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
-               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
-                <i data-lucide="bug" class="w-4 h-4 text-lime-400"></i>
-                <span class="flex-1">Dumps</span>
-                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.dump }}</span>
-            </button>
-            
-            <button
-               @click="setType('exception')"
-               :class="currentType === 'exception' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
-               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
-                <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-400"></i>
-                <span class="flex-1">Exceptions</span>
-                {% if counts.exception > 0 %}
-                <span class="text-xs bg-rose-500/20 text-rose-400 px-2 py-0.5 rounded-full">{{ counts.exception }}</span>
-                {% else %}
-                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">0</span>
-                {% endif %}
-            </button>
-            
-            <button
-               @click="setType('http_client')"
-               :class="currentType === 'http_client' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
-               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
-                <i data-lucide="send" class="w-4 h-4 text-pink-400"></i>
-                <span class="flex-1">HTTP Client</span>
-                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.http_client }}</span>
-            </button>
-            
-            <button
-               @click="setType('job')"
-               :class="currentType === 'job' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
-               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
-                <i data-lucide="clock" class="w-4 h-4 text-amber-400"></i>
-                <span class="flex-1">Jobs</span>
-                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.job }}</span>
-            </button>
-            
-            <button
-               @click="setType('log')"
-               :class="currentType === 'log' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
-               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
-                <i data-lucide="file-text" class="w-4 h-4 text-slate-400"></i>
-                <span class="flex-1">Logs</span>
-                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.log }}</span>
-            </button>
-            
-            <button
-               @click="setType('model')"
-               :class="currentType === 'model' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
-               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
-                <i data-lucide="box" class="w-4 h-4 text-blue-400"></i>
-                <span class="flex-1">Models</span>
-                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.model }}</span>
-            </button>
-            
-            <button
-               @click="setType('query')"
-               :class="currentType === 'query' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
-               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
-                <i data-lucide="database" class="w-4 h-4 text-emerald-400"></i>
-                <span class="flex-1">Queries</span>
-                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.query }}</span>
-            </button>
-            
-            <button
-               @click="setType('request')"
-               :class="currentType === 'request' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
-               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
-                <i data-lucide="globe" class="w-4 h-4 text-cyan-400"></i>
-                <span class="flex-1">Requests</span>
-                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.request }}</span>
-            </button>
-            
-            <button
-               @click="setType('mail')"
-               :class="currentType === 'mail' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
-               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
-                <i data-lucide="mail" class="w-4 h-4 text-fuchsia-400"></i>
-                <span class="flex-1">Mail</span>
-                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.mail }}</span>
-            </button>
-            
-            <button
-               @click="setType('signal')"
-               :class="currentType === 'signal' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
-               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
-                <i data-lucide="zap" class="w-4 h-4 text-yellow-400"></i>
-                <span class="flex-1">Signals</span>
-                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.signal }}</span>
-            </button>
-            
-            <button
-               @click="setType('redis')"
-               :class="currentType === 'redis' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
-               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
-                <i data-lucide="server" class="w-4 h-4 text-red-400"></i>
-                <span class="flex-1">Redis</span>
-                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.redis }}</span>
-            </button>
-            
-            <button
-               @click="setType('gate')"
-               :class="currentType === 'gate' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
-               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
-                <i data-lucide="shield" class="w-4 h-4 text-indigo-400"></i>
-                <span class="flex-1">Gates</span>
-                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.gate }}</span>
-            </button>
-            <button
-               @click="setType('transaction')"
-               :class="currentType === 'transaction' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
-               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
-                <i data-lucide="layers" class="w-4 h-4 text-teal-400"></i>
-                <span class="flex-1">Transactions</span>
-                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.transaction }}</span>
-            </button>
-            <button
-               @click="setType('storage')"
-               :class="currentType === 'storage' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50'"
-               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-r-lg transition-all group text-left">
-                <i data-lucide="archive" class="w-4 h-4 text-sky-400"></i>
-                <span class="flex-1">Storage</span>
-                <span class="text-xs bg-orbit-bg-tertiary px-2 py-0.5 rounded-full">{{ counts.storage }}</span>
-            </button>
+            <div class="border-t border-orbit-border/60 !mt-3"></div>
+
+            {% for group in nav_groups %}
+            <div x-data="{ open: {{ group.open|yesno:'true,false' }} }">
+                <button
+                    @click="open = !open"
+                    class="w-full flex items-center justify-between px-2 py-1 text-xs font-semibold uppercase tracking-wide text-orbit-text-muted hover:text-orbit-text-secondary transition-colors">
+                    <span>{{ group.label }}</span>
+                    <i data-lucide="chevron-down" class="w-3.5 h-3.5 transition-transform" :class="open ? '' : '-rotate-90'"></i>
+                </button>
+                <div x-show="open" x-collapse class="mt-1 space-y-0.5">
+                    {% for item in group.items %}
+                    <button
+                       @click="setType('{{ item.type }}')"
+                       :class="currentType === '{{ item.type }}' ? 'bg-orbit-bg-tertiary text-orbit-accent-cyan border-l-2 border-orbit-accent-cyan' : 'text-orbit-text-secondary hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary/50 border-l-2 border-transparent'"
+                       class="w-full flex items-center gap-3 pl-3 pr-2 py-2 rounded-r-lg transition-all text-left text-sm">
+                        <i data-lucide="{{ item.icon }}" class="w-4 h-4 text-{{ item.color }}-400 shrink-0"></i>
+                        <span class="flex-1 truncate">{{ item.label }}</span>
+                        {% if item.is_alert and item.count > 0 %}
+                        <span class="text-xs bg-rose-500/15 text-rose-400 px-2 py-0.5 rounded-full">{{ item.count }}</span>
+                        {% else %}
+                        <span class="text-xs bg-orbit-bg-tertiary text-orbit-text-muted px-2 py-0.5 rounded-full">{{ item.count }}</span>
+                        {% endif %}
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
         </nav>
         
         <!-- Sidebar Footer -->
@@ -197,14 +80,6 @@
                 <div class="w-2 h-2 rounded-full status-dot" :class="isPaused ? 'bg-amber-400' : 'bg-emerald-400'"></div>
                 <span class="text-xs text-orbit-text-muted" x-text="isPaused ? 'Paused' : 'Recording Active'"></span>
             </div>
-            
-            <!-- Export All Button -->
-            <button 
-                @click="exportAll()"
-                class="w-full flex items-center justify-center gap-2 px-4 py-2 mb-2 text-sm text-orbit-text-secondary hover:text-orbit-accent-cyan bg-orbit-bg-tertiary/50 hover:bg-orbit-accent-cyan/10 rounded-lg transition-all">
-                <i data-lucide="download" class="w-4 h-4"></i>
-                <span>Export Filtered</span>
-            </button>
             
             <!-- Clear Button -->
             <button 
@@ -277,31 +152,40 @@
                     <i data-lucide="heart-pulse" class="w-4 h-4"></i>
                     <span>Health</span>
                 </a>
+
+                <!-- Help / re-open onboarding -->
+                <button @click="showOnboarding = true" title="Show tips"
+                        class="p-1.5 rounded-lg text-orbit-text-secondary hover:text-orbit-accent-cyan hover:bg-orbit-accent-cyan/10 transition-all">
+                    <i data-lucide="help-circle" class="w-4 h-4"></i>
+                </button>
             </div>
         </header>
         
         <!-- Statistics Panel (only visible for All Events) -->
-        <div x-show="showStats && currentType === 'all'" 
-             x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="opacity-0 -translate-y-4"
-             x-transition:enter-end="opacity-100 translate-y-0"
-             x-transition:leave="transition ease-in duration-200"
-             x-transition:leave-start="opacity-100 translate-y-0"
-             x-transition:leave-end="opacity-0 -translate-y-4"
-             class="p-6 border-b border-orbit-border bg-orbit-bg-primary/50">
-            {% include "orbit/partials/stats.html" %}
+        <div x-cloak x-show="currentType === 'all'"
+             class="border-b border-orbit-border bg-orbit-bg-secondary/40">
+            <div class="px-6 py-2">
+                {% include "orbit/partials/stats.html" %}
+            </div>
         </div>
         
         <!-- Feed Container -->
         <div class="flex-1 overflow-hidden flex relative">
             <!-- Feed List -->
             <div id="feed-container" class="flex-1 overflow-y-auto">
-                <!-- Initial loading state -->
-                <div class="flex items-center justify-center h-full text-orbit-text-muted">
-                    <div class="text-center">
-                        <i data-lucide="loader-2" class="w-8 h-8 mx-auto mb-3 animate-spin"></i>
-                        <p>Loading telemetry data...</p>
+                <!-- Initial loading state — skeleton rows for perceived speed -->
+                <div class="divide-y divide-orbit-border/40 animate-pulse">
+                    {% for _ in "12345678" %}
+                    <div class="flex items-center gap-3 px-4 py-3">
+                        <div class="w-8 h-8 rounded-lg bg-orbit-bg-tertiary shrink-0"></div>
+                        <div class="flex-1 space-y-2">
+                            <div class="h-3 bg-orbit-bg-tertiary rounded w-1/3"></div>
+                            <div class="h-2.5 bg-orbit-bg-tertiary/60 rounded w-1/5"></div>
+                        </div>
+                        <div class="h-3 bg-orbit-bg-tertiary rounded w-12"></div>
+                        <div class="h-3 bg-orbit-bg-tertiary rounded w-14"></div>
                     </div>
+                    {% endfor %}
                 </div>
             </div>
             
@@ -324,7 +208,8 @@
             </div>
             
             <!-- Detail Panel (Slide-over) -->
-            <div 
+            <div
+                x-cloak
                 x-show="detailOpen"
                 x-transition:enter="transition ease-out duration-300"
                 x-transition:enter-start="translate-x-full"
@@ -337,10 +222,29 @@
                 
                 <!-- Detail Header -->
                 <div class="h-14 border-b border-orbit-border flex items-center justify-between px-4">
-                    <h3 class="text-sm font-medium text-orbit-text-secondary">Entry Details</h3>
-                    <button @click="closeDetail()" class="p-1 hover:bg-orbit-bg-tertiary rounded transition-colors">
-                        <i data-lucide="x" class="w-5 h-5"></i>
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <h3 class="text-sm font-medium text-orbit-text-secondary">Entry Details</h3>
+                        <span x-show="detailTotal > 1" class="text-xs text-orbit-text-muted font-mono"
+                              x-text="(detailIndex + 1) + '/' + detailTotal"></span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <!-- Prev / Next within the current feed (keyboard: k / j) -->
+                        <button @click="navigateDetail(-1)" :disabled="detailIndex <= 0"
+                                title="Previous entry (k)"
+                                class="p-1.5 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed hover:bg-orbit-bg-tertiary text-orbit-text-secondary">
+                            <i data-lucide="chevron-up" class="w-4 h-4"></i>
+                        </button>
+                        <button @click="navigateDetail(1)" :disabled="detailIndex < 0 || detailIndex >= detailTotal - 1"
+                                title="Next entry (j)"
+                                class="p-1.5 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed hover:bg-orbit-bg-tertiary text-orbit-text-secondary">
+                            <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                        </button>
+                        <div class="w-px h-5 bg-orbit-border mx-1"></div>
+                        <button @click="closeDetail()" title="Close (Esc)"
+                                class="p-1.5 hover:bg-orbit-bg-tertiary rounded transition-colors text-orbit-text-secondary">
+                            <i data-lucide="x" class="w-5 h-5"></i>
+                        </button>
+                    </div>
                 </div>
                 
                 <!-- Detail Content -->
@@ -357,6 +261,55 @@
             </div>
         </div>
     </main>
+
+    <!-- First-run onboarding (dismissable; reopen via the ? button) -->
+    <div x-cloak x-show="showOnboarding"
+         x-transition.opacity
+         class="fixed inset-0 z-[60] flex items-center justify-center p-4"
+         @keydown.escape.window="dismissOnboarding()">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="dismissOnboarding()"></div>
+        <div class="relative orbit-card w-full max-w-lg p-6 shadow-2xl"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 translate-y-3"
+             x-transition:enter-end="opacity-100 translate-y-0">
+            <div class="flex items-start gap-3 mb-5">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-violet-500 flex items-center justify-center shrink-0">
+                    <i data-lucide="orbit" class="w-6 h-6 text-white"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg font-semibold text-orbit-text-primary">Welcome to Django Orbit</h2>
+                    <p class="text-sm text-orbit-text-muted">A quick tour of your observability dashboard.</p>
+                </div>
+            </div>
+
+            <ul class="space-y-3 mb-6">
+                <li class="flex items-start gap-3">
+                    <i data-lucide="layers" class="w-4 h-4 text-orbit-accent-cyan mt-0.5 shrink-0"></i>
+                    <span class="text-sm text-orbit-text-secondary"><span class="text-orbit-text-primary font-medium">Browse by type</span> — the sidebar groups events into Core, Infrastructure and Application. Click any to filter.</span>
+                </li>
+                <li class="flex items-start gap-3">
+                    <i data-lucide="mouse-pointer-click" class="w-4 h-4 text-orbit-accent-cyan mt-0.5 shrink-0"></i>
+                    <span class="text-sm text-orbit-text-secondary"><span class="text-orbit-text-primary font-medium">Inspect an entry</span> — click a row to open details. Use <kbd class="px-1.5 py-0.5 text-xs font-mono bg-orbit-bg-tertiary rounded">j</kbd>/<kbd class="px-1.5 py-0.5 text-xs font-mono bg-orbit-bg-tertiary rounded">k</kbd> to move between entries and <kbd class="px-1.5 py-0.5 text-xs font-mono bg-orbit-bg-tertiary rounded">Esc</kbd> to close.</span>
+                </li>
+                <li class="flex items-start gap-3">
+                    <i data-lucide="search" class="w-4 h-4 text-orbit-accent-cyan mt-0.5 shrink-0"></i>
+                    <span class="text-sm text-orbit-text-secondary"><span class="text-orbit-text-primary font-medium">Search everything</span> — the top bar searches across entry payloads (SQL, paths, messages) and IDs.</span>
+                </li>
+                <li class="flex items-start gap-3">
+                    <i data-lucide="bar-chart-2" class="w-4 h-4 text-orbit-accent-cyan mt-0.5 shrink-0"></i>
+                    <span class="text-sm text-orbit-text-secondary"><span class="text-orbit-text-primary font-medium">Stats &amp; Health</span> — performance analytics and watcher diagnostics live in the top-right.</span>
+                </li>
+            </ul>
+
+            <div class="flex items-center justify-between">
+                <span class="text-xs text-orbit-text-muted">You can reopen this from the <i data-lucide="help-circle" class="w-3.5 h-3.5 inline"></i> button.</span>
+                <button @click="dismissOnboarding()"
+                        class="px-4 py-2 rounded-lg text-sm font-medium bg-orbit-accent-cyan text-orbit-bg-primary hover:bg-cyan-300 transition-colors">
+                    Got it
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -365,8 +318,7 @@ function orbitDashboard() {
     const URLS = {
         feed: '{{ orbit_urls.feed }}',
         detail: '{{ orbit_urls.detail_base }}',
-        clear: '{{ orbit_urls.clear }}',
-        export_all: '{{ orbit_urls.export_all }}'
+        clear: '{{ orbit_urls.clear }}'
     };
 
     return {
@@ -374,22 +326,30 @@ function orbitDashboard() {
         isPaused: false,
         detailOpen: false,
         detailEntryId: null,
+        detailIndex: -1,
+        detailTotal: 0,
         pollingInterval: null,
         currentPage: 1,
         searchQuery: '',
-        showStats: true,
+        showOnboarding: false,
         isLoading: false,
         isLoadingDetail: false,
         
         search() {
             this.currentPage = 1;
-            this.refreshFeed();
+            this.refreshFeed().then(() => this.syncDetailWithFeed());
         },
         
         init() {
+            // Show the onboarding tour on first visit only
+            if (!localStorage.getItem('orbit:onboarded')) {
+                this.showOnboarding = true;
+                this.$nextTick(() => lucide.createIcons());
+            }
+
             // Initial load
             this.refreshFeed();
-            
+
             // Start polling
             this.startPolling();
             
@@ -405,6 +365,32 @@ function orbitDashboard() {
             document.addEventListener('orbit:open-detail', (e) => {
                 if (e.detail && e.detail.entryId) {
                     this.openDetail(e.detail.entryId);
+                }
+            });
+
+            // Filter the feed by a tag (clicked from the detail panel)
+            document.addEventListener('orbit:tag', (e) => {
+                if (e.detail && e.detail.tag) {
+                    this.searchQuery = 'tag:' + e.detail.tag;
+                    this.closeDetail();
+                    this.search();
+                }
+            });
+
+            // Keyboard shortcuts: Esc closes, j/k move between entries (Vim-style)
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    if (this.detailOpen) this.closeDetail();
+                    return;
+                }
+                // Don't hijack keys while typing in the search box
+                const tag = (e.target.tagName || '').toLowerCase();
+                if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return;
+
+                if (e.key === 'j' || e.key === 'ArrowDown') {
+                    if (this.detailOpen) { e.preventDefault(); this.navigateDetail(1); }
+                } else if (e.key === 'k' || e.key === 'ArrowUp') {
+                    if (this.detailOpen) { e.preventDefault(); this.navigateDetail(-1); }
                 }
             });
         },
@@ -426,7 +412,8 @@ function orbitDashboard() {
         setType(type) {
             this.currentType = type;
             this.currentPage = 1;  // Reset to page 1 when changing type
-            this.refreshFeed(false, true);  // Don't preserve page, show loading
+            // Don't preserve page, show loading; then drop the panel if its entry is gone
+            this.refreshFeed(false, true).then(() => this.syncDetailWithFeed());
         },
         
         getTypeLabel() {
@@ -448,16 +435,25 @@ function orbitDashboard() {
             // Reinitialize icons for the button
             this.$nextTick(() => lucide.createIcons());
         },
+
+        dismissOnboarding() {
+            this.showOnboarding = false;
+            localStorage.setItem('orbit:onboarded', '1');
+        },
+
         
         async refreshFeed(preservePage = true, showLoading = false) {
             const container = document.getElementById('feed-container');
             const page = preservePage ? this.currentPage : 1;
-            
+
             // Only show loading for user-initiated actions (not polling)
             if (showLoading) {
                 this.isLoading = true;
             }
-            
+
+            // Preserve scroll position so background polling doesn't jump the feed to top
+            const prevScroll = container.scrollTop;
+
             try {
                 const queryParams = new URLSearchParams({
                     type: this.currentType,
@@ -469,7 +465,11 @@ function orbitDashboard() {
                     container.innerHTML = await response.text();
                     htmx.process(container);  // Process HTMX attributes on new content
                     lucide.createIcons();
-                    
+                    container.scrollTop = prevScroll;
+
+                    // Keep the open panel's prev/next bounds in sync with the new rows
+                    if (this.detailOpen) this.updateDetailPosition();
+
                     // Update current page from response (listen for page changes via HTMX)
                     this.setupPageTracking();
                 }
@@ -502,6 +502,7 @@ function orbitDashboard() {
             
             // If clicking a different entry, just update the content (don't close/reopen)
             this.detailEntryId = entryId;
+            this.updateDetailPosition();
             this.isLoadingDetail = true;
             
             // Small delay to prevent click.away from immediately closing
@@ -541,6 +542,49 @@ function orbitDashboard() {
         closeDetail() {
             this.detailOpen = false;
             this.detailEntryId = null;
+            this.detailIndex = -1;
+            this.detailTotal = 0;
+        },
+
+        // Ordered entry IDs currently visible in the feed (drives prev/next)
+        getFeedEntryIds() {
+            return Array.from(
+                document.querySelectorAll('#feed-container [data-entry-id]')
+            ).map(el => el.dataset.entryId);
+        },
+
+        // Recompute the open entry's position within the current feed
+        updateDetailPosition() {
+            const ids = this.getFeedEntryIds();
+            this.detailIndex = ids.indexOf(this.detailEntryId);
+            this.detailTotal = ids.length;
+        },
+
+        // Move to the prev/next entry in the current feed (dir = -1 | +1)
+        navigateDetail(dir) {
+            if (!this.detailOpen) return;
+            const ids = this.getFeedEntryIds();
+            const idx = ids.indexOf(this.detailEntryId);
+            if (idx === -1) return;
+            const nextIdx = idx + dir;
+            if (nextIdx < 0 || nextIdx >= ids.length) return;
+            const nextId = ids[nextIdx];
+            const row = document.querySelector(`#feed-container [data-entry-id="${nextId}"]`);
+            if (row) row.scrollIntoView({ block: 'nearest' });
+            this.openDetail(nextId);
+        },
+
+        // Close the panel if its entry dropped out of the feed after a filter/search
+        syncDetailWithFeed() {
+            if (!this.detailOpen || !this.detailEntryId) return;
+            const stillThere = document.querySelector(
+                `#feed-container [data-entry-id="${this.detailEntryId}"]`
+            );
+            if (stillThere) {
+                this.updateDetailPosition();
+            } else {
+                this.closeDetail();
+            }
         },
         
         async clearAll() {
@@ -560,14 +604,6 @@ function orbitDashboard() {
             } catch (error) {
                 console.error('Failed to clear entries:', error);
             }
-        },
-        
-        exportAll() {
-            const queryParams = new URLSearchParams({
-                type: this.currentType,
-                q: this.searchQuery
-            });
-            window.location.href = `${URLS.export_all}?${queryParams}`;
         },
         
         getCSRFToken() {

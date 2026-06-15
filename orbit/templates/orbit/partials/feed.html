@@ -2,146 +2,96 @@
 
 {% if entries %}
 <table class="w-full">
-    <thead class="sticky top-0 bg-orbit-bg-secondary/95 backdrop-blur border-b border-orbit-border">
-        <tr class="text-left text-xs text-orbit-text-muted uppercase tracking-wider">
-            <th class="px-4 py-3 w-12">Type</th>
-            <th class="px-4 py-3">Summary</th>
-            <th class="px-4 py-3 w-24 text-right">Duration</th>
-            <th class="px-4 py-3 w-32 text-right">Time</th>
+    <thead class="sticky top-0 z-[1] bg-orbit-bg-secondary/95 backdrop-blur border-b border-orbit-border">
+        <tr class="text-left text-xs font-semibold text-orbit-text-muted uppercase tracking-wider">
+            <th class="px-4 py-2.5 w-12">Type</th>
+            <th class="px-4 py-2.5">Summary</th>
+            <th class="px-4 py-2.5 w-24 text-right">Duration</th>
+            <th class="px-4 py-2.5 w-28 text-right">Time</th>
         </tr>
     </thead>
-    <tbody class="divide-y divide-orbit-border/50">
+    <tbody class="divide-y divide-orbit-border/40">
         {% for entry in entries %}
-        <tr 
+        {% type_icon entry.type as entry_icon %}
+        {% type_color entry.type as entry_color %}
+        <tr
             data-entry-id="{{ entry.id }}"
-            class="entry-row cursor-pointer border-l-2 border-transparent hover:border-orbit-accent-cyan transition-all {% if entry.is_error %}bg-rose-500/5{% elif entry.is_warning %}bg-amber-500/5{% endif %}">
-            
+            class="entry-row cursor-pointer border-l-2 border-transparent hover:border-orbit-accent-cyan transition-colors {% if entry.is_error %}bg-rose-500/5{% elif entry.is_warning %}bg-amber-500/5{% endif %}">
+
             <!-- Type Icon -->
-            <td class="px-4 py-3">
-                <div class="w-8 h-8 rounded-lg flex items-center justify-center 
-                    {% if entry.type == 'request' %}bg-cyan-500/10 text-cyan-400
-                    {% elif entry.type == 'query' %}bg-emerald-500/10 text-emerald-400
-                    {% elif entry.type == 'log' %}bg-slate-500/10 text-slate-400
-                    {% elif entry.type == 'exception' %}bg-rose-500/10 text-rose-400
-                    {% elif entry.type == 'job' %}bg-amber-500/10 text-amber-400
-                    {% elif entry.type == 'command' %}bg-violet-500/10 text-violet-400
-                    {% elif entry.type == 'cache' %}bg-orange-500/10 text-orange-400
-                    {% elif entry.type == 'model' %}bg-blue-500/10 text-blue-400
-                    {% elif entry.type == 'http_client' %}bg-pink-500/10 text-pink-400
-                    {% elif entry.type == 'dump' %}bg-lime-500/10 text-lime-400
-                    {% elif entry.type == 'mail' %}bg-fuchsia-500/10 text-fuchsia-400
-                    {% elif entry.type == 'signal' %}bg-yellow-500/10 text-yellow-400
-                    {% elif entry.type == 'redis' %}bg-red-500/10 text-red-400
-                    {% elif entry.type == 'gate' %}bg-indigo-500/10 text-indigo-400
-                    {% elif entry.type == 'transaction' %}bg-teal-500/10 text-teal-400
-                    {% elif entry.type == 'storage' %}bg-sky-500/10 text-sky-400
-                    {% endif %}">
-                    {% if entry.type == 'request' %}
-                    <i data-lucide="globe" class="w-4 h-4"></i>
-                    {% elif entry.type == 'query' %}
-                    <i data-lucide="database" class="w-4 h-4"></i>
-                    {% elif entry.type == 'log' %}
-                    <i data-lucide="file-text" class="w-4 h-4"></i>
-                    {% elif entry.type == 'exception' %}
-                    <i data-lucide="alert-triangle" class="w-4 h-4"></i>
-                    {% elif entry.type == 'job' %}
-                    <i data-lucide="clock" class="w-4 h-4"></i>
-                    {% elif entry.type == 'command' %}
-                    <i data-lucide="terminal" class="w-4 h-4"></i>
-                    {% elif entry.type == 'cache' %}
-                    <i data-lucide="hard-drive" class="w-4 h-4"></i>
-                    {% elif entry.type == 'model' %}
-                    <i data-lucide="box" class="w-4 h-4"></i>
-                    {% elif entry.type == 'http_client' %}
-                    <i data-lucide="send" class="w-4 h-4"></i>
-                    {% elif entry.type == 'dump' %}
-                    <i data-lucide="bug" class="w-4 h-4"></i>
-                    {% elif entry.type == 'mail' %}
-                    <i data-lucide="mail" class="w-4 h-4"></i>
-                    {% elif entry.type == 'signal' %}
-                    <i data-lucide="zap" class="w-4 h-4"></i>
-                    {% elif entry.type == 'redis' %}
-                    <i data-lucide="server" class="w-4 h-4"></i>
-                    {% elif entry.type == 'gate' %}
-                    <i data-lucide="shield" class="w-4 h-4"></i>
-                    {% elif entry.type == 'transaction' %}
-                    <i data-lucide="git-branch" class="w-4 h-4"></i>
-                    {% elif entry.type == 'storage' %}
-                    <i data-lucide="archive" class="w-4 h-4"></i>
-                    {% endif %}
+            <td class="px-4 py-2.5">
+                <div title="{{ entry.get_type_display }}"
+                     class="w-8 h-8 rounded-lg flex items-center justify-center bg-{{ entry_color }}-500/10 text-{{ entry_color }}-400">
+                    <i data-lucide="{{ entry_icon }}" class="w-4 h-4"></i>
                 </div>
             </td>
-            
+
             <!-- Summary -->
-            <td class="px-4 py-3">
-                <div class="flex items-center gap-3">
-                    <!-- Status/Level Badge for specific types -->
+            <td class="px-4 py-2.5">
+                <div class="flex items-center gap-2.5">
+                    <!-- Status / level / signal badges (kept loud on purpose) -->
                     {% if entry.type == 'request' %}
                         {% with status=entry.payload.status_code %}
-                        <span class="text-xs font-mono px-2 py-0.5 rounded 
-                            {% if status >= 500 %}bg-rose-500/20 text-rose-400
-                            {% elif status >= 400 %}bg-amber-500/20 text-amber-400
-                            {% elif status >= 300 %}bg-blue-500/20 text-blue-400
-                            {% else %}bg-emerald-500/20 text-emerald-400
+                        <span class="text-xs font-mono px-1.5 py-0.5 rounded
+                            {% if status >= 500 %}bg-rose-500/15 text-rose-400
+                            {% elif status >= 400 %}bg-amber-500/15 text-amber-400
+                            {% elif status >= 300 %}bg-blue-500/15 text-blue-400
+                            {% else %}bg-emerald-500/15 text-emerald-400
                             {% endif %}">{{ status }}</span>
                         {% endwith %}
-                        <span class="text-xs font-medium text-orbit-accent-cyan">{{ entry.payload.method }}</span>
+                        <span class="text-xs font-semibold text-orbit-accent-cyan">{{ entry.payload.method }}</span>
                         {% if entry.payload.duplicate_query_count > 0 %}
-                        <span class="text-xs font-mono px-2 py-0.5 rounded bg-violet-500/20 text-violet-400">DUP</span>
+                        <span class="text-xs font-mono px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-400">DUP</span>
                         {% endif %}
                     {% elif entry.type == 'log' %}
                         {% with level=entry.payload.level %}
-                        <span class="text-xs font-mono px-2 py-0.5 rounded 
-                            {% if level == 'ERROR' or level == 'CRITICAL' %}bg-rose-500/20 text-rose-400
-                            {% elif level == 'WARNING' %}bg-amber-500/20 text-amber-400
-                            {% elif level == 'DEBUG' %}bg-slate-500/20 text-slate-400
-                            {% else %}bg-cyan-500/20 text-cyan-400
+                        <span class="text-xs font-mono px-1.5 py-0.5 rounded
+                            {% if level == 'ERROR' or level == 'CRITICAL' %}bg-rose-500/15 text-rose-400
+                            {% elif level == 'WARNING' %}bg-amber-500/15 text-amber-400
+                            {% elif level == 'DEBUG' %}bg-slate-500/15 text-slate-400
+                            {% else %}bg-cyan-500/15 text-cyan-400
                             {% endif %}">{{ level }}</span>
                         {% endwith %}
                     {% elif entry.type == 'query' %}
                         {% if entry.payload.is_slow %}
-                        <span class="text-xs font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-400">SLOW</span>
+                        <span class="text-xs font-mono px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400">SLOW</span>
                         {% endif %}
                         {% if entry.payload.is_duplicate %}
-                        <span class="text-xs font-mono px-2 py-0.5 rounded bg-violet-500/20 text-violet-400">DUP</span>
+                        <span class="text-xs font-mono px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-400">DUP</span>
                         {% endif %}
                     {% endif %}
-                    
+
                     <!-- Main Summary Text -->
                     <span class="text-sm text-orbit-text-primary font-mono truncate flex-1">
                         {{ entry.summary }}
                     </span>
                 </div>
-                
+
                 <!-- Additional context -->
                 {% if entry.type == 'query' and entry.payload.caller.filename %}
-                <div class="mt-1 text-xs text-orbit-text-muted font-mono truncate">
+                <div class="mt-0.5 text-xs text-orbit-text-muted font-mono truncate">
                     {{ entry.payload.caller.filename }}:{{ entry.payload.caller.lineno }}
                 </div>
                 {% elif entry.type == 'log' %}
-                <div class="mt-1 text-xs text-orbit-text-muted">
+                <div class="mt-0.5 text-xs text-orbit-text-muted">
                     {{ entry.payload.logger }}
                 </div>
                 {% endif %}
             </td>
-            
+
             <!-- Duration -->
-            <td class="px-4 py-3 text-right">
+            <td class="px-4 py-2.5 text-right">
                 {% if entry.duration_ms %}
-                <span class="text-sm font-mono 
-                    {% if entry.duration_ms > 500 %}text-rose-400
-                    {% elif entry.duration_ms > 100 %}text-amber-400
-                    {% else %}text-orbit-text-secondary
-                    {% endif %}">
+                <span class="text-sm font-mono {{ entry.duration_ms|duration_class }}">
                     {{ entry.duration_ms|floatformat:1 }}ms
                 </span>
                 {% else %}
-                <span class="text-orbit-text-muted">-</span>
+                <span class="text-orbit-text-muted">·</span>
                 {% endif %}
             </td>
-            
+
             <!-- Timestamp -->
-            <td class="px-4 py-3 text-right">
+            <td class="px-4 py-2.5 text-right">
                 <span class="text-xs text-orbit-text-muted font-mono">
                     {{ entry.created_at|time:"H:i:s" }}
                 </span>
@@ -151,100 +101,7 @@
     </tbody>
 </table>
 
-<!-- Pagination -->
-{% if total_pages > 1 %}
-<div class="flex items-center justify-between px-4 py-3 border-t border-orbit-border/50">
-    <div class="text-sm text-orbit-text-muted">
-        Page {{ page }} of {{ total_pages }} ({{ total_count }} entries)
-    </div>
-    <div class="flex items-center gap-2">
-        <!-- Previous -->
-        <button 
-            {% if has_prev %}
-            hx-get="{% url 'orbit:feed' %}?type={{ current_type }}&page={{ page|add:-1 }}&per_page={{ per_page }}"
-            hx-target="#feed-container"
-            hx-swap="innerHTML"
-            hx-indicator=".htmx-indicator"
-            {% else %}
-            disabled
-            {% endif %}
-            class="px-3 py-1.5 text-sm rounded-lg transition-all flex items-center gap-1
-                {% if has_prev %}text-orbit-text-secondary hover:text-orbit-text-primary bg-orbit-bg-tertiary hover:bg-orbit-bg-tertiary/80{% else %}text-orbit-text-muted bg-orbit-bg-tertiary/50 cursor-not-allowed{% endif %}">
-            <i data-lucide="chevron-left" class="w-4 h-4"></i>
-            Prev
-        </button>
-        
-        <!-- Page Numbers -->
-        <div class="flex items-center gap-1">
-            {% if page > 2 %}
-            <button 
-                hx-get="{% url 'orbit:feed' %}?type={{ current_type }}&page=1&per_page={{ per_page }}"
-                hx-target="#feed-container"
-                hx-swap="innerHTML"
-                class="w-8 h-8 text-sm rounded-lg text-orbit-text-secondary hover:text-orbit-text-primary bg-orbit-bg-tertiary hover:bg-orbit-bg-tertiary/80 transition-all">
-                1
-            </button>
-            {% if page > 3 %}
-            <span class="text-orbit-text-muted px-1">...</span>
-            {% endif %}
-            {% endif %}
-            
-            {% if page > 1 %}
-            <button 
-                hx-get="{% url 'orbit:feed' %}?type={{ current_type }}&page={{ page|add:-1 }}&per_page={{ per_page }}"
-                hx-target="#feed-container"
-                hx-swap="innerHTML"
-                class="w-8 h-8 text-sm rounded-lg text-orbit-text-secondary hover:text-orbit-text-primary bg-orbit-bg-tertiary hover:bg-orbit-bg-tertiary/80 transition-all">
-                {{ page|add:-1 }}
-            </button>
-            {% endif %}
-            
-            <button class="w-8 h-8 text-sm rounded-lg bg-orbit-accent-cyan/20 text-orbit-accent-cyan font-medium">
-                {{ page }}
-            </button>
-            
-            {% if page < total_pages %}
-            <button 
-                hx-get="{% url 'orbit:feed' %}?type={{ current_type }}&page={{ page|add:1 }}&per_page={{ per_page }}"
-                hx-target="#feed-container"
-                hx-swap="innerHTML"
-                class="w-8 h-8 text-sm rounded-lg text-orbit-text-secondary hover:text-orbit-text-primary bg-orbit-bg-tertiary hover:bg-orbit-bg-tertiary/80 transition-all">
-                {{ page|add:1 }}
-            </button>
-            {% endif %}
-            
-            {% if page < total_pages|add:-1 %}
-            {% if page < total_pages|add:-2 %}
-            <span class="text-orbit-text-muted px-1">...</span>
-            {% endif %}
-            <button 
-                hx-get="{% url 'orbit:feed' %}?type={{ current_type }}&page={{ total_pages }}&per_page={{ per_page }}"
-                hx-target="#feed-container"
-                hx-swap="innerHTML"
-                class="w-8 h-8 text-sm rounded-lg text-orbit-text-secondary hover:text-orbit-text-primary bg-orbit-bg-tertiary hover:bg-orbit-bg-tertiary/80 transition-all">
-                {{ total_pages }}
-            </button>
-            {% endif %}
-        </div>
-        
-        <!-- Next -->
-        <button 
-            {% if has_next %}
-            hx-get="{% url 'orbit:feed' %}?type={{ current_type }}&page={{ page|add:1 }}&per_page={{ per_page }}"
-            hx-target="#feed-container"
-            hx-swap="innerHTML"
-            hx-indicator=".htmx-indicator"
-            {% else %}
-            disabled
-            {% endif %}
-            class="px-3 py-1.5 text-sm rounded-lg transition-all flex items-center gap-1
-                {% if has_next %}text-orbit-text-secondary hover:text-orbit-text-primary bg-orbit-bg-tertiary hover:bg-orbit-bg-tertiary/80{% else %}text-orbit-text-muted bg-orbit-bg-tertiary/50 cursor-not-allowed{% endif %}">
-            Next
-            <i data-lucide="chevron-right" class="w-4 h-4"></i>
-        </button>
-    </div>
-</div>
-{% endif %}
+{% include "orbit/partials/_pagination.html" %}
 
 {% else %}
 <div class="flex flex-col items-center justify-center h-full text-orbit-text-muted py-20">

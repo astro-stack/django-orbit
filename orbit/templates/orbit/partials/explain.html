@@ -1,0 +1,15 @@
+{% comment %}Query EXPLAIN result fragment (B2), loaded on demand into the detail panel.{% endcomment %}
+{% if error %}
+<div class="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded p-2">{{ error }}</div>
+{% elif result.error %}
+<div class="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded p-2 font-mono">{{ result.error }}</div>
+{% elif not result.supported %}
+<div class="text-xs text-orbit-text-muted">EXPLAIN not supported for this database.</div>
+{% else %}
+<div class="flex items-center gap-2 mb-2">
+    <span class="orbit-badge">{{ result.vendor }}</span>
+    {% if result.analyze %}<span class="orbit-badge bg-amber-500/15 text-amber-400">ANALYZE</span>{% endif %}
+</div>
+<pre class="text-xs font-mono text-emerald-300 bg-orbit-bg-primary/60 rounded-lg p-3 overflow-x-auto whitespace-pre">{% for line in result.plan %}{{ line }}
+{% endfor %}</pre>
+{% endif %}

@@ -1,0 +1,15 @@
+# Local preview of the Django Orbit dashboard with seeded demo data.
+#   docker compose up --build
+# Then open http://localhost:8010/orbit/
+# (host port 8010 avoids clashing with other local stacks on 8000)
+services:
+  orbit-demo:
+    build: .
+    ports:
+      - "8010:8000"
+    # Live-reload the Orbit UI (templates/views) while you review the redesign.
+    # The demo DB stays inside the container, so your local files are untouched.
+    volumes:
+      - ./orbit:/app/orbit
+    environment:
+      - DJANGO_SETTINGS_MODULE=example_project.settings

@@ -1,0 +1,15 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.git/
+.pytest_cache/
+*.sqlite3
+example_project/db.sqlite3
+orbit_test_storage/
+dist/
+build/
+*.egg-info/
+site/
+htmlcov/
+.mypy_cache/

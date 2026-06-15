@@ -16,6 +16,13 @@ The Stats Dashboard offers:
 - **Background job metrics**
 - **Permission check analytics**
 
+!!! note "Fast, progressive loading"
+    The page renders its headline (Apdex, average / P95, error rate, throughput and
+    percentiles) immediately, then loads the heavier sections — trends, database, cache,
+    jobs and security — lazily, each from its own endpoint. This keeps first paint fast and
+    avoids contending with the dashboard's live polling on SQLite. A section that fails to
+    load shows an inline message without breaking the rest of the page.
+
 ## Time Range Selection
 
 Use the time range buttons in the header to filter data:

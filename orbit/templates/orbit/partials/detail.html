@@ -87,7 +87,20 @@
             </p>
         </div>
     </div>
-    
+
+    <!-- Tags (B1) — click to filter the feed by that tag -->
+    {% if entry.tag_list %}
+    <div class="flex flex-wrap items-center gap-2">
+        <span class="orbit-section-title">Tags</span>
+        {% for tag in entry.tag_list %}
+        <button onclick="document.dispatchEvent(new CustomEvent('orbit:tag', {detail: {tag: '{{ tag|escapejs }}'}}))"
+                class="orbit-badge hover:bg-orbit-accent-cyan/15 hover:text-orbit-accent-cyan transition-colors cursor-pointer">
+            <i data-lucide="tag" class="w-3 h-3"></i>{{ tag }}
+        </button>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <!-- Request-specific details -->
     {% if entry.type == 'request' %}
     <div class="space-y-3">
@@ -118,6 +131,29 @@
             <span class="text-orbit-text-secondary">{{ entry.payload.query_count }} queries</span>
         </div>
         {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Request waterfall (B4): query spans on the request timeline -->
+    {% if waterfall %}
+    <div class="space-y-2">
+        <div class="flex items-center justify-between">
+            <span class="orbit-section-title">Query timeline</span>
+            <span class="text-xs text-orbit-text-muted font-mono">{{ waterfall.count }} queries · {{ waterfall.total_ms }}ms</span>
+        </div>
+        <div class="space-y-1 bg-orbit-bg-primary/40 rounded-lg p-3">
+            {% for span in waterfall.spans %}
+            <div class="group flex items-center gap-2" title="{{ span.sql }}">
+                <div class="relative flex-1 h-4 rounded bg-orbit-bg-tertiary/40 cursor-pointer"
+                     onclick="document.dispatchEvent(new CustomEvent('orbit:open-detail', {detail: {entryId: '{{ span.id }}'}}))">
+                    <div class="absolute top-0 h-4 rounded {% if span.is_slow %}bg-rose-500/70{% elif span.is_duplicate %}bg-violet-500/70{% else %}bg-cyan-500/60{% endif %} group-hover:opacity-90"
+                         style="left: {{ span.left }}%; width: {{ span.width }}%;"></div>
+                </div>
+                <span class="w-16 text-right text-xs font-mono {% if span.is_slow %}text-rose-400{% else %}text-orbit-text-muted{% endif %}">{{ span.duration_ms|floatformat:1 }}ms</span>
+            </div>
+            {% endfor %}
+        </div>
+        <p class="text-xs text-orbit-text-muted">Bars are positioned by each query's start offset within the request. Click a bar to open that query.</p>
     </div>
     {% endif %}
     
@@ -195,6 +231,19 @@
             </span>
         </div>
         {% endif %}
+
+        <!-- EXPLAIN plan (B2), loaded on demand -->
+        <div>
+            <button hx-get="{% url 'orbit:explain' entry.id %}"
+                    hx-target="#explain-{{ entry.id }}" hx-swap="innerHTML"
+                    hx-indicator="#explain-spin-{{ entry.id }}"
+                    class="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-orbit-bg-tertiary/60 text-orbit-text-secondary hover:text-orbit-accent-cyan hover:bg-orbit-accent-cyan/10 transition-colors">
+                <i data-lucide="search-code" class="w-4 h-4"></i>
+                <span>Explain plan</span>
+                <i id="explain-spin-{{ entry.id }}" data-lucide="loader-2" class="htmx-indicator w-4 h-4 animate-spin"></i>
+            </button>
+            <div id="explain-{{ entry.id }}" class="mt-2"></div>
+        </div>
     </div>
     {% endif %}
     

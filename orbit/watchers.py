@@ -28,6 +28,12 @@ logger = logging.getLogger(__name__)
 
 _orbit_table_ready: bool = False
 
+# Set while a schema-affecting command (e.g. migrate) runs, so watchers don't write to
+# OrbitEntry mid-migration. `_table_exists()` only proves the *table* exists — it can't see
+# that a newly added column isn't there yet, and a failed insert poisons the migration
+# transaction. Suspending recording around migrate makes schema changes safe to ship.
+_recording_suspended: bool = False
+
 
 def _table_exists() -> bool:
     """Return True if the orbit_orbitentry table exists in the database.
@@ -42,6 +48,8 @@ def _table_exists() -> bool:
     This prevents excessive connection usage when many watcher events fire
     per request (Issue #15).
     """
+    if _recording_suspended:
+        return False
     global _orbit_table_ready
     if _orbit_table_ready:
         return True
@@ -162,11 +170,23 @@ def install_command_watcher():
             if command_name in ignore_commands:
                 return _original_execute(self, *args, **options)
 
+            # Suspend all OrbitEntry writes while a schema-affecting command runs, so a
+            # mid-migration write (e.g. a model-watcher signal for a new column not yet
+            # added) can't poison the migration transaction.
+            schema_commands = {"migrate", "makemigrations", "flush", "loaddata", "sqlmigrate"}
+            if command_name in schema_commands:
+                global _recording_suspended
+                _recording_suspended = True
+                try:
+                    return _original_execute(self, *args, **options)
+                finally:
+                    _recording_suspended = False
+
             # Execute command normally WITHOUT redirecting stdout/stderr
             # This preserves interactivity for commands like collectstatic
             start_time = time.perf_counter()
             exit_code = 0
-            
+
             try:
                 result = _original_execute(self, *args, **options)
             except SystemExit as e:

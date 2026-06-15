@@ -1,0 +1,95 @@
+{% comment %}Shared feed pagination. Expects: page, total_pages, total_count, per_page,
+current_type, has_prev, has_next. All buttons re-fetch the feed via HTMX.{% endcomment %}
+{% if total_pages > 1 %}
+<div class="flex items-center justify-between px-4 py-3 border-t border-orbit-border/50">
+    <div class="text-sm text-orbit-text-muted">
+        Page {{ page }} of {{ total_pages }} ({{ total_count }} entries)
+    </div>
+    <div class="flex items-center gap-2">
+        <!-- Previous -->
+        <button
+            {% if has_prev %}
+            hx-get="{% url 'orbit:feed' %}?type={{ current_type }}&page={{ page|add:-1 }}&per_page={{ per_page }}"
+            hx-target="#feed-container"
+            hx-swap="innerHTML"
+            hx-indicator=".htmx-indicator"
+            {% else %}
+            disabled
+            {% endif %}
+            class="px-3 py-1.5 text-sm rounded-lg transition-all flex items-center gap-1
+                {% if has_prev %}text-orbit-text-secondary hover:text-orbit-text-primary bg-orbit-bg-tertiary hover:bg-orbit-bg-tertiary/80{% else %}text-orbit-text-muted bg-orbit-bg-tertiary/50 cursor-not-allowed{% endif %}">
+            <i data-lucide="chevron-left" class="w-4 h-4"></i>
+            Prev
+        </button>
+
+        <!-- Page Numbers -->
+        <div class="flex items-center gap-1">
+            {% if page > 2 %}
+            <button
+                hx-get="{% url 'orbit:feed' %}?type={{ current_type }}&page=1&per_page={{ per_page }}"
+                hx-target="#feed-container"
+                hx-swap="innerHTML"
+                class="w-8 h-8 text-sm rounded-lg text-orbit-text-secondary hover:text-orbit-text-primary bg-orbit-bg-tertiary hover:bg-orbit-bg-tertiary/80 transition-all">
+                1
+            </button>
+            {% if page > 3 %}
+            <span class="text-orbit-text-muted px-1">...</span>
+            {% endif %}
+            {% endif %}
+
+            {% if page > 1 %}
+            <button
+                hx-get="{% url 'orbit:feed' %}?type={{ current_type }}&page={{ page|add:-1 }}&per_page={{ per_page }}"
+                hx-target="#feed-container"
+                hx-swap="innerHTML"
+                class="w-8 h-8 text-sm rounded-lg text-orbit-text-secondary hover:text-orbit-text-primary bg-orbit-bg-tertiary hover:bg-orbit-bg-tertiary/80 transition-all">
+                {{ page|add:-1 }}
+            </button>
+            {% endif %}
+
+            <button class="w-8 h-8 text-sm rounded-lg bg-orbit-accent-cyan/20 text-orbit-accent-cyan font-medium">
+                {{ page }}
+            </button>
+
+            {% if page < total_pages %}
+            <button
+                hx-get="{% url 'orbit:feed' %}?type={{ current_type }}&page={{ page|add:1 }}&per_page={{ per_page }}"
+                hx-target="#feed-container"
+                hx-swap="innerHTML"
+                class="w-8 h-8 text-sm rounded-lg text-orbit-text-secondary hover:text-orbit-text-primary bg-orbit-bg-tertiary hover:bg-orbit-bg-tertiary/80 transition-all">
+                {{ page|add:1 }}
+            </button>
+            {% endif %}
+
+            {% if page < total_pages|add:-1 %}
+            {% if page < total_pages|add:-2 %}
+            <span class="text-orbit-text-muted px-1">...</span>
+            {% endif %}
+            <button
+                hx-get="{% url 'orbit:feed' %}?type={{ current_type }}&page={{ total_pages }}&per_page={{ per_page }}"
+                hx-target="#feed-container"
+                hx-swap="innerHTML"
+                class="w-8 h-8 text-sm rounded-lg text-orbit-text-secondary hover:text-orbit-text-primary bg-orbit-bg-tertiary hover:bg-orbit-bg-tertiary/80 transition-all">
+                {{ total_pages }}
+            </button>
+            {% endif %}
+        </div>
+
+        <!-- Next -->
+        <button
+            {% if has_next %}
+            hx-get="{% url 'orbit:feed' %}?type={{ current_type }}&page={{ page|add:1 }}&per_page={{ per_page }}"
+            hx-target="#feed-container"
+            hx-swap="innerHTML"
+            hx-indicator=".htmx-indicator"
+            {% else %}
+            disabled
+            {% endif %}
+            class="px-3 py-1.5 text-sm rounded-lg transition-all flex items-center gap-1
+                {% if has_next %}text-orbit-text-secondary hover:text-orbit-text-primary bg-orbit-bg-tertiary hover:bg-orbit-bg-tertiary/80{% else %}text-orbit-text-muted bg-orbit-bg-tertiary/50 cursor-not-allowed{% endif %}">
+            Next
+            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+        </button>
+    </div>
+</div>
+{% endif %}

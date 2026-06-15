@@ -42,6 +42,19 @@ Django Orbit is a debugging and observability tool for Django applications. Unli
 | Stats & Analytics | No | Yes |
 | Modern UI | Basic | Space-themed |
 
+### What's New (Unreleased)
+
+- **Dashboard UX overhaul**: a calmer, minimal redesign with a **grouped, collapsible
+  sidebar** (Core / Infrastructure / Application), a standalone **All Events**, and a
+  compact **metrics strip** that leaves more room for the feed. See [Dashboard](dashboard.md).
+- **Detail panel navigation**: move between entries with **`j`/`k`**, close with **`Esc`**,
+  plus prev/next buttons and a position indicator.
+- **First-run onboarding** tour, reopenable from the **?** button.
+- **Faster Stats page**: the headline renders instantly and heavy sections load lazily,
+  removing the old SQLite "database is locked" workaround. See [Stats](stats.md).
+- **Design system**: tokens, components and principles are documented in
+  [`DESIGN.md`](https://github.com/astro-stack/django-orbit/blob/main/DESIGN.md).
+
 ### What's New in v0.8.1
 
 - **HTML Email Preview**: Emails sent with `EmailMultiAlternatives` now show a **Plain text / HTML preview** tab switcher in the dashboard. The HTML body renders in a sandboxed iframe — great for testing email templates. See [Email Preview](dashboard.md#mail-html-preview).

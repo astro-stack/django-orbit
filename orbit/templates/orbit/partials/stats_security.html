@@ -1,0 +1,40 @@
+{% comment %}Lazy-loaded Stats section: permission checks.{% endcomment %}
+{% if error %}
+<div class="orbit-card p-4 text-rose-400 text-sm">Could not load security metrics: {{ error }}</div>
+{% else %}
+<div class="orbit-card p-5 h-full">
+    <h2 class="text-sm font-medium text-orbit-text-primary mb-4 flex items-center gap-2">
+        <i data-lucide="shield" class="w-4 h-4 text-indigo-400"></i>
+        Permission Checks
+    </h2>
+    <div class="grid grid-cols-3 gap-4 mb-4">
+        <div class="p-3 bg-orbit-bg-primary/50 rounded-lg text-center">
+            <div class="text-2xl font-bold text-orbit-text-primary">{{ security.total }}</div>
+            <div class="text-xs text-orbit-text-muted">Total Checks</div>
+        </div>
+        <div class="p-3 bg-orbit-bg-primary/50 rounded-lg text-center">
+            <div class="text-2xl font-bold text-emerald-400">{{ security.granted }}</div>
+            <div class="text-xs text-orbit-text-muted">Granted</div>
+        </div>
+        <div class="p-3 bg-orbit-bg-primary/50 rounded-lg text-center">
+            <div class="text-2xl font-bold text-rose-400">{{ security.denied }}</div>
+            <div class="text-xs text-orbit-text-muted">Denied</div>
+        </div>
+    </div>
+
+    {% if security.top_denied %}
+    <h3 class="orbit-section-title mb-2">Top Denied Permissions</h3>
+    <div class="space-y-2">
+        {% for perm in security.top_denied %}
+        <div class="flex items-center justify-between p-2 bg-orbit-bg-primary/30 rounded">
+            <span class="text-xs font-mono text-orbit-text-secondary">{{ perm.permission }}</span>
+            <span class="text-xs text-rose-400 font-bold">{{ perm.count }}x</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-xs text-orbit-text-muted">No denied permissions in this range.</p>
+    {% endif %}
+</div>
+<script>if (typeof lucide !== 'undefined') lucide.createIcons();</script>
+{% endif %}

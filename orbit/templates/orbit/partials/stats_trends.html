@@ -1,0 +1,83 @@
+{% comment %}Lazy-loaded Stats section: time-series charts.{% endcomment %}
+{% if error %}
+<div class="orbit-card p-4 text-rose-400 text-sm">Could not load trends: {{ error }}</div>
+{% else %}
+<div class="space-y-6">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="orbit-card p-5">
+            <h2 class="text-sm font-medium text-orbit-text-primary mb-4 flex items-center gap-2">
+                <i data-lucide="activity" class="w-4 h-4 text-cyan-400"></i>
+                Response Time Trend
+            </h2>
+            <div id="response-time-chart" class="h-64"></div>
+        </div>
+        <div class="orbit-card p-5">
+            <h2 class="text-sm font-medium text-orbit-text-primary mb-4 flex items-center gap-2">
+                <i data-lucide="bar-chart" class="w-4 h-4 text-violet-400"></i>
+                Request Throughput
+            </h2>
+            <div id="throughput-chart" class="h-64"></div>
+        </div>
+    </div>
+    <div class="orbit-card p-5">
+        <h2 class="text-sm font-medium text-orbit-text-primary mb-4 flex items-center gap-2">
+            <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-400"></i>
+            Error Rate Trend
+        </h2>
+        <div id="error-rate-chart" class="h-48"></div>
+    </div>
+</div>
+
+<script>
+(function () {
+    if (typeof ApexCharts === 'undefined') return;
+    const D = window.ORBIT_CHART_DEFAULTS || {};
+    const empty = (sel, msg) => { const el = document.querySelector(sel); if (el) el.innerHTML =
+        '<div class="flex items-center justify-center h-full text-orbit-text-muted text-sm">' + msg + '</div>'; };
+
+    const responseTimeData = {{ response_time_data|safe }};
+    if (responseTimeData && responseTimeData.length) {
+        new ApexCharts(document.querySelector('#response-time-chart'), {
+            ...D,
+            chart: { ...D.chart, type: 'area', height: 256 },
+            series: [{ name: 'Avg Response Time', data: responseTimeData.map(d => ({ x: new Date(d.timestamp), y: d.avg })) }],
+            stroke: { curve: 'smooth', width: 2 },
+            fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.35, opacityTo: 0.05 } },
+            colors: ['#22d3ee'],
+            markers: { size: responseTimeData.length < 5 ? 5 : 0, colors: ['#22d3ee'], strokeWidth: 0, hover: { size: 7 } },
+            xaxis: { type: 'datetime', labels: { style: { colors: '#64748b' } } },
+            yaxis: { labels: { style: { colors: '#64748b' }, formatter: v => v ? v.toFixed(0) + 'ms' : '0ms' } },
+        }).render();
+    } else { empty('#response-time-chart', 'No data for this time range'); }
+
+    const throughputData = {{ throughput_data|safe }};
+    if (throughputData && throughputData.length) {
+        new ApexCharts(document.querySelector('#throughput-chart'), {
+            ...D,
+            chart: { ...D.chart, type: 'bar', height: 256 },
+            series: [{ name: 'Requests', data: throughputData.map(d => ({ x: new Date(d.timestamp), y: d.count })) }],
+            colors: ['#a78bfa'],
+            plotOptions: { bar: { borderRadius: 4, columnWidth: '60%' } },
+            xaxis: { type: 'datetime', labels: { style: { colors: '#64748b' } } },
+            yaxis: { labels: { style: { colors: '#64748b' } } },
+        }).render();
+    } else { empty('#throughput-chart', 'No data for this time range'); }
+
+    const errorData = {{ error_trend_data|safe }};
+    if (errorData && errorData.length) {
+        new ApexCharts(document.querySelector('#error-rate-chart'), {
+            ...D,
+            chart: { ...D.chart, type: 'line', height: 192 },
+            series: [{ name: 'Error Rate', data: errorData.map(d => ({ x: new Date(d.timestamp), y: d.rate })) }],
+            stroke: { curve: 'straight', width: 2 },
+            colors: ['#fb7185'],
+            xaxis: { type: 'datetime', labels: { style: { colors: '#64748b' } } },
+            yaxis: { labels: { style: { colors: '#64748b' }, formatter: v => v.toFixed(1) + '%' }, min: 0 },
+            annotations: { yaxis: [{ y: 5, borderColor: '#fb7185', strokeDashArray: 4, label: { text: 'Threshold' } }] },
+        }).render();
+    } else { empty('#error-rate-chart', 'No error data for this time range'); }
+
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+})();
+</script>
+{% endif %}

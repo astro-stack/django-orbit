@@ -20,12 +20,98 @@ __all__ = [
     "OrbitDetailPartial",
     "OrbitClearView",
     "OrbitStatsView",
+    "OrbitStatsSectionView",
+    "OrbitExplainView",
     "OrbitExportView",
     "OrbitHealthView",
 ]
 
+from orbit import __version__ as ORBIT_VERSION
 from orbit.models import OrbitEntry
 from orbit.mixins import OrbitProtectedView
+
+
+# Sidebar navigation, grouped for progressive disclosure (see DESIGN.md › Layout).
+# Each item: (type_key, label). Icons/colors come from OrbitEntry.TYPE_ICONS/TYPE_COLORS.
+# "all" is a pseudo-type that matches every entry.
+NAV_GROUPS = [
+    {
+        "key": "core",
+        "label": "Core",
+        "open": True,
+        "items": [
+            # "All Events" is rendered as a standalone item above the groups (it's a
+            # meta-filter, not an entry type).
+            (OrbitEntry.TYPE_REQUEST, "Requests"),
+            (OrbitEntry.TYPE_QUERY, "Queries"),
+            (OrbitEntry.TYPE_EXCEPTION, "Exceptions"),
+            (OrbitEntry.TYPE_LOG, "Logs"),
+        ],
+    },
+    {
+        "key": "infra",
+        "label": "Infrastructure",
+        "open": False,
+        "items": [
+            (OrbitEntry.TYPE_CACHE, "Cache"),
+            (OrbitEntry.TYPE_REDIS, "Redis"),
+            (OrbitEntry.TYPE_HTTP_CLIENT, "HTTP Client"),
+            (OrbitEntry.TYPE_MAIL, "Mail"),
+            (OrbitEntry.TYPE_STORAGE, "Storage"),
+        ],
+    },
+    {
+        "key": "app",
+        "label": "Application",
+        "open": False,
+        "items": [
+            (OrbitEntry.TYPE_MODEL, "Models"),
+            (OrbitEntry.TYPE_JOB, "Jobs"),
+            (OrbitEntry.TYPE_COMMAND, "Commands"),
+            (OrbitEntry.TYPE_SIGNAL, "Signals"),
+            (OrbitEntry.TYPE_GATE, "Gates"),
+            (OrbitEntry.TYPE_TRANSACTION, "Transactions"),
+            (OrbitEntry.TYPE_DUMP, "Dumps"),
+        ],
+    },
+]
+
+# Entry types whose count badge should turn rose when non-zero (problem signals).
+ALERT_TYPES = {OrbitEntry.TYPE_EXCEPTION}
+
+
+def build_nav_groups(counts, current_type="all"):
+    """Render NAV_GROUPS into template-ready dicts with counts, icons and colors.
+
+    A group starts expanded if configured open, or if it contains the active type
+    so the current selection is always visible on load.
+    """
+    groups = []
+    for group in NAV_GROUPS:
+        items = []
+        for type_key, label in group["items"]:
+            icon = "layers" if type_key == "all" else OrbitEntry.TYPE_ICONS.get(type_key, "circle")
+            color = "cyan" if type_key == "all" else OrbitEntry.TYPE_COLORS.get(type_key, "slate")
+            items.append(
+                {
+                    "type": type_key,
+                    "label": label,
+                    "icon": icon,
+                    "color": color,
+                    "count": counts.get(type_key, 0),
+                    "is_alert": type_key in ALERT_TYPES,
+                }
+            )
+        contains_active = any(item["type"] == current_type for item in items)
+        groups.append(
+            {
+                "key": group["key"],
+                "label": group["label"],
+                "open": group["open"] or contains_active,
+                "items": items,
+            }
+        )
+    return groups
 
 
 class OrbitDashboardView(OrbitProtectedView, TemplateView):
@@ -82,6 +168,10 @@ class OrbitDashboardView(OrbitProtectedView, TemplateView):
         ).count()
 
         context["current_type"] = entry_type
+
+        # Grouped sidebar navigation + package version (single source of truth)
+        context["nav_groups"] = build_nav_groups(context["counts"], entry_type)
+        context["orbit_version"] = ORBIT_VERSION
 
         # Calculate statistics for dashboard
         from django.db.models import Avg
@@ -211,8 +301,23 @@ class OrbitFeedPartial(OrbitProtectedView, View):
         if family_hash:
             queryset = queryset.filter(family_hash=family_hash)
 
-        # Filter by search query "q"
         query = request.GET.get("q")
+
+        # Tag filter (B1): explicit ?tag=foo, or a "tag:foo" prefix typed in the search box.
+        tag = request.GET.get("tag")
+        if not tag and query and query.lower().startswith("tag:"):
+            tag = query[4:].strip()
+            query = None
+        if tag:
+            queryset = queryset.filter(tags__contains="," + tag + ",")
+
+        # Exception grouping (B3): on the plain Exceptions view, collapse identical
+        # exceptions into one row with a count + first/last seen. Skipped when searching
+        # or drilling into a family so those flows still show individual occurrences.
+        if entry_type == OrbitEntry.TYPE_EXCEPTION and not family_hash and not query and not tag:
+            return self._exception_groups_response(request, per_page, page)
+
+        # Filter by search query "q"
         if query:
             import uuid
             try:
@@ -250,6 +355,48 @@ class OrbitFeedPartial(OrbitProtectedView, View):
             {
                 "entries": entries,
                 "current_type": entry_type,
+                "page": page,
+                "per_page": per_page,
+                "total_pages": total_pages,
+                "total_count": total_count,
+                "has_prev": page > 1,
+                "has_next": page < total_pages,
+            },
+        )
+
+    def _exception_groups_response(self, request, per_page, page):
+        """Render the grouped Exceptions feed (B3). Aggregation happens in the DB."""
+        groups_qs = OrbitEntry.objects.exception_groups()
+
+        total_count = groups_qs.count()  # number of distinct errors
+        total_pages = (total_count + per_page - 1) // per_page
+        page = max(1, min(page, total_pages)) if total_pages > 0 else 1
+        offset = (page - 1) * per_page
+
+        page_groups = list(groups_qs[offset : offset + per_page])
+        fingerprints = [g["fingerprint"] for g in page_groups]
+        latest = OrbitEntry.objects.latest_for_fingerprints(fingerprints)
+
+        groups = []
+        for g in page_groups:
+            rep = latest.get(g["fingerprint"])
+            if rep is None:
+                continue
+            groups.append(
+                {
+                    "entry": rep,
+                    "count": g["count"],
+                    "first_seen": g["first_seen"],
+                    "last_seen": g["last_seen"],
+                }
+            )
+
+        return TemplateResponse(
+            request,
+            "orbit/partials/feed_exception_groups.html",
+            {
+                "groups": groups,
+                "current_type": OrbitEntry.TYPE_EXCEPTION,
                 "page": page,
                 "per_page": per_page,
                 "total_pages": total_pages,
@@ -377,6 +524,9 @@ class OrbitDetailPartial(OrbitProtectedView, View):
                     "most_duplicated_query_id": most_duplicated_query_id,
                 }
 
+        # Request waterfall (B4): position child query spans on the request timeline.
+        waterfall = self._build_waterfall(entry, related_entries)
+
         # Format payload as pretty JSON
         payload_json = json.dumps(
             entry.payload, indent=2, ensure_ascii=False, default=str
@@ -391,8 +541,49 @@ class OrbitDetailPartial(OrbitProtectedView, View):
                 "related_entries": related_entries,
                 "duplicate_entries": duplicate_entries,
                 "duplicate_query_stats": duplicate_query_stats,
+                "waterfall": waterfall,
             },
         )
+
+    @staticmethod
+    def _build_waterfall(entry, related_entries):
+        """
+        Build span bars (left%/width%) for a request's child queries.
+
+        Uses each query's recorded start_offset_ms (accurate, captured at execution) over
+        the request's total duration. Pure arithmetic on already-fetched rows — no extra
+        queries. Returns None when there's nothing meaningful to show.
+        """
+        if entry.type != OrbitEntry.TYPE_REQUEST or not entry.duration_ms:
+            return None
+
+        total = entry.duration_ms
+        spans = []
+        for rel in related_entries:
+            if rel.type != OrbitEntry.TYPE_QUERY:
+                continue
+            payload = rel.payload or {}
+            offset = payload.get("start_offset_ms")
+            dur = rel.duration_ms
+            if offset is None or dur is None:
+                continue
+            left = max(0.0, min(100.0, (offset / total) * 100))
+            width = max(0.6, min(100.0 - left, (dur / total) * 100))
+            spans.append(
+                {
+                    "id": rel.id,
+                    "left": round(left, 2),
+                    "width": round(width, 2),
+                    "duration_ms": dur,
+                    "is_slow": payload.get("is_slow", False),
+                    "is_duplicate": payload.get("is_duplicate", False),
+                    "sql": (payload.get("sql", "") or "")[:80],
+                }
+            )
+
+        if not spans:
+            return None
+        return {"total_ms": round(total, 1), "spans": spans, "count": len(spans)}
 
 
 class OrbitClearView(OrbitProtectedView, View):
@@ -412,75 +603,124 @@ class OrbitClearView(OrbitProtectedView, View):
         )
 
 
+# Stats time ranges accepted by the dashboard and section endpoints.
+STATS_TIME_RANGES = ["1h", "6h", "24h", "7d"]
+
+
+def normalize_stats_range(value):
+    """Clamp a requested time range to a known value (default 24h)."""
+    return value if value in STATS_TIME_RANGES else "24h"
+
+
 class OrbitStatsView(OrbitProtectedView, TemplateView):
     """
-    Full-page Stats Dashboard view with charts and analytics.
+    Full-page Stats Dashboard.
+
+    Only the lightweight headline (summary + percentiles) is computed here so the
+    page paints fast. Heavier sections (trends, database, cache, jobs, security)
+    are loaded lazily via OrbitStatsSectionView, which keeps each DB hit small and
+    avoids the SQLite lock that the old "compute everything at once" path caused.
     """
     template_name = "orbit/stats.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        
+
         from orbit import stats
-        import time
-        from django.db import OperationalError
-        
-        # Get time range from query params (default: 24h)
-        time_range = self.request.GET.get('range', '24h')
-        if time_range not in ['1h', '6h', '24h', '7d']:
-            time_range = '24h'
-        
-        context['time_range'] = time_range
-        context['time_ranges'] = ['1h', '6h', '24h', '7d']
-        
-        # Get all metrics with retry logic for SQLite database lock
-        max_retries = 3
-        retry_delay = 0.5
-        
-        for attempt in range(max_retries):
-            try:
-                context['summary'] = stats.get_summary_stats(time_range)
-                context['percentiles'] = stats.get_percentiles(time_range)
-                context['throughput_data'] = stats.get_throughput_data(time_range)
-                context['response_time_data'] = stats.get_response_time_trend(time_range)
-                context['error_trend_data'] = stats.get_error_rate_trend(time_range)
-                context['database'] = stats.get_database_metrics(time_range)
-                context['cache'] = stats.get_cache_metrics(time_range)
-                context['jobs'] = stats.get_jobs_metrics(time_range)
-                context['security'] = stats.get_security_metrics(time_range)
-                context['transactions'] = stats.get_transaction_metrics(time_range)
-                context['storage'] = stats.get_storage_metrics(time_range)
-                break  # Success, exit retry loop
-            except OperationalError as e:
-                if 'locked' in str(e) and attempt < max_retries - 1:
-                    time.sleep(retry_delay * (attempt + 1))
-                    continue
-                context['error'] = str(e)
-                break
-            except Exception as e:
-                context['error'] = str(e)
-                break
-        
-        # Add watcher status for diagnostics (plug-and-play system)
+
+        time_range = normalize_stats_range(self.request.GET.get("range", "24h"))
+        context["time_range"] = time_range
+        context["time_ranges"] = STATS_TIME_RANGES
+
+        # Headline only — cheap aggregates, rendered immediately.
         try:
-            from orbit.watchers import get_watcher_status, get_installed_watchers, get_failed_watchers
-            watcher_status = get_watcher_status()
-            context['watchers'] = {
-                'status': watcher_status,
-                'installed': get_installed_watchers(),
-                'failed': get_failed_watchers(),
-                'total': len(watcher_status),
-                'installed_count': len(get_installed_watchers()),
-                'failed_count': len(get_failed_watchers()),
-            }
+            context["summary"] = stats.get_summary_stats(time_range)
+            context["percentiles"] = stats.get_percentiles(time_range)
         except Exception as e:
-            context['watchers'] = {'error': str(e)}
-        
+            context["error"] = str(e)
+
         # Add URLs
         from django.urls import reverse
         context['dashboard_url'] = reverse('orbit:dashboard')
-        
+        context['orbit_version'] = ORBIT_VERSION
+
         return context
+
+
+class OrbitStatsSectionView(OrbitProtectedView, View):
+    """
+    Returns a single Stats section as an HTML fragment for lazy (HTMX) loading.
+
+    Each section computes only its own metrics, so one slow/failed section never
+    blocks the rest of the page and the DB is touched in small independent reads.
+    """
+
+    # section name -> (template fragment, builder returning a context dict)
+    SECTIONS = {
+        "trends": "orbit/partials/stats_trends.html",
+        "database": "orbit/partials/stats_database.html",
+        "cache": "orbit/partials/stats_cache.html",
+        "jobs": "orbit/partials/stats_jobs.html",
+        "security": "orbit/partials/stats_security.html",
+    }
+
+    def get(self, request: HttpRequest, section: str) -> HttpResponse:
+        from django.http import Http404
+        from orbit import stats
+
+        template = self.SECTIONS.get(section)
+        if template is None:
+            raise Http404("Unknown stats section")
+
+        time_range = normalize_stats_range(request.GET.get("range", "24h"))
+        ctx = {"time_range": time_range}
+
+        try:
+            if section == "trends":
+                ctx["response_time_data"] = stats.get_response_time_trend(time_range)
+                ctx["throughput_data"] = stats.get_throughput_data(time_range)
+                ctx["error_trend_data"] = stats.get_error_rate_trend(time_range)
+            elif section == "database":
+                ctx["database"] = stats.get_database_metrics(time_range)
+            elif section == "cache":
+                ctx["cache"] = stats.get_cache_metrics(time_range)
+            elif section == "jobs":
+                ctx["jobs"] = stats.get_jobs_metrics(time_range)
+            elif section == "security":
+                ctx["security"] = stats.get_security_metrics(time_range)
+        except Exception as e:
+            ctx["error"] = str(e)
+
+        return TemplateResponse(request, template, ctx)
+
+
+class OrbitExplainView(OrbitProtectedView, View):
+    """Run EXPLAIN for a captured query entry, on demand (B2)."""
+
+    def get(self, request: HttpRequest, entry_id: str) -> HttpResponse:
+        from orbit.conf import get_config
+        from orbit.explain import explain_query
+
+        config = get_config()
+        ctx = {"entry_id": entry_id}
+
+        if not config.get("ENABLE_EXPLAIN", True):
+            ctx["error"] = "EXPLAIN is disabled (ENABLE_EXPLAIN=False)."
+            return TemplateResponse(request, "orbit/partials/explain.html", ctx)
+
+        entry = get_object_or_404(OrbitEntry, id=entry_id)
+        payload = entry.payload or {}
+        sql = payload.get("sql", "")
+        if entry.type != OrbitEntry.TYPE_QUERY or not sql:
+            ctx["error"] = "This entry has no SQL to explain."
+            return TemplateResponse(request, "orbit/partials/explain.html", ctx)
+
+        ctx["result"] = explain_query(
+            sql,
+            params=payload.get("params"),
+            analyze=config.get("EXPLAIN_ANALYZE", False),
+        )
+        return TemplateResponse(request, "orbit/partials/explain.html", ctx)
 
 
 class OrbitExportView(OrbitProtectedView, View):
@@ -654,5 +894,6 @@ class OrbitHealthView(OrbitProtectedView, TemplateView):
         from django.urls import reverse
         context['dashboard_url'] = reverse('orbit:dashboard')
         context['stats_url'] = reverse('orbit:stats')
-        
+        context['orbit_version'] = ORBIT_VERSION
+
         return context

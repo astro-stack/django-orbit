@@ -6,44 +6,47 @@ The Django Orbit dashboard is your mission control center, available at `/orbit/
 
 ### Sidebar
 
-The sidebar groups events by type. The number in the badge indicates the total count of captured events for that type. The sidebar is scrollable when you have many event types.
+**All Events** sits at the top as a standalone item — a unified feed of everything. Below
+it, entry types are organized into three **collapsible groups** so you're not faced with a
+flat list of every type at once. The group containing the type you're viewing opens
+automatically. The badge on each item shows its captured count; the **Exceptions** badge
+turns red when non-zero.
 
-#### Core Events
+#### Core
 
-| Type | Icon | Description |
-|------|------|-------------|
-| **All Events** | 📋 | Unified feed of everything |
-| **Requests** | 🌐 | HTTP requests (method, path, status, duration) |
-| **Queries** | 🗄️ | SQL queries with N+1 detection |
-| **Logs** | 📝 | Python logging messages |
-| **Exceptions** | ⚠️ | Unhandled exceptions with tracebacks |
+| Type | Description |
+|------|-------------|
+| **Requests** | HTTP requests (method, path, status, duration) |
+| **Queries** | SQL queries with N+1 detection |
+| **Exceptions** | Unhandled exceptions with tracebacks |
+| **Logs** | Python logging messages |
 
-#### Extended Events
+#### Infrastructure
 
-| Type | Icon | Description |
-|------|------|-------------|
-| **Cache** | 🟠 | Cache operations (hits, misses, sets) |
-| **Commands** | 🟣 | Management command executions |
-| **Models** | 🔵 | ORM signals (post_save, post_delete) |
-| **HTTP Client** | 🩷 | Outgoing HTTP requests (httpx, requests) |
-| **Dumps** | 🟢 | Custom debug dumps via `orbit.dump()` |
-| **Mail** | 💜 | Email sending operations |
-| **Signals** | ⚡ | Django signals |
+| Type | Description |
+|------|-------------|
+| **Cache** | Cache operations (hits, misses, sets) |
+| **Redis** | Redis operations (GET, SET, DEL, HGET, etc.) |
+| **HTTP Client** | Outgoing HTTP requests (httpx, requests) |
+| **Mail** | Email sending operations |
+| **Storage** | File storage operations — save, open, delete (local + S3) |
 
-#### Phase 3 Events (v0.5.0+)
+#### Application
 
-| Type | Icon | Description |
-|------|------|-------------|
-| **Jobs** | ⏰ | Background jobs (Celery, Django-Q, RQ, APScheduler) |
-| **Redis** | 🔴 | Redis operations (GET, SET, DEL, HGET, etc.) |
-| **Gates** | 🛡️ | Permission/authorization checks |
+| Type | Description |
+|------|-------------|
+| **Models** | ORM signals (post_save, post_delete) |
+| **Jobs** | Background jobs (Celery, Django-Q, RQ, APScheduler) |
+| **Commands** | Management command executions |
+| **Signals** | Django signals |
+| **Gates** | Permission/authorization checks |
+| **Transactions** | Database `atomic()` blocks — commits and rollbacks with duration |
+| **Dumps** | Custom debug dumps via `orbit.dump()` |
 
-#### Phase 4 Events (v0.6.0+)
-
-| Type | Icon | Description |
-|------|------|-------------|
-| **Transactions** | 🔷 | Database `atomic()` blocks — commits and rollbacks with duration |
-| **Storage** | 📦 | File storage operations — save, open, delete (local + S3) |
+!!! tip "First-run tour"
+    The first time you open the dashboard, a short onboarding overlay highlights the layout
+    and shortcuts. Dismiss it with **Got it** — reopen any time from the **?** button in the
+    top bar.
 
 ### Search
 
@@ -52,23 +55,18 @@ Use the search bar in the header to find specific entries:
 - **By UUID**: Paste a specific Entry ID to jump to it
 - **By Content**: Text search searches inside the JSON payload
 
-### Stats Panel
+### Metrics strip
 
-When viewing **All Events**, a collapsible stats panel shows key metrics:
-
-- Request count
-- Error rate
-- Slow queries percentage
-- Mini charts
-
-For detailed analytics, click the **Stats** button to open the [Stats Dashboard](stats.md).
+When viewing **All Events**, a compact one-line metrics strip sits above the feed with
+the numbers that matter for debugging: requests/hr, queries/hr, average response time, and
+error-focused counts (**errors**, **slow** queries, **N+1** duplicates). For full
+analytics, use the **Full analytics** link or the **Stats** button to open the
+[Stats Dashboard](stats.md).
 
 ### Export
 
-Export data for offline analysis:
-
-- **Export All**: Download button streams all entries as JSON
-- **Single Entry**: Open any entry and use the header link
+Open any entry and use the **download** link in the detail panel header to export it as
+JSON — handy for sharing a specific request or exception.
 
 ## Detailed Views
 
@@ -116,8 +114,20 @@ When viewing a query marked as duplicate, a special section appears showing all 
 
 ## Keyboard Shortcuts
 
-- **Escape**: Close detail panel
-- **Click outside**: Close detail panel
+With the detail panel open:
+
+- **`j`** / **`↓`**: Next entry in the current feed
+- **`k`** / **`↑`**: Previous entry
+- **`Escape`**: Close the detail panel
+- **Click outside**: Close the detail panel
+
+The panel header also has prev/next buttons and a position indicator (e.g. `3/25`).
+
+## Design system
+
+The dashboard follows a documented design system — see
+[`DESIGN.md`](https://github.com/astro-stack/django-orbit/blob/main/DESIGN.md) in the
+repository for tokens, components and UI principles.
 
 ## Next Steps
 

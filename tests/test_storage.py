@@ -9,8 +9,7 @@ Tests the storage watcher that tracks:
 """
 import pytest
 import os
-import shutil
-import tempfile
+import io
 from django.test import TestCase, override_settings
 from django.core.files.storage import FileSystemStorage
 from django.core.files.base import ContentFile
@@ -22,17 +21,10 @@ class TestStorageWatcher(TestCase):
     
     def setUp(self):
         OrbitEntry.objects.all().delete()
-        self.tmp_dir = os.path.abspath("orbit_test_storage")
-        if not os.path.exists(self.tmp_dir):
-            os.makedirs(self.tmp_dir)
-        self.storage = FileSystemStorage(location=self.tmp_dir)
+        self.storage = FileSystemStorage(location=".")
         
     def tearDown(self):
-        try:
-            if os.path.exists(self.tmp_dir):
-                shutil.rmtree(self.tmp_dir)
-        except Exception:
-            pass
+        pass
         
     @override_settings(ORBIT_CONFIG={"ENABLED": True, "RECORD_STORAGE": True})
     def test_record_save_operation(self):
@@ -41,8 +33,11 @@ class TestStorageWatcher(TestCase):
         
         if not _storage_patched:
             install_storage_watcher()
-            
-        file_name = self.storage.save("test_file.txt", ContentFile(b"hello world"))
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(self.storage, "exists", lambda name: False)
+            mp.setattr(self.storage, "_save", lambda name, content: name)
+            file_name = self.storage.save("test_file.txt", ContentFile(b"hello world"))
         
         entry = OrbitEntry.objects.filter(type="storage", payload__operation="save").last()
         assert entry is not None
@@ -56,11 +51,15 @@ class TestStorageWatcher(TestCase):
         """Test recording a file open."""
         from orbit.watchers import install_storage_watcher
         install_storage_watcher()
-        
-        file_name = self.storage.save("to_open.txt", ContentFile(b"content"))
-        
-        with self.storage.open(file_name) as f:
-            content = f.read()
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(self.storage, "exists", lambda name: False)
+            mp.setattr(self.storage, "_save", lambda name, content: name)
+            mp.setattr(self.storage, "_open", lambda name, mode="rb": io.BytesIO(b"content"))
+            file_name = self.storage.save("to_open.txt", ContentFile(b"content"))
+            with self.storage.open(file_name) as f:
+                content = f.read()
+            assert content == b"content"
             
         entry = OrbitEntry.objects.filter(type="storage", payload__operation="open").last()
         assert entry is not None
@@ -72,9 +71,15 @@ class TestStorageWatcher(TestCase):
         """Test recording a file deletion."""
         from orbit.watchers import install_storage_watcher
         install_storage_watcher()
-        
-        file_name = self.storage.save("to_delete.txt", ContentFile(b"bye"))
-        self.storage.delete(file_name)
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(self.storage, "exists", lambda name: False)
+            mp.setattr(self.storage, "_save", lambda name, content: name)
+            file_name = self.storage.save("to_delete.txt", ContentFile(b"bye"))
+            mp.setattr(self.storage, "path", lambda name: name)
+            mp.setattr(os.path, "isdir", lambda path: False)
+            mp.setattr(os, "remove", lambda path: None)
+            self.storage.delete(file_name)
         
         entry = OrbitEntry.objects.filter(type="storage", payload__operation="delete").last()
         assert entry is not None
@@ -85,10 +90,16 @@ class TestStorageWatcher(TestCase):
         """Test recording an exists check."""
         from orbit.watchers import install_storage_watcher
         install_storage_watcher(force=True)  # Force re-patch to ensure latest code is applied
-        
-        file_name = self.storage.save("exists.txt", ContentFile(b"exist"))
-        exists = self.storage.exists(file_name)
-        assert exists is True
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(self.storage, "exists", lambda name: False)
+            mp.setattr(self.storage, "_save", lambda name, content: name)
+            file_name = self.storage.save("exists.txt", ContentFile(b"exist"))
+            del self.storage.__dict__["exists"]
+            mp.setattr(self.storage, "path", lambda name: name)
+            mp.setattr(os.path, "lexists", lambda path: True)
+            exists = self.storage.exists(file_name)
+            assert exists is True
         
         # Note: save() internally calls exists() first, so we need to get the LAST exists entry chronologically
         # which is the explicit exists() call we made after saving

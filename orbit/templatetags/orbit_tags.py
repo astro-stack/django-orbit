@@ -74,27 +74,20 @@ def duration_class(duration_ms):
 def type_icon(entry_type):
     """
     Return the Lucide icon name for an entry type.
+
+    Delegates to OrbitEntry.TYPE_ICONS so the dashboard, feed and sidebar all
+    share one source of truth for every entry type.
     """
-    icons = {
-        "request": "globe",
-        "query": "database",
-        "log": "file-text",
-        "exception": "alert-triangle",
-        "job": "clock",
-    }
-    return icons.get(entry_type, "circle")
+    from orbit.models import OrbitEntry
+
+    return OrbitEntry.TYPE_ICONS.get(entry_type, "circle")
 
 
 @register.simple_tag
 def type_color(entry_type):
     """
-    Return the color name for an entry type.
+    Return the color name for an entry type (single source of truth in the model).
     """
-    colors = {
-        "request": "cyan",
-        "query": "emerald",
-        "log": "slate",
-        "exception": "rose",
-        "job": "amber",
-    }
-    return colors.get(entry_type, "slate")
+    from orbit.models import OrbitEntry
+
+    return OrbitEntry.TYPE_COLORS.get(entry_type, "slate")

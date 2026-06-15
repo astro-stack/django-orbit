@@ -1,0 +1,44 @@
+{% comment %}Lazy-loaded Stats section: background jobs.{% endcomment %}
+{% if error %}
+<div class="orbit-card p-4 text-rose-400 text-sm">Could not load job metrics: {{ error }}</div>
+{% else %}
+<div class="orbit-card p-5 h-full">
+    <h2 class="text-sm font-medium text-orbit-text-primary mb-4 flex items-center gap-2">
+        <i data-lucide="clock" class="w-4 h-4 text-amber-400"></i>
+        Background Jobs
+    </h2>
+    <div class="grid grid-cols-3 gap-4 mb-4">
+        <div class="p-3 bg-orbit-bg-primary/50 rounded-lg text-center">
+            <div class="text-2xl font-bold {% if jobs.success_rate >= 95 %}text-emerald-400{% elif jobs.success_rate >= 80 %}text-amber-400{% else %}text-rose-400{% endif %}">{{ jobs.success_rate }}%</div>
+            <div class="text-xs text-orbit-text-muted">Success Rate</div>
+        </div>
+        <div class="p-3 bg-orbit-bg-primary/50 rounded-lg text-center">
+            <div class="text-2xl font-bold text-emerald-400">{{ jobs.success }}</div>
+            <div class="text-xs text-orbit-text-muted">Success</div>
+        </div>
+        <div class="p-3 bg-orbit-bg-primary/50 rounded-lg text-center">
+            <div class="text-2xl font-bold text-rose-400">{{ jobs.failed }}</div>
+            <div class="text-xs text-orbit-text-muted">Failed</div>
+        </div>
+    </div>
+
+    {% if jobs.failed_jobs %}
+    <h3 class="orbit-section-title mb-2">Recent Failures</h3>
+    <div class="space-y-2 max-h-32 overflow-y-auto">
+        {% for job in jobs.failed_jobs %}
+        <div @click="openDetail('{{ job.id }}')"
+             class="p-2 bg-rose-500/10 rounded text-xs cursor-pointer hover:bg-rose-500/20 border border-transparent hover:border-rose-500/30 transition-all">
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-rose-400 font-medium">{{ job.name }}</span>
+                <span class="text-orbit-text-muted">{{ job.timestamp|slice:":19" }}</span>
+            </div>
+            <div class="text-orbit-text-secondary truncate">{{ job.error }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-xs text-orbit-text-muted">No failed jobs in this range.</p>
+    {% endif %}
+</div>
+<script>if (typeof lucide !== 'undefined') lucide.createIcons();</script>
+{% endif %}

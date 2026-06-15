@@ -7,6 +7,84 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-06-15
+
+### Security
+
+- **Sensitive-data masking** — values whose key contains a sensitive term (`password`,
+  `token`, `api_key`, `authorization`, `secret`, `cookie`, …) are redacted. Matching is now
+  substring + case-insensitive (so `access_token`, `user_password`, `X-Api-Key` are all
+  caught) and recursive. Configurable via `MASK_KEYS`. New `mask_sensitive_data()` helper is
+  the single point used to scrub data before it is sent to an AI provider. Optional
+  `MASK_ALL_PAYLOADS` masks every entry payload at write time (off by default).
+
+### Added
+
+- **Query EXPLAIN** — run a query plan on demand from a query's detail panel
+  (`Explain plan`). Vendor-aware (PostgreSQL / MySQL / SQLite) with graceful fallback.
+  `EXPLAIN ANALYZE` (which executes the statement) is opt-in via `EXPLAIN_ANALYZE`, only
+  ever run for read-only `SELECT`s inside a rolled-back savepoint. Never runs during
+  recording. Configurable via `ENABLE_EXPLAIN`.
+- **Request waterfall** — a request's child queries are shown as a timeline of bars
+  positioned by each query's real start offset within the request (captured at execution),
+  sized by duration, colored for slow/duplicate. Click a bar to open that query.
+- **Tagging + tag search** — entries can carry tags (indexed, comma-wrapped). A
+  `TAG_CALLBACK` setting attaches tags automatically (e.g. by tenant, feature, status).
+  Filter by tag via `?tag=foo` or by typing `tag:foo` in the search box; tags show as
+  clickable chips in the detail panel.
+- **Exception grouping** — identical exceptions (same type + raise location) are collapsed
+  into a single row on the Exceptions view, with an occurrence count and first/last seen.
+  Grouping/counting is done in the database via a new indexed `fingerprint` column, so it
+  scales to large event volumes. Searching or drilling into a request still shows
+  individual occurrences. New migration backfills `fingerprint` for existing exceptions.
+- **Grouped, collapsible sidebar navigation** — entry types are organized into
+  **Core / Infrastructure / Application** groups for progressive disclosure, instead of a
+  flat 16-item list. The group containing the active type opens automatically.
+- **Standalone "All Events"** item above the type groups (it is a meta-filter, not an
+  entry type).
+- **Compact KPI strip** on the dashboard (requests, queries, avg, errors, slow, N+1)
+  replacing the bulky four-card panel, leaving more room for the feed.
+- **Detail panel keyboard navigation** — `j`/`k` (and arrows) move to the next/previous
+  entry in the current feed, `Esc` closes, with on-panel prev/next buttons and a position
+  indicator.
+- **First-run onboarding tour** — a dismissable welcome overlay explaining the layout and
+  shortcuts, reopenable from the `?` button in the top bar.
+- **Lazy-loaded Stats sections** — trends, database, cache, jobs and security each load
+  via their own `/orbit/stats/section/<name>/` endpoint.
+- **`DESIGN.md`** — a project design system documenting tokens, components and principles.
+
+### Changed
+
+- **Visual overhaul** toward a calmer, Linear-inspired minimal UI: softened glow/gradient
+  decoration, consistent badges and cards, reduced-motion support.
+- **Stats page paints fast** — only the headline (Apdex, avg/P95, error rate, throughput,
+  percentiles) is computed up front; heavier sections load lazily. This removes the
+  SQLite "database is locked" retry workaround.
+- Sidebar and feed are now driven from a single nav config and the model's `TYPE_ICONS`/
+  `TYPE_COLORS` maps, eliminating duplicated per-type markup.
+
+### Fixed
+
+- The "Entry Details" slide-over no longer flashes open on page load (added `x-cloak`),
+  most visible when opening the Stats page.
+- The dashboard and Health pages no longer display a hardcoded stale version; both now
+  read the installed package version.
+- The feed no longer jumps to the top on background polling — scroll position is preserved.
+- Hardened filesystem-related tests on Windows so the suite no longer depends on writable temp/cache directories with unstable permissions.
+- Fixed the Health dashboard guidance to use `RECORD_JOBS` instead of the nonexistent `RECORD_CELERY`.
+- Updated pytest collection settings to ignore local transient directories such as `.pytest_cache` and `orbit_test_storage`.
+
+### Removed
+
+- The "Export Filtered" button in the sidebar. Per-entry JSON export remains available
+  from the detail panel.
+
+### Documentation
+
+- Replaced placeholder Quick Start, API, and Customization pages with current project documentation.
+- Corrected the docs metadata URL to point to the published MkDocs site.
+- Updated troubleshooting and contributing docs to match the current configuration and docs workflow.
+
 ## [0.8.1] - 2026-04-08
 
 ### Added
