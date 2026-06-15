@@ -93,42 +93,177 @@ def _call_anthropic(system: str, user: str, cfg: Dict[str, Any]) -> str:
     return "".join(getattr(b, "text", "") for b in resp.content).strip()
 
 
-def analyze_entry(entry, force: bool = False) -> Dict[str, Any]:
-    """
-    Return {'ok': True, 'text': markdown, 'cached': bool} or {'ok': False, 'error': str}.
+def _run_llm(system: str, user: str, cfg: Dict[str, Any]) -> str:
+    """Dispatch to the configured handler, else the Anthropic provider."""
+    handler = cfg.get("handler")
+    if callable(handler):
+        return handler(system, user, cfg)
+    return _call_anthropic(system, user, cfg)
 
-    Never raises. Result is cached in entry.payload['ai'] so repeat views are free.
+
+def _analyze(entry, *, kind: str, system: str, user: str, force: bool = False) -> Dict[str, Any]:
+    """
+    Generic on-demand LLM analysis cached on the entry under payload['ai'][kind].
+
+    Returns {'ok': True, 'text': markdown, 'cached': bool} or {'ok': False, 'error': str}.
+    Never raises.
     """
     if not ai_enabled():
         return {"ok": False, "error": "AI is disabled. Set ORBIT_CONFIG['AI'] = {'enabled': True, 'api_key': '...'}."}
 
     payload = entry.payload or {}
-    cached = payload.get("ai")
-    if cached and not force:
-        return {"ok": True, "text": cached.get("text", ""), "cached": True}
+    cache = payload.get("ai") or {}
+    if isinstance(cache, dict) and cache.get(kind) and not force:
+        return {"ok": True, "text": cache[kind].get("text", ""), "cached": True}
 
     cfg = get_ai_config()
-    handler = cfg.get("handler")
-    user = _build_user_prompt(entry)
     try:
-        if callable(handler):
-            text = handler(_SYSTEM_PROMPT, user, cfg)
-        else:
-            text = _call_anthropic(_SYSTEM_PROMPT, user, cfg)
+        text = _run_llm(system, user, cfg)
     except Exception as e:
         logger.debug("Orbit AI call failed: %s", e)
         return {"ok": False, "error": str(e)}
 
     text = (text or "").strip()
-    # Cache on the entry (derived data under a dedicated key); never break on failure.
     try:
-        payload["ai"] = {"text": text, "model": cfg.get("model", DEFAULT_MODEL)}
+        if not isinstance(cache, dict):
+            cache = {}
+        cache[kind] = {"text": text, "model": cfg.get("model", DEFAULT_MODEL)}
+        payload["ai"] = cache
         entry.payload = payload
         entry.save(update_fields=["payload"])
     except Exception:
         pass
 
     return {"ok": True, "text": text, "cached": False}
+
+
+def analyze_entry(entry, force: bool = False) -> Dict[str, Any]:
+    """Explain & fix for a single entry (C1)."""
+    return _analyze(entry, kind="explain", system=_SYSTEM_PROMPT, user=_build_user_prompt(entry), force=force)
+
+
+_TRIAGE_PROMPT = (
+    "You are triaging a Django exception for an on-call engineer. Respond in this exact "
+    "shape:\n**Severity:** <critical|high|medium|low>\n**Category:** <short label>\n"
+    "**Why:** <one sentence>\n**Next step:** <one concrete action>"
+)
+
+
+def triage_exception(entry, force: bool = False) -> Dict[str, Any]:
+    """Classify an exception's severity/category and suggest a next step (C4)."""
+    return _analyze(entry, kind="triage", system=_TRIAGE_PROMPT, user=_build_user_prompt(entry), force=force)
+
+
+_SUMMARY_PROMPT = (
+    "You summarize a single Django request's lifecycle for a developer. In 3-5 sentences: "
+    "what the request did, where time went, and anything suspicious (slow/duplicate queries, "
+    "errors). Output GitHub-flavored Markdown."
+)
+
+
+def summarize_family(request_entry, force: bool = False) -> Dict[str, Any]:
+    """Summarize everything that happened during a request/family (C3)."""
+    from orbit.models import OrbitEntry
+    from orbit.utils import mask_sensitive_data
+
+    family = request_entry.family_hash
+    children = []
+    if family:
+        children = list(
+            OrbitEntry.objects.filter(family_hash=family)
+            .exclude(id=request_entry.id)
+            .order_by("created_at")[:200]
+        )
+    by_type: Dict[str, int] = {}
+    for c in children:
+        by_type[c.type] = by_type.get(c.type, 0) + 1
+
+    rp = mask_sensitive_data(request_entry.payload or {})
+    lines = [
+        f"Request: {rp.get('method')} {rp.get('full_path') or rp.get('path')} -> {rp.get('status_code')}",
+        f"Total duration: {request_entry.duration_ms} ms",
+        f"Child events by type: {by_type}",
+    ]
+    # Highlight the slowest queries for context
+    slow = sorted(
+        [c for c in children if c.type == OrbitEntry.TYPE_QUERY and c.duration_ms],
+        key=lambda c: c.duration_ms or 0,
+        reverse=True,
+    )[:5]
+    if slow:
+        lines.append("Slowest queries:")
+        for c in slow:
+            sql = (c.payload or {}).get("sql", "")
+            lines.append(f"  {round(c.duration_ms, 1)}ms — {sql[:120]}")
+
+    return _analyze(request_entry, kind="summary", system=_SUMMARY_PROMPT, user="\n".join(lines), force=force)
+
+
+_SEARCH_PROMPT = (
+    "Translate a developer's natural-language request into Orbit feed filters. "
+    "Respond with ONLY a compact JSON object using these optional keys: "
+    '"type" (one of: request, query, log, exception, job, command, cache, model, '
+    'http_client, dump, mail, signal, redis, gate, transaction, storage), '
+    '"status_min" (int, e.g. 500), "path_contains" (string), "since_minutes" (int), '
+    '"tag" (string), "q" (free-text fallback). Omit keys you cannot infer. No prose.'
+)
+
+_ALLOWED_FILTER_KEYS = {"type", "status_min", "path_contains", "since_minutes", "tag", "q"}
+
+
+def nl_search(question: str) -> Dict[str, Any]:
+    """
+    Turn a natural-language question into Orbit feed filters (C2).
+
+    Returns {'ok': True, 'filters': {...}} or {'ok': False, 'error': str}. Never raises.
+    """
+    if not ai_enabled():
+        return {"ok": False, "error": "AI is disabled."}
+    if not question or not question.strip():
+        return {"ok": False, "error": "Empty question."}
+
+    cfg = get_ai_config()
+    try:
+        raw = _run_llm(_SEARCH_PROMPT, question.strip(), cfg)
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+    filters = _parse_filters(raw)
+    if not filters:
+        return {"ok": False, "error": "Could not interpret the question."}
+    return {"ok": True, "filters": filters}
+
+
+def _parse_filters(raw: str) -> Dict[str, Any]:
+    """Extract a JSON object from the model output and keep only known, well-typed keys."""
+    import json
+    import re
+
+    if not raw:
+        return {}
+    match = re.search(r"\{.*\}", raw, re.DOTALL)
+    if not match:
+        return {}
+    try:
+        data = json.loads(match.group(0))
+    except Exception:
+        return {}
+    if not isinstance(data, dict):
+        return {}
+
+    out: Dict[str, Any] = {}
+    for key in _ALLOWED_FILTER_KEYS:
+        if key not in data or data[key] in (None, ""):
+            continue
+        value = data[key]
+        if key in ("status_min", "since_minutes"):
+            try:
+                out[key] = int(value)
+            except (TypeError, ValueError):
+                continue
+        else:
+            out[key] = str(value)
+    return out
 
 
 def entry_supports_ai(entry) -> bool:

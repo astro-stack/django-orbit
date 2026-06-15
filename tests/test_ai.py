@@ -89,3 +89,82 @@ def test_ai_explain_view_enabled(client, settings):
     html = client.get(reverse("orbit:ai_explain", args=[e.id])).content.decode()
     assert "AI analysis" in html
     assert "Fix:" in html
+
+
+# ---- M5: summary (C3) / triage (C4) / NL search (C2) ----------------------
+
+def test_summarize_family(settings):
+    captured = {}
+    settings.ORBIT_CONFIG = {**getattr(settings, "ORBIT_CONFIG", {}), "AI": _ai_config(captured)}
+    req = OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_REQUEST, family_hash="ff", duration_ms=100,
+        payload={"method": "GET", "path": "/x/", "status_code": 200},
+    )
+    OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_QUERY, family_hash="ff", duration_ms=80,
+        payload={"sql": "SELECT * FROM big"},
+    )
+    out = ai_mod.summarize_family(req)
+    assert out["ok"] is True
+    assert "Child events by type" in captured["user"]
+    assert "SELECT * FROM big"[:20] in captured["user"]
+
+
+def test_triage_exception(settings):
+    captured = {}
+    settings.ORBIT_CONFIG = {**getattr(settings, "ORBIT_CONFIG", {}), "AI": _ai_config(captured)}
+    e = OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_EXCEPTION, payload={"exception_type": "ValueError", "message": "x", "traceback": []},
+    )
+    out = ai_mod.triage_exception(e)
+    assert out["ok"] is True
+    assert "triag" in captured["system"].lower()
+
+
+def test_summary_and_explain_cached_separately(settings):
+    settings.ORBIT_CONFIG = {**getattr(settings, "ORBIT_CONFIG", {}), "AI": _ai_config({})}
+    req = OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_REQUEST, family_hash="gg", duration_ms=10,
+        payload={"method": "GET", "path": "/y/", "status_code": 200},
+    )
+    ai_mod.analyze_entry(req)
+    ai_mod.summarize_family(req)
+    req.refresh_from_db()
+    assert set(req.payload["ai"].keys()) == {"explain", "summary"}
+
+
+def test_nl_search_parses_filters(settings):
+    def handler(system, user, cfg):
+        return 'Here you go: {"type": "request", "status_min": 500, "since_minutes": 60}'
+
+    settings.ORBIT_CONFIG = {
+        **getattr(settings, "ORBIT_CONFIG", {}),
+        "AI": {"enabled": True, "api_key": "t", "handler": handler},
+    }
+    out = ai_mod.nl_search("show 500s in the last hour")
+    assert out["ok"] is True
+    assert out["filters"] == {"type": "request", "status_min": 500, "since_minutes": 60}
+
+
+def test_nl_search_view(client, settings):
+    def handler(system, user, cfg):
+        return '{"type": "exception"}'
+
+    settings.ORBIT_CONFIG = {
+        **getattr(settings, "ORBIT_CONFIG", {}),
+        "AI": {"enabled": True, "api_key": "t", "handler": handler},
+    }
+    import json as _json
+
+    resp = client.get(reverse("orbit:ai_search"), {"q": "errors"})
+    data = _json.loads(resp.content)
+    assert data["ok"] is True and data["filters"]["type"] == "exception"
+
+
+def test_feed_extra_filters(client):
+    OrbitEntry.objects.create(type=OrbitEntry.TYPE_REQUEST, payload={"status_code": 500, "path": "/checkout/"})
+    OrbitEntry.objects.create(type=OrbitEntry.TYPE_REQUEST, payload={"status_code": 200, "path": "/home/"})
+    html = client.get(reverse("orbit:feed"), {"type": "request", "status_min": "500"}).content.decode()
+    assert html.count('data-entry-id="') == 1
+    html2 = client.get(reverse("orbit:feed"), {"type": "request", "path_contains": "checkout"}).content.decode()
+    assert html2.count('data-entry-id="') == 1

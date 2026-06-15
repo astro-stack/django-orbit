@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   entry to an LLM (Anthropic Claude by default; any provider via a `handler` callable),
   returns a root-cause explanation + concrete fix, and caches the result on the entry.
   Disabled by default; configure via `ORBIT_CONFIG['AI']`. Install with `django-orbit[ai]`.
+- **AI request summary & exception triage** — "Summarize" on a request (what ran, where
+  time went, anything suspicious) and "Triage" on an exception (severity, category, next
+  step), reusing the same masking-aware, cached AI layer.
+- **Natural-language search** — the ✨ button in the search bar turns a question
+  ("500s on /checkout in the last hour") into feed filters (type, status, path, time, tag).
 - **Agentic MCP tools** — the MCP server gains five tools that make Orbit the
   observability layer an AI agent reasons over while fixing bugs, usable from any MCP
   client (Claude Code, Cursor, Codex, Claude Desktop): `explain_query` (EXPLAIN plan),
