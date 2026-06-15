@@ -374,12 +374,12 @@ class OrbitFeedPartial(OrbitProtectedView, View):
         offset = (page - 1) * per_page
 
         page_groups = list(groups_qs[offset : offset + per_page])
-        fingerprints = [g["fingerprint"] for g in page_groups]
-        latest = OrbitEntry.objects.latest_for_fingerprints(fingerprints)
+        group_keys = [g["group_key"] for g in page_groups]
+        latest = OrbitEntry.objects.latest_for_groups(group_keys)
 
         groups = []
         for g in page_groups:
-            rep = latest.get(g["fingerprint"])
+            rep = latest.get(g["group_key"])
             if rep is None:
                 continue
             groups.append(

@@ -28,23 +28,34 @@ class OrbitEntryManager(models.Manager):
         """Get all exception entries."""
         return self.filter(type=OrbitEntry.TYPE_EXCEPTION)
 
+    def _exception_group_key(self):
+        """
+        Coalesced grouping key: the fingerprint when present, else the entry id.
+
+        Guarantees *no exception is ever hidden* — a fingerprint-less exception (e.g. legacy
+        data, or an event recorded outside the request middleware) groups on its own id
+        (count 1) instead of being excluded. Portable across SQLite / MySQL / PostgreSQL.
+        """
+        from django.db.models import CharField, Value
+        from django.db.models.functions import Cast, Coalesce, NullIf
+
+        return Coalesce(NullIf("fingerprint", Value("")), Cast("id", CharField()))
+
     def exception_groups(self):
         """
-        Aggregate exceptions by fingerprint entirely in the database.
+        Aggregate exceptions by group key entirely in the database.
 
-        Returns one row per distinct error (``fingerprint``, ``count``, ``first_seen``,
-        ``last_seen``) ordered by recency. Scales to large volumes because the
-        grouping/counting is done by the DB via the (type, fingerprint, -created_at)
-        index — never by loading rows into Python. The representative (latest) occurrence
-        for each group is fetched separately and only for the current page (see
-        ``latest_for_fingerprints``).
+        Returns one row per distinct error (``group_key``, ``count``, ``first_seen``,
+        ``last_seen``) ordered by recency. Grouping/counting is done by the DB (never by
+        loading rows into Python). The representative (latest) occurrence for each group is
+        fetched separately and only for the current page (see ``latest_for_groups``).
         """
         from django.db.models import Count, Max, Min
 
         return (
             self.filter(type=OrbitEntry.TYPE_EXCEPTION)
-            .exclude(fingerprint="")
-            .values("fingerprint")
+            .annotate(group_key=self._exception_group_key())
+            .values("group_key")
             .annotate(
                 count=Count("id"),
                 last_seen=Max("created_at"),
@@ -53,24 +64,20 @@ class OrbitEntryManager(models.Manager):
             .order_by("-last_seen")
         )
 
-    def latest_for_fingerprints(self, fingerprints):
+    def latest_for_groups(self, group_keys):
         """
-        Return {fingerprint: latest OrbitEntry} for the given fingerprints.
+        Return {group_key: latest OrbitEntry} for the given group keys.
 
         Attaches a representative (most recent) occurrence to each group on the *current
-        page* only. Cost is bounded by page size: one indexed single-row lookup per
-        fingerprint (uses the (type, fingerprint, -created_at) index), and portable across
-        SQLite / MySQL / PostgreSQL (no DISTINCT ON / window-function dependency).
+        page* only — one bounded lookup per key. Works for both fingerprint keys and the id
+        fallback. Portable (no DISTINCT ON / window-function dependency).
         """
         latest = {}
-        for fp in fingerprints:
-            entry = (
-                self.filter(type=OrbitEntry.TYPE_EXCEPTION, fingerprint=fp)
-                .order_by("-created_at")
-                .first()
-            )
+        base = self.filter(type=OrbitEntry.TYPE_EXCEPTION).annotate(group_key=self._exception_group_key())
+        for key in group_keys:
+            entry = base.filter(group_key=key).order_by("-created_at").first()
             if entry is not None:
-                latest[fp] = entry
+                latest[key] = entry
         return latest
 
     def jobs(self):
