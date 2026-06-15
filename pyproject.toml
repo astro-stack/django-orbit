@@ -53,6 +53,11 @@ dependencies = [
 mcp = [
     "mcp>=1.0",
 ]
+docs = [
+    "mkdocs>=1.5",
+    "mkdocs-material>=9.0",
+    "mkdocs-minify-plugin>=0.7",
+]
 dev = [
     "pytest>=7.0",
     "pytest-django>=4.5",
