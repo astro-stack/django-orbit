@@ -128,6 +128,41 @@ def test_mcp_import_error_without_package(monkeypatch):
             sys.modules["mcp"] = original
 
 
+
+@pytest.mark.django_db
+@override_settings(ORBIT_CONFIG={"MCP_ENABLED": False})
+def test_mcp_enabled_false_blocks_all_tools(db):
+    OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_REQUEST,
+        family_hash="blocked",
+        payload={"method": "GET", "path": "/private/", "status_code": 200},
+    )
+    mcp = _make_server()
+    calls = [
+        ("get_recent_requests", {}),
+        ("get_slow_queries", {}),
+        ("get_exceptions", {}),
+        ("get_n1_patterns", {}),
+        ("search_entries", {"query": "private"}),
+        ("get_request_detail", {"family_hash": "blocked"}),
+        ("get_stats_summary", {}),
+        ("audit_mcp_exposure", {}),
+        ("investigate_request", {"family_hash": "blocked"}),
+        ("investigate_exception_group", {"fingerprint": "fp"}),
+        ("create_incident_bundle", {"source_type": "family_hash", "source_value": "blocked"}),
+        ("build_debug_brief", {"query": "private"}),
+        ("propose_fix_hypotheses", {"source_type": "family_hash", "source_value": "blocked"}),
+        ("propose_test_plan", {"source_type": "family_hash", "source_value": "blocked"}),
+    ]
+
+    for name, kwargs in calls:
+        data = _call_tool(mcp, name, **kwargs)
+        assert data == {
+            "error": "MCP data exposure is disabled by ORBIT_CONFIG['MCP_ENABLED'].",
+            "disabled": True,
+        }
+
+
 # ---------------------------------------------------------------------------
 # Tool: get_recent_requests
 # ---------------------------------------------------------------------------

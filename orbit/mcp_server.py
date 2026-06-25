@@ -23,23 +23,23 @@ logger = logging.getLogger(__name__)
 
 
 def _serialize_entry(entry) -> dict:
-    """Convert an OrbitEntry to a JSON-serializable dict."""
-    return {
-        "id": str(entry.id),
-        "type": entry.type,
-        "summary": entry.summary,
-        "duration_ms": entry.duration_ms,
-        "family_hash": entry.family_hash,
-        "created_at": entry.created_at.isoformat(),
-        "payload": entry.payload,
-        "is_error": entry.is_error,
-        "is_warning": entry.is_warning,
-    }
+    """Convert an OrbitEntry to an agent-safe JSON-serializable dict."""
+    from orbit.agentic import agent_safe_serialize_entry
+
+    return agent_safe_serialize_entry(entry)
 
 
 def _format_output(data: Any) -> str:
     """Format data as pretty-printed JSON string for AI consumption."""
     return json.dumps(data, indent=2, default=str)
+
+
+def _mcp_disabled_output() -> str:
+    """Return a stable response when MCP data exposure is disabled."""
+    return _format_output({
+        "error": "MCP data exposure is disabled by ORBIT_CONFIG['MCP_ENABLED'].",
+        "disabled": True,
+    })
 
 
 def create_mcp_server():
@@ -49,6 +49,10 @@ def create_mcp_server():
     Called lazily so Django ORM is available when tools run.
     """
     try:
+        import sys
+
+        if sys.modules.get("mcp") is None and "mcp" in sys.modules:
+            raise ImportError
         from mcp.server.fastmcp import FastMCP
     except ImportError:
         raise ImportError(
@@ -87,6 +91,9 @@ def create_mcp_server():
         Args:
             limit: Number of requests to return (max 100, default 20)
         """
+        if not get_config().get("MCP_ENABLED", True):
+            return _mcp_disabled_output()
+
         limit = min(limit, 100)
         entries = OrbitEntry.objects.requests().order_by("-created_at")[:limit]
         result = [_serialize_entry(e) for e in entries]
@@ -107,6 +114,9 @@ def create_mcp_server():
             threshold_ms: Minimum duration to consider slow (default: SLOW_QUERY_THRESHOLD_MS from config)
             limit: Number of results to return (max 100, default 20)
         """
+        if not get_config().get("MCP_ENABLED", True):
+            return _mcp_disabled_output()
+
         limit = min(limit, 100)
         threshold = threshold_ms if threshold_ms is not None else slow_threshold
 
@@ -137,6 +147,9 @@ def create_mcp_server():
             hours: How many hours back to look (default 24)
             limit: Number of results to return (max 100, default 20)
         """
+        if not get_config().get("MCP_ENABLED", True):
+            return _mcp_disabled_output()
+
         from django.utils import timezone
         from datetime import timedelta
 
@@ -166,6 +179,9 @@ def create_mcp_server():
         Args:
             limit: Number of results to return (max 50, default 20)
         """
+        if not get_config().get("MCP_ENABLED", True):
+            return _mcp_disabled_output()
+
         limit = min(limit, 50)
 
         # Requests where Orbit detected duplicate queries
@@ -207,6 +223,9 @@ def create_mcp_server():
                         gate, transaction, storage, job
             limit: Number of results to return (max 100, default 20)
         """
+        if not get_config().get("MCP_ENABLED", True):
+            return _mcp_disabled_output()
+
         limit = min(limit, 100)
 
         qs = OrbitEntry.objects.all()
@@ -243,6 +262,9 @@ def create_mcp_server():
         Args:
             family_hash: The family_hash value from any OrbitEntry
         """
+        if not get_config().get("MCP_ENABLED", True):
+            return _mcp_disabled_output()
+
         entries = OrbitEntry.objects.for_family(family_hash)
         if not entries.exists():
             return _format_output({"error": f"No entries found for family_hash: {family_hash}"})
@@ -276,6 +298,9 @@ def create_mcp_server():
         Args:
             hours: Time window in hours (default 24)
         """
+        if not get_config().get("MCP_ENABLED", True):
+            return _mcp_disabled_output()
+
         from django.utils import timezone
         from datetime import timedelta
         from django.db.models import Avg, Count
@@ -335,4 +360,94 @@ def create_mcp_server():
             "top_error_paths": list(top_errors),
         })
 
+
+    # -------------------------------------------------------------------------
+    # High-level agentic tools
+    # -------------------------------------------------------------------------
+    from orbit import agentic as agentic_tools
+
+    @mcp.tool(name="audit_mcp_exposure")
+    def audit_mcp_exposure_tool() -> str:
+        """
+        Report the effective MCP exposure and safety policy.
+
+        Use this before agentic investigations to understand whether payloads are
+        included, masked and size-limited.
+        """
+        if not get_config().get("MCP_ENABLED", True):
+            return _mcp_disabled_output()
+        return _format_output(agentic_tools.audit_mcp_exposure())
+
+    @mcp.tool()
+    def investigate_request(family_hash: str, limit: int = None) -> str:
+        """
+        Build a high-level diagnosis for one request family.
+
+        Returns the request summary, event counts, timeline, query analysis,
+        signals, hypotheses and recommended next actions.
+        """
+        if not get_config().get("MCP_ENABLED", True):
+            return _mcp_disabled_output()
+        return _format_output(agentic_tools.investigate_request(family_hash, limit=limit))
+
+    @mcp.tool()
+    def investigate_exception_group(fingerprint: str, limit: int = None) -> str:
+        """
+        Summarize one exception fingerprint with blast-radius context.
+
+        Returns representative error data, affected paths, recent occurrences,
+        hypotheses and next actions.
+        """
+        if not get_config().get("MCP_ENABLED", True):
+            return _mcp_disabled_output()
+        return _format_output(agentic_tools.investigate_exception_group(fingerprint, limit=limit))
+
+    @mcp.tool()
+    def create_incident_bundle(source_type: str, source_value: str, hours: int = 72, format: str = "json") -> str:
+        """
+        Create an on-demand agent handoff bundle.
+
+        source_type can be family_hash, fingerprint, ticket, query or text.
+        Bundles are generated from current OrbitEntry data and are not persisted.
+        """
+        if not get_config().get("MCP_ENABLED", True):
+            return _mcp_disabled_output()
+        result = agentic_tools.create_incident_bundle(source_type, source_value, hours=hours, format=format)
+        if isinstance(result, str):
+            return result
+        return _format_output(result)
+
+    @mcp.tool()
+    def build_debug_brief(query: str, hours: int = 72, limit: int = None) -> str:
+        """
+        Match ticket/error text to recent Orbit evidence.
+
+        Returns matched requests, exceptions and logs plus suggested next MCP
+        tools for deeper investigation.
+        """
+        if not get_config().get("MCP_ENABLED", True):
+            return _mcp_disabled_output()
+        return _format_output(agentic_tools.build_debug_brief(query, hours=hours, limit=limit))
+
+    @mcp.tool()
+    def propose_fix_hypotheses(source_type: str, source_value: str, hours: int = 72) -> str:
+        """
+        Rank likely fix directions from Orbit evidence without editing code.
+
+        source_type can be family_hash, fingerprint, ticket, query or text.
+        """
+        if not get_config().get("MCP_ENABLED", True):
+            return _mcp_disabled_output()
+        return _format_output(agentic_tools.propose_fix_hypotheses(source_type, source_value, hours=hours))
+
+    @mcp.tool()
+    def propose_test_plan(source_type: str, source_value: str, hours: int = 72) -> str:
+        """
+        Suggest tests that should cover the observed runtime failure.
+
+        source_type can be family_hash, fingerprint, ticket, query or text.
+        """
+        if not get_config().get("MCP_ENABLED", True):
+            return _mcp_disabled_output()
+        return _format_output(agentic_tools.propose_test_plan(source_type, source_value, hours=hours))
     return mcp
