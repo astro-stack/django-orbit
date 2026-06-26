@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Tests / Python ${{ matrix.python-version }} / ${{ matrix.django-label }} / ${{ matrix.scope }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python-version: "3.9"
+            django-label: "Django 4.2"
+            django-version: "Django>=4.2,<4.3"
+            scope: "core"
+            install-target: "."
+            test-command: "python -m pytest --tb=short -q --ignore=tests/test_mcp.py -k 'not mcp'"
+          - python-version: "3.10"
+            django-label: "Django 4.2"
+            django-version: "Django>=4.2,<4.3"
+            scope: "full+mcp"
+            install-target: ".[dev]"
+            test-command: "python -m pytest --tb=short -q"
+          - python-version: "3.12"
+            django-label: "Django 5.0"
+            django-version: "Django>=5.0,<5.1"
+            scope: "full+mcp"
+            install-target: ".[dev]"
+            test-command: "python -m pytest --tb=short -q"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e "${{ matrix.install-target }}"
+          python -m pip install "${{ matrix.django-version }}"
+          python -m pip install pytest pytest-django
+          python -m pip freeze
+
+      - name: Run tests
+        run: ${{ matrix.test-command }}
+
+  package:
+    name: Package build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build twine
+
+      - name: Build distributions
+        run: python -m build
+
+      - name: Check distributions
+        run: python -m twine check dist/*
+
+  docs:
+    name: Documentation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install docs dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install mkdocs-material mkdocs-minify-plugin
+
+      - name: Build docs
+        run: python -m mkdocs build --strict

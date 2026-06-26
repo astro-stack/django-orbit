@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `format="prompt"` for `create_incident_bundle`, producing a safe copy/paste prompt for Claude, Codex and Cursor.
 - Exposed the new 0.11 agentic workflow tools through MCP with the same `MCP_ENABLED` safety gate.
 - Added a documented demo flow: "Debug Django with Codex and Claude using Orbit context".
+- Added GitHub Actions CI for PR tests, docs builds, package builds and Twine checks, plus Dependabot updates for GitHub Actions and Python dependencies.
 
 ## [0.10.0] - 2026-06-25
 

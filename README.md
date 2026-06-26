@@ -9,6 +9,7 @@ Unlike Django Debug Toolbar, Orbit does not inject HTML into your app. It lives 
 <img width="1312" height="612" alt="Django Orbit Dashboard" src="https://github.com/user-attachments/assets/87528512-b458-4217-8dde-699a23c507ce" />
 
 [![PyPI version](https://img.shields.io/pypi/v/django-orbit?style=flat-square)](https://pypi.org/project/django-orbit/)
+[![CI](https://github.com/astro-stack/django-orbit/actions/workflows/ci.yml/badge.svg)](https://github.com/astro-stack/django-orbit/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue?style=flat-square&logo=python)](https://python.org)
 [![Django](https://img.shields.io/badge/Django-4.0%2B-green?style=flat-square&logo=django)](https://djangoproject.com)
 [![License](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](LICENSE)

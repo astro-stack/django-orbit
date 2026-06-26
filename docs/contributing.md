@@ -28,6 +28,8 @@ pip install -e ".[dev]"
 pytest
 ```
 
+Pull requests also run GitHub Actions CI on supported Python/Django combinations, documentation builds, package builds and Twine metadata checks.
+
 ## Code Style
 
 We use Black and isort for code formatting:
