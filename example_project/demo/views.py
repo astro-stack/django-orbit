@@ -22,11 +22,9 @@ def home(request):
     """Home page with links to test endpoints."""
     return render(
         request,
-        "demo/home.html",
+        "orbit/welcome.html",
         {
             "orbit_version": ORBIT_VERSION,
-            "github_url": "https://github.com/astro-stack/django-orbit",
-            "docs_url": "https://astro-stack.github.io/django-orbit/",
         },
     )
 

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Django Orbit</title>
+    <style>
+        :root {
+            --bg: #050816;
+            --surface: #0b1020;
+            --surface-2: #111827;
+            --line: rgba(148, 163, 184, 0.22);
+            --text: #edf5ff;
+            --muted: #9badc7;
+            --faint: #6f819d;
+            --cyan: #36d6ff;
+            --green: #69e6ac;
+            --violet: #a79bff;
+            --amber: #f3c969;
+        }
+        * { box-sizing: border-box; }
+        html { color-scheme: dark; }
+        body {
+            margin: 0;
+            min-height: 100dvh;
+            background:
+                linear-gradient(180deg, rgba(54, 214, 255, 0.08), transparent 34%),
+                linear-gradient(135deg, #050816 0%, #080b16 52%, #050816 100%);
+            color: var(--text);
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background-image:
+                linear-gradient(rgba(148, 163, 184, 0.055) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(148, 163, 184, 0.055) 1px, transparent 1px);
+            background-size: 44px 44px;
+            mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent 78%);
+        }
+        a { color: inherit; text-decoration: none; }
+        .page { position: relative; max-width: 1180px; margin: 0 auto; padding: 28px 20px 44px; }
+        .topbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 48px; }
+        .brand { display: flex; align-items: center; gap: 13px; min-width: 0; }
+        .brand-mark {
+            position: relative;
+            width: 42px;
+            height: 42px;
+            display: grid;
+            place-items: center;
+            border-radius: 12px;
+            border: 1px solid rgba(54, 214, 255, 0.38);
+            background: linear-gradient(145deg, rgba(54, 214, 255, 0.18), rgba(167, 155, 255, 0.12));
+            box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+        }
+        .brand-mark::before { content: ""; position: absolute; width: 30px; height: 14px; border: 1.5px solid rgba(54, 214, 255, 0.82); border-radius: 999px; transform: rotate(-28deg); }
+        .brand-mark::after { content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 24px rgba(54, 214, 255, 0.8); }
+        .brand h1 { margin: 0; font-size: 1.08rem; line-height: 1; }
+        .brand-copy span { display: block; margin-top: 4px; color: var(--muted); font-size: 0.84rem; }
+        .nav { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+        .nav a, .button { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 0 14px; border: 1px solid var(--line); border-radius: 8px; background: rgba(17, 24, 39, 0.72); color: var(--text); font-weight: 650; font-size: 0.92rem; }
+        .button.primary { border-color: transparent; background: linear-gradient(135deg, var(--cyan), var(--green)); color: #031018; }
+        .hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr); gap: 34px; align-items: start; margin-bottom: 34px; }
+        .eyebrow { margin: 0 0 13px; color: var(--cyan); font-size: 0.78rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+        .hero h2 { margin: 0; max-width: 11ch; font-size: clamp(3rem, 6vw, 5.8rem); line-height: 0.92; letter-spacing: 0; }
+        .hero-copy { margin: 20px 0 0; max-width: 68ch; color: var(--muted); font-size: 1.08rem; line-height: 1.72; }
+        .actions, .agent-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+        .agent-row { gap: 9px; margin-top: 22px; }
+        .pill { border: 1px solid var(--line); border-radius: 999px; background: rgba(11, 16, 32, 0.74); color: var(--muted); padding: 8px 11px; font-size: 0.86rem; }
+        .pill strong { color: var(--text); }
+        .panel, .tile, .endpoint { border: 1px solid var(--line); background: rgba(13, 19, 36, 0.86); box-shadow: 0 24px 80px rgba(0, 0, 0, 0.24); }
+        .panel { border-radius: 8px; padding: 22px; }
+        .panel h3, .section h3 { margin: 0; font-size: 1.1rem; }
+        .panel p, .tile p, .endpoint p, .section-lead { color: var(--muted); line-height: 1.58; }
+        .flow { display: grid; gap: 10px; margin: 18px 0 0; }
+        .flow-step { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 12px; padding: 13px; border: 1px solid rgba(148, 163, 184, 0.14); border-radius: 8px; background: rgba(5, 8, 22, 0.48); }
+        .num { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 7px; background: rgba(54, 214, 255, 0.12); color: var(--cyan); font-weight: 800; }
+        .flow-step strong { display: block; margin-bottom: 3px; }
+        .flow-step span span { color: var(--muted); font-size: 0.9rem; }
+        .section { margin-top: 34px; }
+        .section-head { display: flex; justify-content: space-between; align-items: end; gap: 18px; margin-bottom: 14px; }
+        .section-lead { max-width: 70ch; margin: 8px 0 0; }
+        .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+        .tile { min-height: 150px; border-radius: 8px; padding: 16px; }
+        .tile small { display: block; margin-bottom: 16px; color: var(--cyan); font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+        .tile h4 { margin: 0; font-size: 1rem; }
+        .tile p { margin: 9px 0 0; font-size: 0.92rem; }
+        .endpoint-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+        .endpoint { display: block; min-height: 92px; border-radius: 8px; padding: 16px; }
+        .endpoint strong { color: var(--cyan); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+        .method { margin-left: 8px; padding: 3px 7px; border-radius: 5px; background: rgba(54, 214, 255, 0.14); color: var(--cyan); font-size: 0.7rem; font-weight: 800; }
+        .endpoint p { margin: 10px 0 0; font-size: 0.92rem; }
+        .code { overflow-x: auto; margin-top: 14px; padding: 16px; border: 1px solid rgba(148, 163, 184, 0.14); border-radius: 8px; background: #050816; color: #c7d2fe; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 0.88rem; line-height: 1.65; }
+        .code .muted { color: var(--faint); }
+        .footer { margin-top: 42px; padding-top: 22px; border-top: 1px solid var(--line); color: var(--faint); text-align: center; font-size: 0.88rem; }
+        @media (max-width: 900px) { .topbar, .section-head { align-items: flex-start; flex-direction: column; } .nav { justify-content: flex-start; } .hero { grid-template-columns: 1fr; } .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (max-width: 620px) { .page { padding-inline: 14px; } .hero h2 { font-size: 3.1rem; } .grid, .endpoint-grid { grid-template-columns: 1fr; } .button, .nav a { width: 100%; } }
+    </style>
+</head>
+<body>
+    <main class="page">
+        <header class="topbar">
+            <a class="brand" href="/" aria-label="Django Orbit home">
+                <span class="brand-mark" aria-hidden="true"></span>
+                <div class="brand-copy"><h1>Django Orbit</h1><span>AI agent-native observability for Django</span></div>
+            </a>
+            <nav class="nav" aria-label="Primary links">
+                <a href="/orbit/">Dashboard</a>
+                <a href="https://astro-stack.github.io/django-orbit/mcp/">MCP tools</a>
+                <a href="https://astro-stack.github.io/django-orbit/codex-debug-demo/">Codex and Claude flow</a>
+                <a href="https://github.com/astro-stack/django-orbit">GitHub</a>
+            </nav>
+        </header>
+
+        <section class="hero" aria-labelledby="hero-title">
+            <div>
+                <p class="eyebrow">Local runtime evidence for AI coding agents</p>
+                <h2 id="hero-title">Django Orbit</h2>
+                <p class="hero-copy">Orbit captures requests, SQL, logs, exceptions, jobs, cache, storage and permissions, then turns that context into MCP tools and incident bundles. Move from ticket or error to fix hypothesis, test plan and PR context without exposing more data than your agent needs.</p>
+                <div class="actions">
+                    <a class="button primary" href="/orbit/">Open Orbit dashboard</a>
+                    <a class="button" href="https://astro-stack.github.io/django-orbit/quickstart/">Read the quickstart</a>
+                </div>
+                <div class="agent-row" aria-label="Supported agent workflows">
+                    <span class="pill"><strong>Codex</strong> investigation</span>
+                    <span class="pill"><strong>Claude</strong> handoff bundles</span>
+                    <span class="pill"><strong>Cursor</strong> MCP context</span>
+                    <span class="pill"><strong>CI</strong> release risk briefs</span>
+                </div>
+            </div>
+            <aside class="panel" aria-label="Agent workflow">
+                <h3>Ticket-to-fix workflow</h3>
+                <p>Use Orbit when the human symptom is vague but the app already has the runtime evidence.</p>
+                <div class="flow">
+                    <div class="flow-step"><span class="num">1</span><span><strong>Start from the issue</strong><span>Ticket, failing endpoint, traceback, support report or release concern.</span></span></div>
+                    <div class="flow-step"><span class="num">2</span><span><strong>Attach Orbit context</strong><span>MCP tools rank requests, exceptions, N+1 candidates and sensitive-field risk.</span></span></div>
+                    <div class="flow-step"><span class="num">3</span><span><strong>Propose the path</strong><span>Generate hypotheses, test plan, incident bundle and PR-ready context.</span></span></div>
+                </div>
+            </aside>
+        </section>
+
+        <section class="section" aria-labelledby="docs-title">
+            <div class="section-head"><div><h3 id="docs-title">What to explore next</h3><p class="section-lead">These sections map directly to the 0.11 documentation so the welcome page stays useful instead of becoming a static demo screen.</p></div><a class="button" href="https://astro-stack.github.io/django-orbit/roadmap/">Roadmap</a></div>
+            <div class="grid">
+                <a class="tile" href="https://astro-stack.github.io/django-orbit/mcp/"><small>MCP</small><h4>Agent tools</h4><p>Connect Claude, Codex, Cursor or any MCP client to live Django telemetry.</p></a>
+                <a class="tile" href="https://astro-stack.github.io/django-orbit/codex-debug-demo/"><small>Workflow</small><h4>Codex and Claude demo</h4><p>Follow a practical ticket-to-test-to-fix investigation using Orbit context.</p></a>
+                <a class="tile" href="https://astro-stack.github.io/django-orbit/configuration/"><small>Safety</small><h4>Exposure controls</h4><p>Mask sensitive payloads, audit safe fields and keep agent access bounded.</p></a>
+                <a class="tile" href="https://astro-stack.github.io/django-orbit/dashboard/"><small>Dashboard</small><h4>Human inspection</h4><p>Use the UI for timelines, tracebacks, SQL detail, stats and health checks.</p></a>
+            </div>
+        </section>
+
+        <section class="section" aria-labelledby="run-title">
+            <div class="section-head"><div><h3 id="run-title">Run the local loop</h3><p class="section-lead">Generate real events, open `/orbit/`, then ask an agent to investigate with the same evidence.</p></div></div>
+            <pre class="code"><span class="muted"># Create sample telemetry and run Django</span>
+python demo.py setup
+python manage.py runserver
+<span class="muted"># Open http://localhost:8000/orbit/</span>
+<span class="muted"># MCP: python manage.py orbit_mcp</span></pre>
+        </section>
+
+        <section class="section" aria-labelledby="endpoint-title">
+            <div class="section-head"><div><h3 id="endpoint-title">Generate test signals</h3><p class="section-lead">Use these endpoints to create the kinds of runtime events Orbit records.</p></div></div>
+            <div class="endpoint-grid">
+                <a class="endpoint" href="/books/"><strong>/books/</strong><span class="method">GET</span><p>List books and generate SQL query telemetry.</p></a>
+                <a class="endpoint" href="/books/create/"><strong>/books/create/</strong><span class="method">GET</span><p>Create a book and record model, SQL and log events.</p></a>
+                <a class="endpoint" href="/slow/"><strong>/slow/</strong><span class="method">GET</span><p>Simulate a slow request for endpoint investigation.</p></a>
+                <a class="endpoint" href="/log/"><strong>/log/</strong><span class="method">GET</span><p>Emit logs across levels for timeline debugging.</p></a>
+                <a class="endpoint" href="/error/"><strong>/error/</strong><span class="method">GET</span><p>Raise an exception and capture the traceback group.</p></a>
+                <a class="endpoint" href="/duplicate-queries/"><strong>/duplicate-queries/</strong><span class="method">GET</span><p>Create duplicate queries for N+1 candidate detection.</p></a>
+            </div>
+        </section>
+
+        <footer class="footer">Django Orbit v{{ orbit_version }} - MIT License - Built for local-first AI debugging workflows</footer>
+    </main>
+</body>
+</html>

@@ -18,10 +18,12 @@ def test_demo_homepage_positions_orbit_as_agent_native(client):
 
     assert response.status_code == 200
     content = response.content.decode()
-    assert "Orbit turns runtime evidence into a fix plan." in content
+    assert "AI agent-native observability for Django" in content
+    assert "from ticket or error to fix hypothesis" in content
     assert "Codex" in content
     assert "Claude" in content
     assert "Cursor" in content
+    assert "https://astro-stack.github.io/django-orbit/mcp/" in content
     assert "/orbit/" in content
 
 

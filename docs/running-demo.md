@@ -51,8 +51,20 @@ python manage.py runserver
 
 | URL | Description |
 |-----|-------------|
-| http://localhost:8000/ | Demo home with test endpoints |
+| http://localhost:8000/ | Orbit welcome page with agent-native workflow links and test endpoints |
 | http://localhost:8000/orbit/ | Orbit dashboard |
+
+## Welcome Page
+
+The root URL is the product-oriented Orbit welcome page for the example project. It links the demo to the same documentation sections used in the v0.11 agent workflow:
+
+- [MCP Server](mcp.md) for Claude, Codex, Cursor and other MCP-compatible assistants
+- [Codex and Claude debugging demo](codex-debug-demo.md) for the ticket-to-test-to-fix flow
+- [Configuration](configuration.md) for payload masking, MCP safety and exposure controls
+- [Dashboard Guide](dashboard.md) for human inspection of requests, SQL, logs and exceptions
+- [Agent-native roadmap](roadmap.md) for the longer-term direction
+
+Use it as the starting point when recording the demo or explaining how Orbit moves from runtime evidence to fix hypotheses, test plans and PR context.
 
 ## Recording Tips
 
