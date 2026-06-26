@@ -33,6 +33,7 @@ HIGH_LEVEL_TOOLS = [
     "summarize_exception_groups",
     "daily_health_brief",
     "generate_release_risk_brief",
+    "generate_pr_context",
     "propose_fix_hypotheses",
     "propose_test_plan",
 ]
@@ -1263,6 +1264,126 @@ def generate_release_risk_brief(
             },
         ],
     }
+
+
+def _pr_context_to_markdown(context: dict[str, Any]) -> str:
+    lines = [
+        "## Orbit Evidence",
+        "",
+        context.get("summary", "Runtime evidence captured by Django Orbit."),
+        "",
+        f"- Source: `{context['source']['type']}` = `{context['source']['value']}`",
+        f"- Severity: `{context['evidence'].get('severity', 'unknown')}`",
+        f"- Release risk: `{context['release_risk'].get('risk_level', 'unknown')}`",
+    ]
+
+    signals = context.get("evidence", {}).get("signals") or []
+    if signals:
+        lines.extend(["", "### Signals"])
+        lines.extend(f"- `{signal}`" for signal in signals)
+
+    surfaces = context.get("likely_code_surfaces") or []
+    if surfaces:
+        lines.extend(["", "### Likely Code Surfaces"])
+        lines.extend(f"- `{surface}`" for surface in surfaces)
+
+    hypotheses = context.get("fix_hypotheses") or []
+    if hypotheses:
+        lines.extend(["", "### Fix Hypotheses"])
+        for hypothesis in hypotheses:
+            lines.append(
+                f"- **{hypothesis.get('title', 'Hypothesis')}** "
+                f"({hypothesis.get('confidence', 'unknown')}): "
+                f"{hypothesis.get('recommended_action', hypothesis.get('evidence', ''))}"
+            )
+
+    tests = context.get("test_plan") or []
+    if tests:
+        lines.extend(["", "### Suggested Tests"])
+        for test in tests:
+            lines.append(
+                f"- `{test.get('type', 'test')}` for `{test.get('target', '?')}`: "
+                f"{test.get('purpose', '')}"
+            )
+
+    release = context.get("release_risk") or {}
+    lines.extend(
+        [
+            "",
+            "### Release Risk",
+            f"- Level: `{release.get('risk_level', 'unknown')}`",
+            f"- Recommendation: {release.get('recommendation', 'Review Orbit evidence before release.')}",
+            "",
+            "### Safety",
+            "- Orbit payloads were masked before this context was generated.",
+            "- Use this as PR context; keep code changes covered by tests.",
+        ]
+    )
+    return "\n".join(lines) + "\n"
+
+
+def generate_pr_context(
+    source_type: str,
+    source_value: str,
+    hours: int = 72,
+    format: str = "json",
+) -> dict[str, Any] | str:
+    """Generate PR-ready context from Orbit evidence for coding agents."""
+    primary = _resolve_source(source_type, source_value, hours=hours)
+    if "error" in primary:
+        return primary
+
+    diagnosis = _diagnosis_from_primary(primary)
+    fix_context = propose_fix_hypotheses(source_type, source_value, hours=hours)
+    test_context = propose_test_plan(source_type, source_value, hours=hours)
+    release_risk = generate_release_risk_brief(hours=hours)
+    severity = diagnosis.get("severity", "unknown")
+    signals = diagnosis.get("signals") or []
+    likely_code_surfaces = _collect_code_surfaces(primary)
+    signal_text = ", ".join(signals) if signals else "runtime signal"
+    suggested_title = f"Fix {signal_text} from Orbit evidence"
+    summary = (
+        "Django Orbit captured runtime evidence for this change. "
+        f"Severity is `{severity}` from source `{source_type}` = `{source_value}`. "
+        "Use the hypotheses and tests below to keep the PR tied to observed behavior."
+    )
+    context = {
+        "source": {"type": source_type, "value": source_value},
+        "suggested_title": suggested_title,
+        "summary": summary,
+        "evidence": {
+            "severity": severity,
+            "signals": signals,
+            "hypotheses": diagnosis.get("hypotheses", []),
+            "primary_summary": (
+                primary.get("request", {}).get("summary")
+                or primary.get("representative", {}).get("summary")
+                or primary.get("query")
+                or source_value
+            ),
+        },
+        "likely_code_surfaces": likely_code_surfaces,
+        "fix_hypotheses": fix_context.get("hypotheses", []),
+        "test_plan": test_context.get("recommended_tests", []),
+        "release_risk": {
+            "risk_level": release_risk.get("risk_level"),
+            "blockers": release_risk.get("blockers", []),
+            "cautions": release_risk.get("cautions", []),
+            "recommendation": release_risk.get("recommendation"),
+        },
+        "safety": {
+            "payloads_masked": True,
+            "does_not_modify_code": True,
+            "intended_use": "Paste into PR descriptions, coding-agent prompts, or release review notes.",
+        },
+    }
+    context["pr_body_markdown"] = _pr_context_to_markdown(context)
+
+    if format == "markdown":
+        return context["pr_body_markdown"]
+    if format != "json":
+        return {"error": f"Unsupported PR context format: {format}"}
+    return context
 
 
 def propose_fix_hypotheses(

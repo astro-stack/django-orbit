@@ -171,6 +171,10 @@ def test_mcp_enabled_false_blocks_all_tools(db):
         ("daily_health_brief", {}),
         ("generate_release_risk_brief", {}),
         (
+            "generate_pr_context",
+            {"source_type": "family_hash", "source_value": "blocked"},
+        ),
+        (
             "propose_fix_hypotheses",
             {"source_type": "family_hash", "source_value": "blocked"},
         ),
@@ -231,6 +235,37 @@ def test_agentic_investigation_tools_are_available_via_mcp(mcp_server, sample_re
     assert n1["count"] == 1
     assert n1["candidates"][0]["family_hash"] == sample_request.family_hash
     assert groups["groups"][0]["fingerprint"] == "fp-products"
+
+
+@pytest.mark.django_db
+def test_generate_pr_context_is_available_via_mcp(mcp_server, sample_request):
+    OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_EXCEPTION,
+        family_hash=sample_request.family_hash,
+        fingerprint="fp-products",
+        payload={"exception_type": "ValueError", "message": "bad product"},
+    )
+
+    data = _call_tool(
+        mcp_server,
+        "generate_pr_context",
+        source_type="family_hash",
+        source_value=sample_request.family_hash,
+        hours=72,
+    )
+    markdown = _get_tool(mcp_server, "generate_pr_context")(
+        source_type="family_hash",
+        source_value=sample_request.family_hash,
+        hours=72,
+        format="markdown",
+    )
+
+    assert data["source"] == {
+        "type": "family_hash",
+        "value": sample_request.family_hash,
+    }
+    assert "pr_body_markdown" in data
+    assert markdown.startswith("## Orbit Evidence")
 
 
 # ---------------------------------------------------------------------------

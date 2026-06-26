@@ -121,6 +121,7 @@ Then ask Orbit for structured support:
 ```text
 propose_fix_hypotheses("fingerprint", "<fingerprint>")
 propose_test_plan("family_hash", "<family_hash>")
+generate_pr_context("fingerprint", "<fingerprint>")
 ```
 
 A good coding-agent handoff should produce:
@@ -129,7 +130,8 @@ A good coding-agent handoff should produce:
 - a failing test target;
 - the code surface to inspect first;
 - a minimal fix hypothesis;
-- follow-up Orbit checks after the patch.
+- follow-up Orbit checks after the patch;
+- a PR-ready Orbit Evidence section from `generate_pr_context`.
 
 ## 6. Verify Before Release
 

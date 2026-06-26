@@ -324,6 +324,48 @@ def test_propose_test_plan_from_request(request_entry, related_entries):
     assert data["safety"]["does_not_modify_code"] is True
 
 
+def test_generate_pr_context_builds_release_ready_summary(
+    request_entry, related_entries
+):
+    from orbit.agentic import generate_pr_context
+
+    data = generate_pr_context("family_hash", "fam-agentic", hours=72)
+
+    assert data["source"] == {"type": "family_hash", "value": "fam-agentic"}
+    assert data["suggested_title"].startswith("Fix")
+    assert "runtime evidence" in data["summary"].lower()
+    assert data["evidence"]["severity"] == "error"
+    assert data["fix_hypotheses"]
+    assert data["test_plan"]
+    assert data["release_risk"]["risk_level"] == "blocker"
+    assert "/app/orders/views.py" in data["likely_code_surfaces"]
+    assert "## Orbit Evidence" in data["pr_body_markdown"]
+    assert "secret" not in json.dumps(data)
+
+
+def test_generate_pr_context_markdown_returns_paste_ready_body(
+    request_entry, related_entries
+):
+    from orbit.agentic import generate_pr_context
+
+    markdown = generate_pr_context(
+        "fingerprint", "fp-checkout", hours=72, format="markdown"
+    )
+
+    assert markdown.startswith("## Orbit Evidence")
+    assert "### Suggested Tests" in markdown
+    assert "### Release Risk" in markdown
+    assert "secret" not in markdown
+
+
+def test_generate_pr_context_propagates_unknown_source_error():
+    from orbit.agentic import generate_pr_context
+
+    data = generate_pr_context("family_hash", "missing")
+
+    assert data == {"error": "No entries found for family_hash: missing"}
+
+
 def test_investigate_endpoint_summarizes_recent_endpoint_health(
     request_entry, related_entries
 ):

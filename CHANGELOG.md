@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `find_n_plus_one_candidates` and `summarize_exception_groups` for higher-level daily debugging workflows.
 - Added `daily_health_brief` for local morning triage of exceptions, error requests, failed jobs, slow queries, N+1 candidates and warning logs.
 - Added `generate_release_risk_brief` to produce pre-release blocker/caution signals from recent Orbit runtime evidence.
+- Added `generate_pr_context` to turn Orbit evidence into PR-ready title, summary, hypotheses, test plan and release-risk notes.
 - Exposed the new 0.11 agentic workflow tools through MCP with the same `MCP_ENABLED` safety gate.
 - Added a documented demo flow: "Debug Django with Codex and Claude using Orbit context".
 
