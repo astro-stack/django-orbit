@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import difflib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Optional, Sequence
@@ -21,6 +22,22 @@ class QuickstartOptions:
     url_prefix: str = "orbit/"
     with_mcp: bool = False
     write: bool = False
+    check: bool = False
+    print_diff: bool = False
+
+
+@dataclass(frozen=True)
+class PlannedFileChange:
+    """A proposed file update."""
+
+    path: Path
+    original: str
+    updated: str
+    changes: list[str]
+
+    @property
+    def changed(self) -> bool:
+        return self.original != self.updated
 
 
 def normalize_url_prefix(url_prefix: str) -> str:
@@ -49,7 +66,7 @@ def build_install_plan(options: QuickstartOptions) -> str:
             f"   pip install {package}",
             "",
             "2. Apply project wiring:",
-            "   django-orbit-quickstart --settings path/to/settings.py --urls path/to/urls.py --write",
+            "   orbit quick --settings path/to/settings.py --urls path/to/urls.py --write",
             "",
             "3. Expected settings.py additions:",
             '   INSTALLED_APPS += ["orbit"]',
@@ -62,6 +79,9 @@ def build_install_plan(options: QuickstartOptions) -> str:
             "   python manage.py migrate orbit",
             "   python manage.py runserver",
             f"   open http://localhost:8000/{url_prefix}",
+            "",
+            "Compatibility alias:",
+            "   django-orbit-quickstart --settings path/to/settings.py --urls path/to/urls.py --write",
         ]
     )
 
@@ -118,11 +138,13 @@ def patch_urls_text(text: str, url_prefix: str = "orbit/") -> tuple[str, list[st
     return updated, changes
 
 
-def run_quickstart(argv: Optional[Sequence[str]] = None) -> int:
-    """CLI implementation for django-orbit-quickstart."""
+def run_quickstart(
+    argv: Optional[Sequence[str]] = None, prog: str = "django-orbit-quickstart"
+) -> int:
+    """CLI implementation for django-orbit-quickstart and orbit quick."""
     parser = argparse.ArgumentParser(
-        prog="django-orbit-quickstart",
-        description="Print or apply the minimal Django Orbit project wiring.",
+        prog=prog,
+        description="Print, check or apply the minimal Django Orbit project wiring.",
     )
     parser.add_argument("--settings", type=Path, help="Path to Django settings.py")
     parser.add_argument("--urls", type=Path, help="Path to Django urls.py")
@@ -141,6 +163,16 @@ def run_quickstart(argv: Optional[Sequence[str]] = None) -> int:
         action="store_true",
         help="Write changes to settings.py and urls.py. Without this flag, runs as dry-run.",
     )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Exit 0 when Orbit is already wired, otherwise exit 1.",
+    )
+    parser.add_argument(
+        "--print-diff",
+        action="store_true",
+        help="Print unified diffs for proposed settings.py and urls.py changes.",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -150,6 +182,8 @@ def run_quickstart(argv: Optional[Sequence[str]] = None) -> int:
             url_prefix=normalize_url_prefix(args.url_prefix),
             with_mcp=args.with_mcp,
             write=args.write,
+            check=args.check,
+            print_diff=args.print_diff,
         )
     except ValueError as exc:
         parser.error(str(exc))
@@ -158,27 +192,33 @@ def run_quickstart(argv: Optional[Sequence[str]] = None) -> int:
         print(build_install_plan(options))
         return 0
 
-    planned_changes: list[str] = []
+    planned = _build_planned_file_changes(options)
+    planned_changes = [change for item in planned for change in item.changes]
+    has_changes = any(item.changed for item in planned)
 
-    if options.settings_path:
-        settings_text = _read_required_file(options.settings_path)
-        patched_settings, settings_changes = patch_settings_text(settings_text)
-        planned_changes.extend(settings_changes)
-        if options.write and patched_settings != settings_text:
-            options.settings_path.write_text(patched_settings, encoding="utf-8")
+    if options.check:
+        if has_changes:
+            print("Check failed: Django Orbit is not fully wired.")
+            _print_changes(planned_changes)
+            return 1
+        print("Check passed: Django Orbit is already wired.")
+        print(f"Open: http://localhost:8000/{options.url_prefix}")
+        return 0
 
-    if options.urls_path:
-        urls_text = _read_required_file(options.urls_path)
-        patched_urls, urls_changes = patch_urls_text(urls_text, options.url_prefix)
-        planned_changes.extend(urls_changes)
-        if options.write and patched_urls != urls_text:
-            options.urls_path.write_text(patched_urls, encoding="utf-8")
+    if options.print_diff:
+        for item in planned:
+            if item.changed:
+                print(_build_unified_diff(item))
+
+    if options.write:
+        for item in planned:
+            if item.changed:
+                item.path.write_text(item.updated, encoding="utf-8")
 
     mode = "Applied" if options.write else "Dry run"
     print(f"{mode}: Django Orbit quickstart")
     if planned_changes:
-        for change in planned_changes:
-            print(f"- {change}")
+        _print_changes(planned_changes)
     else:
         print("- no changes needed")
     print("Next: python manage.py migrate orbit")
@@ -189,6 +229,51 @@ def run_quickstart(argv: Optional[Sequence[str]] = None) -> int:
 def main() -> int:
     """Console entrypoint."""
     return run_quickstart()
+
+
+def _build_planned_file_changes(options: QuickstartOptions) -> list[PlannedFileChange]:
+    planned: list[PlannedFileChange] = []
+
+    if options.settings_path:
+        settings_text = _read_required_file(options.settings_path)
+        patched_settings, settings_changes = patch_settings_text(settings_text)
+        planned.append(
+            PlannedFileChange(
+                path=options.settings_path,
+                original=settings_text,
+                updated=patched_settings,
+                changes=settings_changes,
+            )
+        )
+
+    if options.urls_path:
+        urls_text = _read_required_file(options.urls_path)
+        patched_urls, urls_changes = patch_urls_text(urls_text, options.url_prefix)
+        planned.append(
+            PlannedFileChange(
+                path=options.urls_path,
+                original=urls_text,
+                updated=patched_urls,
+                changes=urls_changes,
+            )
+        )
+
+    return planned
+
+
+def _print_changes(changes: list[str]) -> None:
+    for change in changes:
+        print(f"- {change}")
+
+
+def _build_unified_diff(item: PlannedFileChange) -> str:
+    diff = difflib.unified_diff(
+        item.original.splitlines(keepends=True),
+        item.updated.splitlines(keepends=True),
+        fromfile=str(item.path),
+        tofile=str(item.path),
+    )
+    return "".join(diff).rstrip()
 
 
 def _read_required_file(path: Path) -> str:

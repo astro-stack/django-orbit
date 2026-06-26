@@ -89,16 +89,22 @@ Use the packaged quickstart helper to see or apply the Django wiring:
 
 ```bash
 # Print the install plan
-django-orbit-quickstart
+orbit quick
 
 # Preview changes for an existing project
-django-orbit-quickstart --settings myproject/settings.py --urls myproject/urls.py
+orbit quick --settings myproject/settings.py --urls myproject/urls.py
+
+# Show the exact patch before writing
+orbit quick --settings myproject/settings.py --urls myproject/urls.py --print-diff
+
+# Check in CI or before a release
+orbit quick --settings myproject/settings.py --urls myproject/urls.py --check
 
 # Apply the changes
-django-orbit-quickstart --settings myproject/settings.py --urls myproject/urls.py --write
+orbit quick --settings myproject/settings.py --urls myproject/urls.py --write
 
 # Custom URL prefix + MCP install guidance
-django-orbit-quickstart --settings myproject/settings.py --urls myproject/urls.py --url-prefix _debug/orbit/ --with-mcp --write
+orbit quick --settings myproject/settings.py --urls myproject/urls.py --url-prefix _debug/orbit/ --with-mcp --write
 ```
 
 ## Quick Start
@@ -106,7 +112,7 @@ django-orbit-quickstart --settings myproject/settings.py --urls myproject/urls.p
 Fast path:
 
 ```bash
-django-orbit-quickstart --settings myproject/settings.py --urls myproject/urls.py --write
+orbit quick --settings myproject/settings.py --urls myproject/urls.py --write
 python manage.py migrate orbit
 python manage.py runserver
 ```
@@ -152,6 +158,23 @@ python manage.py runserver
 Visit `http://localhost:8000/orbit/`.
 
 ## Try the Demo
+
+From an installed package, create a local demo project for visual testing and recordings:
+
+```bash
+orbit demo --target django-orbit-demo --with-mcp
+cd django-orbit-demo
+python manage.py migrate
+python manage.py runserver
+```
+
+Run MCP from the same generated project when you want to test Claude, Codex or Cursor integration:
+
+```bash
+python manage.py orbit_mcp
+```
+
+For the repository demo with richer sample data:
 
 ```bash
 git clone https://github.com/astro-stack/django-orbit.git

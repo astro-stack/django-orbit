@@ -8,19 +8,25 @@ After installing `django-orbit`, use the packaged helper to wire an existing Dja
 
 ```bash
 # Print the default install plan
-django-orbit-quickstart
+orbit quick
 
 # Preview file changes without writing
-django-orbit-quickstart --settings myproject/settings.py --urls myproject/urls.py
+orbit quick --settings myproject/settings.py --urls myproject/urls.py
+
+# Show the exact patch before writing
+orbit quick --settings myproject/settings.py --urls myproject/urls.py --print-diff
+
+# Check existing wiring in CI or before a release
+orbit quick --settings myproject/settings.py --urls myproject/urls.py --check
 
 # Apply settings.py and urls.py changes
-django-orbit-quickstart --settings myproject/settings.py --urls myproject/urls.py --write
+orbit quick --settings myproject/settings.py --urls myproject/urls.py --write
 
 # Use a custom dashboard path and MCP install guidance
-django-orbit-quickstart --settings myproject/settings.py --urls myproject/urls.py --url-prefix _debug/orbit/ --with-mcp --write
+orbit quick --settings myproject/settings.py --urls myproject/urls.py --url-prefix _debug/orbit/ --with-mcp --write
 ```
 
-The helper is intentionally conservative: it only adds `orbit`, `OrbitMiddleware`, the `include` import and the Orbit URL pattern when they are missing. Without `--write`, it runs as a dry-run.
+The helper is intentionally conservative: it only adds `orbit`, `OrbitMiddleware`, the `include` import and the Orbit URL pattern when they are missing. Without `--write`, it runs as a dry-run. Use `--print-diff` to inspect the patch and `--check` to fail when the project is not wired yet.
 
 Finish setup:
 

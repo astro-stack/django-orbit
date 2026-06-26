@@ -57,7 +57,7 @@ Django Orbit is an AI agent-native observability and debugging tool for Django a
 - **Copy/paste agent prompts**: `create_incident_bundle(..., format="prompt")` produces safe prompts for Claude, Codex and Cursor when MCP is unavailable.
 - **MCP workflow expansion**: all new tools are available through MCP and honor the existing `MCP_ENABLED` safety gate.
 - **Codex and Claude debugging demo**: the docs now include a practical ticket-to-test-to-fix workflow using Orbit context.
-- **Quick install helper**: `django-orbit-quickstart` previews or applies the required `settings.py` and `urls.py` wiring with optional custom URL prefixes.
+- **Quick install and demo CLI**: `orbit quick` previews, checks or applies `settings.py` / `urls.py` wiring, while `orbit demo` creates a local project for dashboard and MCP smoke tests.
 
 ### What's New in v0.10.0
 

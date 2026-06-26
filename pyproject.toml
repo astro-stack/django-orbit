@@ -53,6 +53,7 @@ dependencies = [
 ]
 
 [project.scripts]
+orbit = "orbit.cli:main"
 django-orbit-quickstart = "orbit.quickstart:main"
 
 [project.optional-dependencies]

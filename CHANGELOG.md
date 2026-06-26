@@ -22,7 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Exposed the new 0.11 agentic workflow tools through MCP with the same `MCP_ENABLED` safety gate.
 - Added a documented demo flow: "Debug Django with Codex and Claude using Orbit context".
 - Added GitHub Actions CI for PR tests, docs builds, package builds and Twine checks, plus Dependabot updates for GitHub Actions and Python dependencies.
-- Added `django-orbit-quickstart`, a packaged dry-run-first installer helper for wiring `settings.py` and `urls.py` with optional custom URL prefixes and MCP guidance.
+- Added the short `orbit` CLI with `orbit quick` / `orbit quickstart`, plus the compatibility `django-orbit-quickstart` command. The quickstart helper now supports dry-run, `--print-diff`, `--check`, `--write`, custom URL prefixes and MCP guidance.
+- Added `orbit demo`, which scaffolds a local Django project for visual dashboard testing, product videos and MCP smoke tests.
 
 ## [0.10.0] - 2026-06-25
 

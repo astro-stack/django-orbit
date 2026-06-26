@@ -29,16 +29,22 @@ Django Orbit ships a small CLI for wiring an existing Django project. It is safe
 
 ```bash
 # Show the manual install plan
-django-orbit-quickstart
+orbit quick
 
 # Preview project changes
-django-orbit-quickstart --settings myproject/settings.py --urls myproject/urls.py
+orbit quick --settings myproject/settings.py --urls myproject/urls.py
+
+# Show the patch
+orbit quick --settings myproject/settings.py --urls myproject/urls.py --print-diff
+
+# Check existing wiring
+orbit quick --settings myproject/settings.py --urls myproject/urls.py --check
 
 # Apply project changes
-django-orbit-quickstart --settings myproject/settings.py --urls myproject/urls.py --write
+orbit quick --settings myproject/settings.py --urls myproject/urls.py --write
 
 # Optional: custom URL prefix and MCP install guidance
-django-orbit-quickstart --settings myproject/settings.py --urls myproject/urls.py --url-prefix _debug/orbit/ --with-mcp --write
+orbit quick --settings myproject/settings.py --urls myproject/urls.py --url-prefix _debug/orbit/ --with-mcp --write
 ```
 
 Then run:
@@ -48,7 +54,7 @@ python manage.py migrate orbit
 python manage.py runserver
 ```
 
-The helper adds `orbit` to `INSTALLED_APPS`, adds `orbit.middleware.OrbitMiddleware` at the start of `MIDDLEWARE`, imports `include` from `django.urls` when needed and mounts Orbit URLs at the selected prefix.
+The helper adds `orbit` to `INSTALLED_APPS`, adds `orbit.middleware.OrbitMiddleware` at the start of `MIDDLEWARE`, imports `include` from `django.urls` when needed and mounts Orbit URLs at the selected prefix. The longer `django-orbit-quickstart` command remains available as a compatibility alias.
 
 ### Manual install
 

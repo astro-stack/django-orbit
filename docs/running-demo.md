@@ -4,7 +4,26 @@ Everything for demos is in one file: **`demo.py`**
 
 ## Quick Start
 
-### Option 1: One-Click Setup
+### Option 1: Installed package demo
+
+Create a small local project when you want to test the dashboard visually or record a short product video without cloning the repository:
+
+```bash
+orbit demo --target django-orbit-demo --with-mcp
+cd django-orbit-demo
+python manage.py migrate
+python manage.py runserver
+```
+
+Open `http://localhost:8000/` and `http://localhost:8000/orbit/`. The generated project includes endpoints for requests, logs, slow requests, exceptions and duplicate queries.
+
+To test MCP from the generated project, run this in a separate terminal and point Claude, Codex, Cursor or another MCP client at the command with this directory as `cwd`:
+
+```bash
+python manage.py orbit_mcp
+```
+
+### Option 2: One-Click repository setup
 
 **Windows:**
 ```batch
@@ -17,7 +36,7 @@ chmod +x run_demo.sh
 ./run_demo.sh
 ```
 
-### Option 2: Manual Setup
+### Option 3: Manual repository setup
 
 ```bash
 # 1. Create venv and install
