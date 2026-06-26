@@ -30,7 +30,6 @@ from orbit import __version__ as ORBIT_VERSION
 from orbit.models import OrbitEntry
 from orbit.mixins import OrbitProtectedView
 
-
 # Sidebar navigation, grouped for progressive disclosure (see DESIGN.md › Layout).
 # Each item: (type_key, label). Icons/colors come from OrbitEntry.TYPE_ICONS/TYPE_COLORS.
 # "all" is a pseudo-type that matches every entry.
@@ -90,8 +89,16 @@ def build_nav_groups(counts, current_type="all"):
     for group in NAV_GROUPS:
         items = []
         for type_key, label in group["items"]:
-            icon = "layers" if type_key == "all" else OrbitEntry.TYPE_ICONS.get(type_key, "circle")
-            color = "cyan" if type_key == "all" else OrbitEntry.TYPE_COLORS.get(type_key, "slate")
+            icon = (
+                "layers"
+                if type_key == "all"
+                else OrbitEntry.TYPE_ICONS.get(type_key, "circle")
+            )
+            color = (
+                "cyan"
+                if type_key == "all"
+                else OrbitEntry.TYPE_COLORS.get(type_key, "slate")
+            )
             items.append(
                 {
                     "type": type_key,
@@ -151,7 +158,9 @@ class OrbitDashboardView(OrbitProtectedView, TemplateView):
             "redis": OrbitEntry.objects.redis_ops().count(),
             "gate": OrbitEntry.objects.gates().count(),
             # Phase 4 types (v0.6.0)
-            "transaction": OrbitEntry.objects.filter(type=OrbitEntry.TYPE_TRANSACTION).count(),
+            "transaction": OrbitEntry.objects.filter(
+                type=OrbitEntry.TYPE_TRANSACTION
+            ).count(),
             "storage": OrbitEntry.objects.filter(type=OrbitEntry.TYPE_STORAGE).count(),
         }
 
@@ -184,82 +193,70 @@ class OrbitDashboardView(OrbitProtectedView, TemplateView):
 
         # Performance stats
         requests_last_hour = OrbitEntry.objects.filter(
-            type=OrbitEntry.TYPE_REQUEST,
-            created_at__gte=last_hour
+            type=OrbitEntry.TYPE_REQUEST, created_at__gte=last_hour
         )
-        
+
         queries_last_hour = OrbitEntry.objects.filter(
-            type=OrbitEntry.TYPE_QUERY,
-            created_at__gte=last_hour
+            type=OrbitEntry.TYPE_QUERY, created_at__gte=last_hour
         )
 
         context["stats"] = {
             # Request metrics
             "requests_per_hour": requests_last_hour.count(),
-            "avg_response_time": requests_last_hour.aggregate(
-                avg=Avg("duration_ms")
-            )["avg"] or 0,
-            
+            "avg_response_time": requests_last_hour.aggregate(avg=Avg("duration_ms"))[
+                "avg"
+            ]
+            or 0,
             # Query metrics
             "queries_per_hour": queries_last_hour.count(),
-            "avg_query_time": queries_last_hour.aggregate(
-                avg=Avg("duration_ms")
-            )["avg"] or 0,
+            "avg_query_time": queries_last_hour.aggregate(avg=Avg("duration_ms"))["avg"]
+            or 0,
             "slow_queries_pct": (
                 (context["slow_query_count"] / context["counts"]["query"] * 100)
-                if context["counts"]["query"] > 0 else 0
+                if context["counts"]["query"] > 0
+                else 0
             ),
             "duplicate_queries": OrbitEntry.objects.filter(
-                type=OrbitEntry.TYPE_QUERY,
-                payload__is_duplicate=True
+                type=OrbitEntry.TYPE_QUERY, payload__is_duplicate=True
             ).count(),
-            
             # Error metrics
             "error_rate": (
                 (context["error_count"] / context["counts"]["request"] * 100)
-                if context["counts"]["request"] > 0 else 0
+                if context["counts"]["request"] > 0
+                else 0
             ),
             "exceptions_24h": OrbitEntry.objects.filter(
-                type=OrbitEntry.TYPE_EXCEPTION,
-                created_at__gte=last_24h
+                type=OrbitEntry.TYPE_EXCEPTION, created_at__gte=last_24h
             ).count(),
-            
             # Cache metrics
             "cache_hits": OrbitEntry.objects.filter(
-                type=OrbitEntry.TYPE_CACHE,
-                payload__hit=True
+                type=OrbitEntry.TYPE_CACHE, payload__hit=True
             ).count(),
             "cache_misses": OrbitEntry.objects.filter(
-                type=OrbitEntry.TYPE_CACHE,
-                payload__hit=False
+                type=OrbitEntry.TYPE_CACHE, payload__hit=False
             ).count(),
-            
             # Permission metrics
             "permission_denied": OrbitEntry.objects.filter(
-                type=OrbitEntry.TYPE_GATE,
-                payload__result="denied"
+                type=OrbitEntry.TYPE_GATE, payload__result="denied"
             ).count(),
             "permission_granted": OrbitEntry.objects.filter(
-                type=OrbitEntry.TYPE_GATE,
-                payload__result="granted"
+                type=OrbitEntry.TYPE_GATE, payload__result="granted"
             ).count(),
-            
             # Job metrics
             "jobs_failed": OrbitEntry.objects.filter(
-                type=OrbitEntry.TYPE_JOB,
-                payload__status="failed"
+                type=OrbitEntry.TYPE_JOB, payload__status="failed"
             ).count(),
             "jobs_success": OrbitEntry.objects.filter(
-                type=OrbitEntry.TYPE_JOB,
-                payload__status="success"
+                type=OrbitEntry.TYPE_JOB, payload__status="success"
             ).count(),
         }
-        
+
         # Calculate cache hit rate
         total_cache = context["stats"]["cache_hits"] + context["stats"]["cache_misses"]
         context["stats"]["cache_hit_rate"] = (
             (context["stats"]["cache_hits"] / total_cache * 100)
-            if total_cache > 0 else 0
+            if total_cache > 0
+            else 0
         )
 
         from django.urls import reverse
@@ -314,12 +311,18 @@ class OrbitFeedPartial(OrbitProtectedView, View):
         # Exception grouping (B3): on the plain Exceptions view, collapse identical
         # exceptions into one row with a count + first/last seen. Skipped when searching
         # or drilling into a family so those flows still show individual occurrences.
-        if entry_type == OrbitEntry.TYPE_EXCEPTION and not family_hash and not query and not tag:
+        if (
+            entry_type == OrbitEntry.TYPE_EXCEPTION
+            and not family_hash
+            and not query
+            and not tag
+        ):
             return self._exception_groups_response(request, per_page, page)
 
         # Filter by search query "q"
         if query:
             import uuid
+
             try:
                 # Try explicit UUID search
                 uuid_obj = uuid.UUID(query)
@@ -327,11 +330,11 @@ class OrbitFeedPartial(OrbitProtectedView, View):
             except ValueError:
                 # Text search on payload using generic "contains"
                 # For SQLite/Postgres JSONField, we can use __icontains
-                # Ideally we cast to text for better compatibility if needed, 
+                # Ideally we cast to text for better compatibility if needed,
                 # but let's try direct first as it handles some string casting implicitly in Django 4.2+
                 from django.db.models import TextField
                 from django.db.models.functions import Cast
-                
+
                 # Cast payload to text to search inside keys and values
                 queryset = queryset.annotate(
                     payload_text=Cast("payload", TextField())
@@ -345,7 +348,7 @@ class OrbitFeedPartial(OrbitProtectedView, View):
         # Get entries for current page - only load necessary fields for performance
         offset = (page - 1) * per_page
         entries = queryset.only(
-            'id', 'type', 'payload', 'duration_ms', 'created_at'
+            "id", "type", "payload", "duration_ms", "created_at"
         ).order_by("-created_at")[offset : offset + per_page]
 
         # Render partial
@@ -484,7 +487,7 @@ class OrbitDetailPartial(OrbitProtectedView, View):
                     sql = query.payload.get("sql")
                     if not sql:
                         continue
-                    
+
                     duplicate_count = query.payload.get("duplicate_count", 1)
                     is_duplicate = query.payload.get("is_duplicate", False)
 
@@ -495,12 +498,19 @@ class OrbitDetailPartial(OrbitProtectedView, View):
                     # Track unique duplicated queries (those executed more than once)
                     if duplicate_count > 1:
                         # Keep track of the highest execution count and a representative ID
-                        if sql not in query_groups or duplicate_count > query_groups[sql]:
+                        if (
+                            sql not in query_groups
+                            or duplicate_count > query_groups[sql]
+                        ):
                             query_groups[sql] = duplicate_count
                             query_ids[sql] = query.id
 
                 # Use precomputed total if available (fallback to calculated for old data)
-                final_total = precomputed_total if precomputed_total is not None else total_duplicates
+                final_total = (
+                    precomputed_total
+                    if precomputed_total is not None
+                    else total_duplicates
+                )
 
                 # Find the most duplicated query
                 most_duplicated_sql = None
@@ -527,6 +537,14 @@ class OrbitDetailPartial(OrbitProtectedView, View):
         # Request waterfall (B4): position child query spans on the request timeline.
         waterfall = self._build_waterfall(entry, related_entries)
 
+        detail_insight = self._build_detail_insight(
+            entry,
+            related_entries,
+            duplicate_query_stats=duplicate_query_stats,
+            duplicate_entries=duplicate_entries,
+            waterfall=waterfall,
+        )
+
         # Format payload as pretty JSON
         payload_json = json.dumps(
             entry.payload, indent=2, ensure_ascii=False, default=str
@@ -542,8 +560,203 @@ class OrbitDetailPartial(OrbitProtectedView, View):
                 "duplicate_entries": duplicate_entries,
                 "duplicate_query_stats": duplicate_query_stats,
                 "waterfall": waterfall,
+                "detail_insight": detail_insight,
             },
         )
+
+    @staticmethod
+    def _build_detail_insight(
+        entry,
+        related_entries,
+        duplicate_query_stats=None,
+        duplicate_entries=None,
+        waterfall=None,
+    ):
+        """Build a human + technical summary for the detail panel.
+
+        This is intentionally deterministic and local. It gives a vibe coder a
+        plain-language read while preserving concrete signals for technical users.
+        """
+        payload = entry.payload or {}
+        related_entries = list(related_entries or [])
+        duplicate_entries = list(duplicate_entries or [])
+        related_exceptions = [
+            rel for rel in related_entries if rel.type == OrbitEntry.TYPE_EXCEPTION
+        ]
+        related_slow_queries = [
+            rel
+            for rel in related_entries
+            if rel.type == OrbitEntry.TYPE_QUERY and (rel.payload or {}).get("is_slow")
+        ]
+        related_duplicate_queries = [
+            rel
+            for rel in related_entries
+            if rel.type == OrbitEntry.TYPE_QUERY
+            and (rel.payload or {}).get("is_duplicate")
+        ]
+
+        if entry.type == OrbitEntry.TYPE_REQUEST:
+            method = payload.get("method", "HTTP")
+            path = payload.get("path") or payload.get("full_path") or "request"
+            status = payload.get("status_code")
+            severity = (
+                "error"
+                if status and status >= 500
+                else "warning" if status and status >= 400 else "info"
+            )
+
+            if status and status >= 500:
+                plain = f"{method} {path} failed with {status}. Start with the exception or the slowest related query."
+            elif status and status >= 400:
+                plain = f"{method} {path} returned {status}. Check whether this is expected client behavior or a broken flow."
+            elif related_duplicate_queries:
+                plain = f"{method} {path} completed, but it shows duplicated database work that may become an N+1 issue."
+                severity = "warning"
+            elif related_slow_queries:
+                plain = f"{method} {path} completed, but at least one query is slow enough to inspect."
+                severity = "warning"
+            else:
+                plain = f"{method} {path} completed without an obvious failure signal."
+
+            signals = []
+            if status:
+                signals.append(f"status {status}")
+            if entry.duration_ms is not None:
+                signals.append(f"{entry.duration_ms:.1f}ms request")
+            query_count = payload.get("query_count")
+            if query_count is not None:
+                signals.append(f"{query_count} queries")
+            if related_exceptions:
+                signals.append(f"{len(related_exceptions)} related exception(s)")
+            if duplicate_query_stats and duplicate_query_stats.get("total_duplicates"):
+                signals.append(
+                    f"{duplicate_query_stats['total_duplicates']} duplicate query executions"
+                )
+            technical = (
+                ", ".join(signals) or "No related technical signal recorded yet."
+            )
+
+            if related_exceptions:
+                next_move = "Open the related exception, then create an incident bundle for the family hash."
+            elif duplicate_query_stats and duplicate_query_stats.get(
+                "total_duplicates"
+            ):
+                next_move = "Open the most duplicated query and check whether select_related or prefetch_related removes it."
+            elif waterfall:
+                next_move = "Use the query timeline to identify the slowest span before editing code."
+            else:
+                next_move = "Filter by this family hash and compare nearby requests before changing code."
+
+            return {
+                "severity": severity,
+                "plain_summary": plain,
+                "technical_signal": technical,
+                "next_move": next_move,
+                "agent_action": "Create an incident bundle",
+            }
+
+        if entry.type == OrbitEntry.TYPE_EXCEPTION:
+            exception_type = payload.get("exception_type") or "Exception"
+            message = payload.get("message") or "No exception message recorded."
+            first_frame = OrbitDetailPartial._first_traceback_frame(payload)
+            technical = first_frame or "Traceback was not captured for this exception."
+            if entry.fingerprint:
+                technical = f"fingerprint {entry.fingerprint}; {technical}"
+            return {
+                "severity": "error",
+                "plain_summary": f"{exception_type}: {message}",
+                "technical_signal": technical,
+                "next_move": "Use the fingerprint to inspect repeated occurrences, then generate fix hypotheses and a test plan.",
+                "agent_action": "Copy exception context",
+            }
+
+        if entry.type == OrbitEntry.TYPE_QUERY:
+            is_slow = payload.get("is_slow")
+            is_duplicate = payload.get("is_duplicate")
+            duplicate_count = payload.get("duplicate_count")
+            caller = payload.get("caller") or {}
+            caller_text = OrbitDetailPartial._format_caller(caller)
+
+            if is_slow and is_duplicate:
+                plain = "This is a slow duplicated SQL query. It is both a latency signal and a possible N+1 signal."
+                severity = "warning"
+            elif is_slow:
+                plain = "This SQL query is slow enough to inspect before optimizing application code."
+                severity = "warning"
+            elif is_duplicate:
+                plain = "This SQL query repeats in the same flow and may indicate avoidable ORM work."
+                severity = "warning"
+            else:
+                plain = "This SQL query was recorded as part of the current flow."
+                severity = "info"
+
+            signals = []
+            if entry.duration_ms is not None:
+                signals.append(f"{entry.duration_ms:.1f}ms query")
+            if duplicate_count:
+                signals.append(f"duplicate count {duplicate_count}")
+            if duplicate_entries:
+                signals.append(f"{len(duplicate_entries)} similar recent queries")
+            if caller_text:
+                signals.append(caller_text)
+            technical = ", ".join(signals) or "No caller or duration metadata recorded."
+
+            return {
+                "severity": severity,
+                "plain_summary": plain,
+                "technical_signal": technical,
+                "next_move": "Run Explain plan, then inspect the caller and related request before changing ORM code.",
+                "agent_action": "Explain and plan fix",
+            }
+
+        if entry.type == OrbitEntry.TYPE_LOG:
+            level = payload.get("level", "LOG")
+            logger_name = payload.get("logger", "unknown logger")
+            message = payload.get("message") or payload.get("msg") or entry.summary
+            severity = (
+                "error"
+                if level in {"ERROR", "CRITICAL"}
+                else "warning" if level == "WARNING" else "info"
+            )
+            return {
+                "severity": severity,
+                "plain_summary": f"{level} log from {logger_name}: {message}",
+                "technical_signal": f"logger={logger_name}, level={level}",
+                "next_move": "Open related entries in the same family to see what happened before and after this log.",
+                "agent_action": "Use as timeline evidence",
+            }
+
+        return {
+            "severity": "info",
+            "plain_summary": entry.summary,
+            "technical_signal": f"type={entry.type}, id={entry.id}",
+            "next_move": "Inspect the payload and related entries before deciding whether this signal is actionable.",
+            "agent_action": "Add to investigation context",
+        }
+
+    @staticmethod
+    def _first_traceback_frame(payload):
+        traceback = payload.get("traceback") or []
+        if not traceback:
+            return ""
+        frame = traceback[-1] if traceback else {}
+        filename = frame.get("filename")
+        lineno = frame.get("lineno")
+        name = frame.get("name")
+        parts = []
+        if filename and lineno:
+            parts.append(f"{filename}:{lineno}")
+        if name:
+            parts.append(str(name))
+        return " in ".join(parts)
+
+    @staticmethod
+    def _format_caller(caller):
+        filename = caller.get("filename")
+        lineno = caller.get("lineno")
+        if filename and lineno:
+            return f"{filename}:{lineno}"
+        return ""
 
     @staticmethod
     def _build_waterfall(entry, related_entries):
@@ -621,6 +834,7 @@ class OrbitStatsView(OrbitProtectedView, TemplateView):
     are loaded lazily via OrbitStatsSectionView, which keeps each DB hit small and
     avoids the SQLite lock that the old "compute everything at once" path caused.
     """
+
     template_name = "orbit/stats.html"
 
     def get_context_data(self, **kwargs):
@@ -641,8 +855,9 @@ class OrbitStatsView(OrbitProtectedView, TemplateView):
 
         # Add URLs
         from django.urls import reverse
-        context['dashboard_url'] = reverse('orbit:dashboard')
-        context['orbit_version'] = ORBIT_VERSION
+
+        context["dashboard_url"] = reverse("orbit:dashboard")
+        context["orbit_version"] = ORBIT_VERSION
 
         return context
 
@@ -732,7 +947,7 @@ class OrbitExportView(OrbitProtectedView, View):
         # Single Entry Export
         if entry_id:
             entry = get_object_or_404(OrbitEntry, id=entry_id)
-            
+
             data = {
                 "entry": {
                     "id": str(entry.id),
@@ -751,26 +966,30 @@ class OrbitExportView(OrbitProtectedView, View):
                     .exclude(id=entry.id)
                     .order_by("created_at")
                 )
-                
+
                 for rel in related_qs:
-                    data["related"].append({
-                        "id": str(rel.id),
-                        "type": rel.type,
-                        "created_at": rel.created_at.isoformat(),
-                        "payload": rel.payload,
-                        "duration_ms": rel.duration_ms,
-                    })
-            
+                    data["related"].append(
+                        {
+                            "id": str(rel.id),
+                            "type": rel.type,
+                            "created_at": rel.created_at.isoformat(),
+                            "payload": rel.payload,
+                            "duration_ms": rel.duration_ms,
+                        }
+                    )
+
             response = JsonResponse(data, json_dumps_params={"indent": 2})
-            response["Content-Disposition"] = f'attachment; filename="orbit_entry_{entry.id}.json"'
+            response["Content-Disposition"] = (
+                f'attachment; filename="orbit_entry_{entry.id}.json"'
+            )
             return response
 
         # Bulk Export (Streaming)
         from django.http import StreamingHttpResponse
-        
+
         # 1. Reuse filtering logic from OrbitFeedPartial
         queryset = OrbitEntry.objects.all().order_by("-created_at")
-        
+
         entry_type = request.GET.get("type", "all")
         if entry_type and entry_type != "all":
             queryset = queryset.filter(type=entry_type)
@@ -782,12 +1001,14 @@ class OrbitExportView(OrbitProtectedView, View):
         query = request.GET.get("q")
         if query:
             import uuid
+
             try:
                 uuid_obj = uuid.UUID(query)
                 queryset = queryset.filter(id=uuid_obj)
             except ValueError:
                 from django.db.models import TextField
                 from django.db.models.functions import Cast
+
                 queryset = queryset.annotate(
                     payload_text=Cast("payload", TextField())
                 ).filter(payload_text__icontains=query)
@@ -800,22 +1021,24 @@ class OrbitExportView(OrbitProtectedView, View):
                 if not first:
                     yield ",\n"
                 first = False
-                
+
                 # Manual JSON serialization for speed/simplicity in generator
                 # using json.dumps for the dict is safest
-                yield json.dumps({
-                    "id": str(entry.id),
-                    "type": entry.type,
-                    "created_at": entry.created_at.isoformat(),
-                    "payload": entry.payload,
-                    "duration_ms": entry.duration_ms,
-                    "family_hash": entry.family_hash,
-                }, default=str)
+                yield json.dumps(
+                    {
+                        "id": str(entry.id),
+                        "type": entry.type,
+                        "created_at": entry.created_at.isoformat(),
+                        "payload": entry.payload,
+                        "duration_ms": entry.duration_ms,
+                        "family_hash": entry.family_hash,
+                    },
+                    default=str,
+                )
             yield "\n]"
 
         response = StreamingHttpResponse(
-            stream_generator(), 
-            content_type="application/json"
+            stream_generator(), content_type="application/json"
         )
         response["Content-Disposition"] = 'attachment; filename="orbit_export_all.json"'
         return response
@@ -824,76 +1047,92 @@ class OrbitExportView(OrbitProtectedView, View):
 class OrbitHealthView(OrbitProtectedView, TemplateView):
     """
     Health Dashboard view showing the status of all Orbit modules.
-    
+
     This is the plug-and-play diagnostics page that shows:
     - Which modules are installed and working (green)
     - Which modules failed and why (red)
     - Which modules are disabled via configuration
     """
+
     template_name = "orbit/health.html"
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        
+
         # Get health status from the health module
         try:
             from orbit.health import get_health_status, is_orbit_healthy
+
             health = get_health_status()
-            context['health'] = health
-            context['is_healthy'] = is_orbit_healthy()
+            context["health"] = health
+            context["is_healthy"] = is_orbit_healthy()
         except Exception as e:
-            context['health'] = {
-                'error': str(e),
-                'total': 0,
-                'healthy_count': 0,
-                'failed_count': 0,
-                'modules': [],
+            context["health"] = {
+                "error": str(e),
+                "total": 0,
+                "healthy_count": 0,
+                "failed_count": 0,
+                "modules": [],
             }
-            context['is_healthy'] = False
-        
+            context["is_healthy"] = False
+
         # Also get watcher status from the watchers module
         try:
-            from orbit.watchers import get_watcher_status, get_installed_watchers, get_failed_watchers
+            from orbit.watchers import (
+                get_watcher_status,
+                get_installed_watchers,
+                get_failed_watchers,
+            )
+
             watcher_status = get_watcher_status()
-            
+
             # Convert watcher status to module format for unified display
             watcher_modules = []
             for name, status in watcher_status.items():
-                watcher_modules.append({
-                    'name': name,
-                    'description': f'Watcher: {name}',
-                    'category': 'watcher',
-                    'status': 'healthy' if status.get('installed') else ('disabled' if status.get('disabled') else 'failed'),
-                    'is_healthy': status.get('installed', False),
-                    'is_failed': not status.get('installed') and not status.get('disabled') and status.get('error'),
-                    'is_disabled': status.get('disabled', False),
-                    'error': status.get('error'),
-                    'error_traceback': None,
-                })
-            
-            context['watchers'] = {
-                'modules': watcher_modules,
-                'installed': get_installed_watchers(),
-                'failed': get_failed_watchers(),
-                'total': len(watcher_status),
-                'installed_count': len(get_installed_watchers()),
-                'failed_count': len(get_failed_watchers()),
+                watcher_modules.append(
+                    {
+                        "name": name,
+                        "description": f"Watcher: {name}",
+                        "category": "watcher",
+                        "status": (
+                            "healthy"
+                            if status.get("installed")
+                            else ("disabled" if status.get("disabled") else "failed")
+                        ),
+                        "is_healthy": status.get("installed", False),
+                        "is_failed": not status.get("installed")
+                        and not status.get("disabled")
+                        and status.get("error"),
+                        "is_disabled": status.get("disabled", False),
+                        "error": status.get("error"),
+                        "error_traceback": None,
+                    }
+                )
+
+            context["watchers"] = {
+                "modules": watcher_modules,
+                "installed": get_installed_watchers(),
+                "failed": get_failed_watchers(),
+                "total": len(watcher_status),
+                "installed_count": len(get_installed_watchers()),
+                "failed_count": len(get_failed_watchers()),
             }
         except Exception as e:
-            context['watchers'] = {
-                'error': str(e),
-                'modules': [],
-                'installed': [],
-                'failed': {},
-                'total': 0,
-                'installed_count': 0,
-                'failed_count': 0,
+            context["watchers"] = {
+                "error": str(e),
+                "modules": [],
+                "installed": [],
+                "failed": {},
+                "total": 0,
+                "installed_count": 0,
+                "failed_count": 0,
             }
-        
+
         # Add URLs
         from django.urls import reverse
-        context['dashboard_url'] = reverse('orbit:dashboard')
-        context['stats_url'] = reverse('orbit:stats')
-        context['orbit_version'] = ORBIT_VERSION
+
+        context["dashboard_url"] = reverse("orbit:dashboard")
+        context["stats_url"] = reverse("orbit:stats")
+        context["orbit_version"] = ORBIT_VERSION
 
         return context

@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added GitHub Actions CI for PR tests, docs builds, package builds and Twine checks, plus Dependabot updates for GitHub Actions and Python dependencies.
 - Added the short `orbit` CLI with `orbit quick` / `orbit quickstart`, plus the compatibility `django-orbit-quickstart` command. The quickstart helper now supports dry-run, `--print-diff`, `--check`, `--write`, custom URL prefixes and MCP guidance.
 - Added `orbit demo`, which scaffolds a local Django project for visual dashboard testing, product videos and MCP smoke tests.
+- Added a hybrid diagnosis card at the top of the entry detail panel with plain-language meaning, technical signals and suggested next moves.
 
 ## [0.10.0] - 2026-06-25
 

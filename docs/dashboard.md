@@ -72,6 +72,16 @@ JSON — handy for sharing a specific request or exception.
 
 Click on any row in the feed to open the **Detail Panel**.
 
+### Hybrid diagnosis card
+
+Every detail panel starts with a compact diagnosis card designed for both quick, agent-assisted debugging and technical inspection:
+
+- **What this means** translates the event into plain language so you can decide whether it is actionable.
+- **Technical signal** keeps the concrete evidence visible: status code, duration, query count, fingerprint, caller file/line or duplicate-query count.
+- **Next move** suggests the safest next inspection step before editing code.
+
+For requests, the card considers related exceptions, slow queries, duplicate queries and the request waterfall. For exceptions, it highlights the exception type, message, fingerprint and traceback surface. For SQL queries, it calls out slow and duplicate-query signals and points you to **Explain plan** when useful.
+
 ### JSON Payload
 
 The core of every entry is its JSON payload. Orbit renders this with syntax highlighting, making it easy to explore complex data structures.
