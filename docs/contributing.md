@@ -28,7 +28,19 @@ pip install -e ".[dev]"
 pytest
 ```
 
-Pull requests also run GitHub Actions CI on supported Python/Django combinations, documentation builds, package builds and Twine metadata checks.
+Pull requests also run GitHub Actions CI on supported Python/Django combinations, release metadata, documentation builds, package builds and Twine metadata checks.
+
+Before pushing a release PR, run the same local preflight used by maintainers:
+
+```bash
+python scripts/verify_release.py
+```
+
+For a quick metadata-only check:
+
+```bash
+python scripts/verify_release.py --metadata-only
+```
 
 ## Code Style
 
