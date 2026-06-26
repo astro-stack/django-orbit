@@ -2,7 +2,34 @@
 
 This guide gets Django Orbit running with the smallest possible setup.
 
-## Basic Usage
+## Fast Path
+
+After installing `django-orbit`, use the packaged helper to wire an existing Django project:
+
+```bash
+# Print the default install plan
+django-orbit-quickstart
+
+# Preview file changes without writing
+django-orbit-quickstart --settings myproject/settings.py --urls myproject/urls.py
+
+# Apply settings.py and urls.py changes
+django-orbit-quickstart --settings myproject/settings.py --urls myproject/urls.py --write
+
+# Use a custom dashboard path and MCP install guidance
+django-orbit-quickstart --settings myproject/settings.py --urls myproject/urls.py --url-prefix _debug/orbit/ --with-mcp --write
+```
+
+The helper is intentionally conservative: it only adds `orbit`, `OrbitMiddleware`, the `include` import and the Orbit URL pattern when they are missing. Without `--write`, it runs as a dry-run.
+
+Finish setup:
+
+```bash
+python manage.py migrate orbit
+python manage.py runserver
+```
+
+## Manual Usage
 
 ```python
 # settings.py

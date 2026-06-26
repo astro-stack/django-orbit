@@ -23,6 +23,35 @@ pip install -e .
 
 ## Add to Django Project
 
+### Fast install helper
+
+Django Orbit ships a small CLI for wiring an existing Django project. It is safe by default: without `--write`, it prints the changes it would make.
+
+```bash
+# Show the manual install plan
+django-orbit-quickstart
+
+# Preview project changes
+django-orbit-quickstart --settings myproject/settings.py --urls myproject/urls.py
+
+# Apply project changes
+django-orbit-quickstart --settings myproject/settings.py --urls myproject/urls.py --write
+
+# Optional: custom URL prefix and MCP install guidance
+django-orbit-quickstart --settings myproject/settings.py --urls myproject/urls.py --url-prefix _debug/orbit/ --with-mcp --write
+```
+
+Then run:
+
+```bash
+python manage.py migrate orbit
+python manage.py runserver
+```
+
+The helper adds `orbit` to `INSTALLED_APPS`, adds `orbit.middleware.OrbitMiddleware` at the start of `MIDDLEWARE`, imports `include` from `django.urls` when needed and mounts Orbit URLs at the selected prefix.
+
+### Manual install
+
 ### 1. Add to INSTALLED_APPS
 
 ```python

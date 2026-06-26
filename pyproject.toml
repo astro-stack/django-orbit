@@ -52,6 +52,9 @@ dependencies = [
     "Django>=4.0",
 ]
 
+[project.scripts]
+django-orbit-quickstart = "orbit.quickstart:main"
+
 [project.optional-dependencies]
 mcp = [
     "mcp>=1.0",

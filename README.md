@@ -85,7 +85,33 @@ For AI assistant integration, install the MCP extra:
 pip install django-orbit[mcp]
 ```
 
+Use the packaged quickstart helper to see or apply the Django wiring:
+
+```bash
+# Print the install plan
+django-orbit-quickstart
+
+# Preview changes for an existing project
+django-orbit-quickstart --settings myproject/settings.py --urls myproject/urls.py
+
+# Apply the changes
+django-orbit-quickstart --settings myproject/settings.py --urls myproject/urls.py --write
+
+# Custom URL prefix + MCP install guidance
+django-orbit-quickstart --settings myproject/settings.py --urls myproject/urls.py --url-prefix _debug/orbit/ --with-mcp --write
+```
+
 ## Quick Start
+
+Fast path:
+
+```bash
+django-orbit-quickstart --settings myproject/settings.py --urls myproject/urls.py --write
+python manage.py migrate orbit
+python manage.py runserver
+```
+
+Manual path:
 
 Add Orbit to `INSTALLED_APPS`:
 
