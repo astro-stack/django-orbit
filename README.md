@@ -194,6 +194,7 @@ The server launches on demand over stdio. It is read-only: it queries `OrbitEntr
 | `summarize_exception_groups` | Group recent exceptions by fingerprint with affected paths and representatives |
 | `daily_health_brief` | Produce local daily triage from recent runtime signals |
 | `generate_release_risk_brief` | Flag blocker/caution signals before a release |
+| `generate_pr_context` | Produce PR-ready evidence, test plan and release-risk context from Orbit data |
 | `propose_fix_hypotheses` | Rank likely fix directions from captured evidence |
 | `propose_test_plan` | Suggest regression/performance tests for the observed issue |
 
@@ -208,6 +209,7 @@ build_debug_brief("checkout returns 500 payment token rejected")
 create_incident_bundle("fingerprint", "<fingerprint>", format="markdown")
 propose_fix_hypotheses("fingerprint", "<fingerprint>")
 propose_test_plan("family_hash", "<family_hash>")
+generate_pr_context("fingerprint", "<fingerprint>")
 find_n_plus_one_candidates(hours=24)
 summarize_exception_groups(hours=24)
 ```

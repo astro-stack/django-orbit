@@ -572,6 +572,26 @@ def create_mcp_server():
         )
 
     @mcp.tool()
+    def generate_pr_context(
+        source_type: str, source_value: str, hours: int = 72, format: str = "json"
+    ) -> str:
+        """
+        Generate PR-ready context from Orbit runtime evidence.
+
+        Returns a suggested PR title, evidence summary, likely code surfaces,
+        fix hypotheses, suggested tests and release-risk notes. Use
+        format="markdown" for a paste-ready PR section.
+        """
+        if not get_config().get("MCP_ENABLED", True):
+            return _mcp_disabled_output()
+        result = agentic_tools.generate_pr_context(
+            source_type, source_value, hours=hours, format=format
+        )
+        if isinstance(result, str):
+            return result
+        return _format_output(result)
+
+    @mcp.tool()
     def propose_fix_hypotheses(
         source_type: str, source_value: str, hours: int = 72
     ) -> str:

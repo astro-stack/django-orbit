@@ -93,6 +93,7 @@ The MCP server exposes raw telemetry tools plus higher-level agentic investigati
 | `summarize_exception_groups` | Recent exception fingerprints with counts, affected paths and representatives |
 | `daily_health_brief` | Local daily triage of exceptions, failed jobs, slow queries, N+1 candidates and warning logs |
 | `generate_release_risk_brief` | Pre-release blocker/caution summary from recent runtime evidence |
+| `generate_pr_context` | PR-ready title, evidence, hypotheses, test plan and release-risk notes |
 | `propose_fix_hypotheses` | Ranked fix directions from captured evidence; does not edit code |
 | `propose_test_plan` | Suggested regression/performance tests for the observed issue |
 
@@ -108,6 +109,7 @@ build_debug_brief("checkout returns 500 payment token rejected")
 create_incident_bundle("fingerprint", "<fingerprint-from-brief>", format="markdown")
 propose_fix_hypotheses("fingerprint", "<fingerprint-from-brief>")
 propose_test_plan("family_hash", "<family_hash>")
+generate_pr_context("fingerprint", "<fingerprint-from-brief>")
 investigate_endpoint("/checkout/", method="POST")
 find_n_plus_one_candidates(hours=24)
 summarize_exception_groups(hours=24)
@@ -116,7 +118,7 @@ investigate_exception_group("<fingerprint>")
 investigate_request("<family_hash>")
 ```
 
-Incident bundles are generated on demand from current `OrbitEntry` data. They are not persisted. Each bundle includes primary evidence, a safety report, recommended next actions, likely code surfaces, a suggested coding-agent prompt and a next-tool sequence for deeper investigation.
+Incident bundles are generated on demand from current `OrbitEntry` data. They are not persisted. Each bundle includes primary evidence, a safety report, recommended next actions, likely code surfaces, a suggested coding-agent prompt and a next-tool sequence for deeper investigation. Use `generate_pr_context` when you need a paste-ready PR section after the fix path is understood.
 
 ## Agent Safety
 
