@@ -164,6 +164,20 @@ def test_create_incident_bundle_markdown_from_request(request_entry, related_ent
     assert "secret" not in markdown
 
 
+def test_create_incident_bundle_prompt_is_agent_ready(request_entry, related_entries):
+    from orbit.agentic import create_incident_bundle
+
+    prompt = create_incident_bundle("family_hash", "fam-agentic", format="prompt")
+
+    assert prompt.startswith(
+        "You are debugging a Django issue using Django Orbit runtime evidence."
+    )
+    assert "Write a failing regression test first" in prompt
+    assert "fam-agentic" in prompt
+    assert "orders/views.py" in prompt
+    assert "secret" not in prompt
+
+
 def test_preview_masked_entry_returns_agent_safe_payload(request_entry):
     from orbit.agentic import preview_masked_entry
 
@@ -389,6 +403,74 @@ def test_investigate_endpoint_summarizes_recent_endpoint_health(
     assert data["query_analysis"]["total"] == 1
     assert data["top_exception_groups"][0]["fingerprint"] == "fp-checkout"
     assert "investigate_request" in {tool["tool"] for tool in data["suggested_tools"]}
+
+
+def test_compare_endpoint_windows_detects_regression(db):
+    from django.utils import timezone
+    from orbit.agentic import compare_endpoint_windows
+
+    baseline_time = timezone.now() - timezone.timedelta(hours=8)
+    current_time = timezone.now() - timezone.timedelta(minutes=20)
+    baseline = []
+    current = []
+    for index in range(4):
+        baseline.append(
+            OrbitEntry.objects.create(
+                type=OrbitEntry.TYPE_REQUEST,
+                family_hash=f"baseline-{index}",
+                duration_ms=100.0,
+                payload={"method": "POST", "path": "/checkout/", "status_code": 200},
+            )
+        )
+    for index in range(4):
+        status = 500 if index < 2 else 200
+        current.append(
+            OrbitEntry.objects.create(
+                type=OrbitEntry.TYPE_REQUEST,
+                family_hash=f"current-{index}",
+                duration_ms=400.0,
+                payload={
+                    "method": "POST",
+                    "path": "/checkout/",
+                    "status_code": status,
+                    "duplicate_query_count": 1 if index == 0 else 0,
+                },
+            )
+        )
+    OrbitEntry.objects.filter(id__in=[entry.id for entry in baseline]).update(
+        created_at=baseline_time
+    )
+    OrbitEntry.objects.filter(id__in=[entry.id for entry in current]).update(
+        created_at=current_time
+    )
+    OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_EXCEPTION,
+        family_hash="current-0",
+        fingerprint="fp-current",
+        payload={"exception_type": "ValueError", "message": "checkout failed"},
+    )
+
+    data = compare_endpoint_windows(
+        "/checkout/", method="POST", baseline_hours=24, current_hours=2
+    )
+
+    assert data["endpoint"] == {"path": "/checkout/", "method": "POST"}
+    assert data["classification"] == "regression"
+    assert data["current"]["error_rate_pct"] == 50.0
+    assert data["baseline"]["error_rate_pct"] == 0.0
+    assert data["delta"]["error_rate_pct"] == 50.0
+    assert "fp-current" in data["new_exception_fingerprints"]
+    assert data["recommendation"].startswith("Investigate")
+
+
+def test_compare_endpoint_windows_handles_insufficient_data(db):
+    from orbit.agentic import compare_endpoint_windows
+
+    data = compare_endpoint_windows("/missing/", method="GET")
+
+    assert data["classification"] == "insufficient_data"
+    assert data["current"]["request_count"] == 0
+    assert data["baseline"]["request_count"] == 0
 
 
 def test_daily_health_brief_prioritizes_actionable_runtime_signals(

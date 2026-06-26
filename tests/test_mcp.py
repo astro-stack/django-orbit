@@ -166,6 +166,7 @@ def test_mcp_enabled_false_blocks_all_tools(db):
         ),
         ("build_debug_brief", {"query": "private"}),
         ("investigate_endpoint", {"path": "/private/"}),
+        ("compare_endpoint_windows", {"path": "/private/"}),
         ("find_n_plus_one_candidates", {}),
         ("summarize_exception_groups", {}),
         ("daily_health_brief", {}),
@@ -266,6 +267,29 @@ def test_generate_pr_context_is_available_via_mcp(mcp_server, sample_request):
     }
     assert "pr_body_markdown" in data
     assert markdown.startswith("## Orbit Evidence")
+
+
+@pytest.mark.django_db
+def test_compare_endpoint_windows_and_prompt_bundle_are_available_via_mcp(
+    mcp_server, sample_request
+):
+    prompt = _get_tool(mcp_server, "create_incident_bundle")(
+        source_type="family_hash",
+        source_value=sample_request.family_hash,
+        format="prompt",
+    )
+    comparison = _call_tool(
+        mcp_server,
+        "compare_endpoint_windows",
+        path="/api/products/",
+        method="GET",
+        baseline_hours=24,
+        current_hours=2,
+    )
+
+    assert prompt.startswith("You are debugging a Django issue")
+    assert comparison["endpoint"] == {"path": "/api/products/", "method": "GET"}
+    assert comparison["classification"] in {"stable", "insufficient_data"}
 
 
 # ---------------------------------------------------------------------------

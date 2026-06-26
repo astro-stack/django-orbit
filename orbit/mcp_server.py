@@ -516,6 +516,30 @@ def create_mcp_server():
         )
 
     @mcp.tool()
+    def compare_endpoint_windows(
+        path: str,
+        method: str = None,
+        baseline_hours: int = 24,
+        current_hours: int = 2,
+    ) -> str:
+        """
+        Compare a recent endpoint window against the preceding baseline.
+
+        Use this to determine whether an endpoint is regressing, stable,
+        improving or needs more data before debugging/release decisions.
+        """
+        if not get_config().get("MCP_ENABLED", True):
+            return _mcp_disabled_output()
+        return _format_output(
+            agentic_tools.compare_endpoint_windows(
+                path,
+                method=method,
+                baseline_hours=baseline_hours,
+                current_hours=current_hours,
+            )
+        )
+
+    @mcp.tool()
     def find_n_plus_one_candidates(hours: int = 24, limit: int = None) -> str:
         """
         Rank recent requests that show duplicate-query/N+1 evidence.

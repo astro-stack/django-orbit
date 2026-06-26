@@ -86,9 +86,10 @@ The MCP server exposes raw telemetry tools plus higher-level agentic investigati
 | `list_agent_safe_fields` | Allowlisted common fields and payload policy for one entry type |
 | `investigate_request` | Diagnosis for one `family_hash`: timeline, signals, queries, hypotheses and next actions |
 | `investigate_exception_group` | Blast-radius summary for one exception fingerprint |
-| `create_incident_bundle` | On-demand JSON handoff bundle from a request, fingerprint or ticket text |
+| `create_incident_bundle` | On-demand JSON, Markdown or prompt handoff bundle from a request, fingerprint or ticket text |
 | `build_debug_brief` | Match natural-language ticket/error text to recent Orbit evidence |
 | `investigate_endpoint` | Endpoint health summary with error rate, slowest requests, query analysis and exception groups |
+| `compare_endpoint_windows` | Current-vs-baseline endpoint comparison for regression, stable, improving or insufficient-data calls |
 | `find_n_plus_one_candidates` | Ranked recent requests with duplicate-query/N+1 evidence |
 | `summarize_exception_groups` | Recent exception fingerprints with counts, affected paths and representatives |
 | `daily_health_brief` | Local daily triage of exceptions, failed jobs, slow queries, N+1 candidates and warning logs |
@@ -107,10 +108,12 @@ audit_mcp_exposure()
 find_sensitive_payload_risks(limit=20)
 build_debug_brief("checkout returns 500 payment token rejected")
 create_incident_bundle("fingerprint", "<fingerprint-from-brief>", format="markdown")
+create_incident_bundle("fingerprint", "<fingerprint-from-brief>", format="prompt")
 propose_fix_hypotheses("fingerprint", "<fingerprint-from-brief>")
 propose_test_plan("family_hash", "<family_hash>")
 generate_pr_context("fingerprint", "<fingerprint-from-brief>")
 investigate_endpoint("/checkout/", method="POST")
+compare_endpoint_windows("/checkout/", method="POST")
 find_n_plus_one_candidates(hours=24)
 summarize_exception_groups(hours=24)
 generate_release_risk_brief(hours=24)
@@ -118,7 +121,7 @@ investigate_exception_group("<fingerprint>")
 investigate_request("<family_hash>")
 ```
 
-Incident bundles are generated on demand from current `OrbitEntry` data. They are not persisted. Each bundle includes primary evidence, a safety report, recommended next actions, likely code surfaces, a suggested coding-agent prompt and a next-tool sequence for deeper investigation. Use `generate_pr_context` when you need a paste-ready PR section after the fix path is understood.
+Incident bundles are generated on demand from current `OrbitEntry` data. They are not persisted. Each bundle includes primary evidence, a safety report, recommended next actions, likely code surfaces, a suggested coding-agent prompt and a next-tool sequence for deeper investigation. Use `create_incident_bundle(..., format="prompt")` when MCP is unavailable and you need a safe copy/paste prompt. Use `generate_pr_context` when you need a paste-ready PR section after the fix path is understood.
 
 ## Agent Safety
 

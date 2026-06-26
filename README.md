@@ -187,9 +187,10 @@ The server launches on demand over stdio. It is read-only: it queries `OrbitEntr
 | `list_agent_safe_fields` | Document the allowlisted fields and payload policy per entry type |
 | `investigate_request` | Diagnose one request family: timeline, signals, queries, hypotheses and next actions |
 | `investigate_exception_group` | Summarize an exception fingerprint and affected paths |
-| `create_incident_bundle` | Create JSON or Markdown handoff from request, fingerprint or ticket text |
+| `create_incident_bundle` | Create JSON, Markdown or prompt handoff from request, fingerprint or ticket text |
 | `build_debug_brief` | Match natural-language ticket text to recent evidence |
 | `investigate_endpoint` | Summarize endpoint health, errors, slow requests and related exceptions |
+| `compare_endpoint_windows` | Compare recent endpoint behavior against a baseline window to spot regressions |
 | `find_n_plus_one_candidates` | Rank recent duplicate-query/N+1 candidates with suggested next tools |
 | `summarize_exception_groups` | Group recent exceptions by fingerprint with affected paths and representatives |
 | `daily_health_brief` | Produce local daily triage from recent runtime signals |
@@ -207,9 +208,11 @@ audit_mcp_exposure()
 find_sensitive_payload_risks(limit=20)
 build_debug_brief("checkout returns 500 payment token rejected")
 create_incident_bundle("fingerprint", "<fingerprint>", format="markdown")
+create_incident_bundle("fingerprint", "<fingerprint>", format="prompt")
 propose_fix_hypotheses("fingerprint", "<fingerprint>")
 propose_test_plan("family_hash", "<family_hash>")
 generate_pr_context("fingerprint", "<fingerprint>")
+compare_endpoint_windows("/checkout/", method="POST")
 find_n_plus_one_candidates(hours=24)
 summarize_exception_groups(hours=24)
 ```

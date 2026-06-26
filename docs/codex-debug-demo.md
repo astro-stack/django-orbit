@@ -77,6 +77,7 @@ The assistant should call:
 build_debug_brief("checkout returns 500 after payment token rejection")
 summarize_exception_groups(hours=24)
 investigate_endpoint("/checkout/", method="POST", hours=24)
+compare_endpoint_windows("/checkout/", method="POST")
 ```
 
 For performance tickets, add:
@@ -101,6 +102,12 @@ The bundle is designed for Codex, Claude and Cursor. It includes:
 - a suggested coding-agent prompt;
 - a next-tool sequence;
 - safety metadata confirming payload masking.
+
+Use prompt format when MCP is not connected and you want to paste safe Orbit context into Claude, Codex or Cursor:
+
+```text
+create_incident_bundle("fingerprint", "<fingerprint>", format="prompt")
+```
 
 Use JSON when automation needs structure:
 
@@ -139,6 +146,8 @@ After the code change and tests pass, use Orbit again:
 
 ```text
 investigate_endpoint("/checkout/", method="POST", hours=24)
+compare_endpoint_windows("/checkout/", method="POST")
+compare_endpoint_windows("/checkout/", method="POST")
 generate_release_risk_brief(hours=24)
 ```
 
