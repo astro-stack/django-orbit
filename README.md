@@ -381,6 +381,7 @@ The v0.10.0 base makes Orbit agent-native. Next tracks:
 - OpenTelemetry bridge for interoperability with wider observability tooling;
 - AI/LLM watcher for provider/model/token/tool-call metadata;
 - dashboard affordances for copying incident bundles;
+- reusable agent packs: QA, architecture reviewer, performance reviewer, security/privacy reviewer and release reviewer;
 - GitHub/Jira ticket handoff flows;
 - deeper query and regression analysis.
 

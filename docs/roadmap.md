@@ -238,6 +238,62 @@ propose_test_plan(bundle_id)
 generate_pr_context(bundle_id)
 ```
 
+## Track G: Orbit Agent Packs
+
+Orbit should eventually ship reusable agent roles, not only raw tools. These agents would be small, versioned workflows that tell Codex, Claude, Cursor or another MCP-capable assistant how to use Orbit evidence for a specific job. They should be explainable, inspectable and easy to improve over time.
+
+The goal is not to create autonomous agents that freely modify applications. The goal is to provide high-quality role prompts, tool sequences, checklists and output schemas that make daily debugging and review workflows repeatable.
+
+### Initial Agent Roles
+
+| Agent | Purpose | Primary Orbit context | Expected output |
+|-------|---------|-----------------------|-----------------|
+| QA Agent | Turn runtime evidence into regression tests and repro steps. | Incident bundles, request families, exception groups, endpoint summaries. | Repro steps, failing test candidates, edge cases, acceptance checks. |
+| Architecture Reviewer | Check whether a fix direction fits the app's Django boundaries. | Related entries, query callsites, middleware/settings context, endpoint behavior. | Architecture risks, coupling concerns, safer design options. |
+| Performance Reviewer | Investigate slow endpoints, N+1s and query regressions. | Slow queries, waterfall, duplicate signatures, endpoint comparisons. | Bottleneck summary, likely ORM/index fixes, measurement plan. |
+| Security and Privacy Reviewer | Verify that debugging context is safe to share with an assistant. | `audit_mcp_exposure`, masked previews, sensitive payload risks, gate events. | Exposure report, risky fields, safer sharing policy. |
+| Release Reviewer | Decide whether a branch or release is safe enough to ship. | Release risk brief, daily health brief, new exception groups, endpoint regressions. | Blockers, cautions, release note context, follow-up checks. |
+| Incident Commander | Coordinate a ticket/error investigation from symptom to handoff. | `build_debug_brief`, incident bundle, hypotheses, test plan, PR context. | Investigation timeline, next tool sequence, owner-ready summary. |
+
+### Agent Pack Contents
+
+Each agent pack should be a portable artifact, not hidden product magic:
+
+- role prompt: what the agent is responsible for and what it must not do;
+- required Orbit tools: minimum MCP calls and when to use them;
+- input contract: ticket text, endpoint, entry id, family hash, fingerprint or bundle;
+- output schema: Markdown sections and JSON fields when automation needs structure;
+- safety policy: whether payloads are allowed, masked-only, or metadata-only;
+- verification loop: tests, checks or Orbit queries required before a recommendation is trusted;
+- examples: good prompts and expected outputs for real Django incidents.
+
+### Product Surface
+
+Near-term, this can stay open source and local:
+
+1. `docs/agents/qa.md`, `architecture-reviewer.md`, `performance-reviewer.md`, etc.
+2. MCP prompts/resources, if supported by the active MCP server implementation.
+3. `orbit agents list` to show available roles and required tools.
+4. `orbit agents print qa --source family_hash:...` to print a ready-to-paste prompt.
+5. Dashboard action: `Copy QA agent prompt` or `Copy release reviewer prompt` from a detail panel or bundle.
+
+Later, the cloud version can monetize collaboration around these agents:
+
+- team-maintained agent policies;
+- shared prompt versions and approvals;
+- scheduled agent runs against daily/release briefs;
+- comments, ownership and issue-tracker handoff;
+- organization-level safety policies and audit logs.
+
+### Improvement Loop
+
+Agent packs should be designed to improve from usage without requiring Orbit to collect private telemetry by default:
+
+- developers can edit local agent specs in-repo;
+- teams can pin agent pack versions per project;
+- outputs can be evaluated against checklists: did it cite evidence, avoid raw secrets, propose tests, avoid unsupported fixes;
+- future cloud workflows can compare prompt versions and track which role produced useful handoffs.
+
 ## Near-Term Priority
 
 The v0.11.0 release ships endpoint investigation, daily health briefs and release risk briefs from the roadmap. The next pragmatic PR sequence:

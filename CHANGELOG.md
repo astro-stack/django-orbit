@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added the short `orbit` CLI with `orbit quick` / `orbit quickstart`, plus the compatibility `django-orbit-quickstart` command. The quickstart helper now supports dry-run, `--print-diff`, `--check`, `--write`, custom URL prefixes and MCP guidance.
 - Added `orbit demo`, which scaffolds a local Django project for visual dashboard testing, product videos and MCP smoke tests.
 - Added a hybrid diagnosis card at the top of the entry detail panel with plain-language meaning, technical signals and suggested next moves.
+- Added Orbit Agent Packs to the roadmap: reusable QA, architecture, performance, security/privacy, release-review and incident-command roles built on Orbit MCP context.
 
 ## [0.10.0] - 2026-06-25
 

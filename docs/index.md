@@ -58,6 +58,7 @@ Django Orbit is an AI agent-native observability and debugging tool for Django a
 - **MCP workflow expansion**: all new tools are available through MCP and honor the existing `MCP_ENABLED` safety gate.
 - **Codex and Claude debugging demo**: the docs now include a practical ticket-to-test-to-fix workflow using Orbit context.
 - **Quick install and demo CLI**: `orbit quick` previews, checks or applies `settings.py` / `urls.py` wiring, while `orbit demo` creates a local project for dashboard and MCP smoke tests.
+- **Agent pack roadmap**: Orbit should ship reusable QA, architecture, performance, security and release-reviewer agent roles on top of MCP tools and incident bundles.
 
 ### What's New in v0.10.0
 
