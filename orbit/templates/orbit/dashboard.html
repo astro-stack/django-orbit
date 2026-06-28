@@ -523,6 +523,9 @@ function orbitDashboard() {
                 const response = await fetch(`${URLS.detail}${entryId}/`);
                 if (response.ok) {
                     container.innerHTML = await response.text();
+                    if (window.htmx) {
+                        htmx.process(container);
+                    }
                     lucide.createIcons();
                     
                     // Apply syntax highlighting to JSON
