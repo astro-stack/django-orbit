@@ -234,13 +234,26 @@
 
         <!-- EXPLAIN plan (B2), loaded on demand -->
         <div>
-            <button hx-get="{% url 'orbit:explain' entry.id %}"
-                    hx-target="#explain-{{ entry.id }}" hx-swap="innerHTML"
-                    hx-indicator="#explain-spin-{{ entry.id }}"
-                    class="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-orbit-bg-tertiary/60 text-orbit-text-secondary hover:text-orbit-accent-cyan hover:bg-orbit-accent-cyan/10 transition-colors">
+            <button
+                hx-get="{% url 'orbit:explain' entry.id %}"
+                hx-target="#explain-{{ entry.id }}"
+                hx-swap="innerHTML"
+                hx-indicator="#explain-spin-{{ entry.id }}"
+                class="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-orbit-bg-tertiary/60 text-orbit-text-secondary hover:text-orbit-accent-cyan hover:bg-orbit-accent-cyan/10 transition-colors">
+
                 <i data-lucide="search-code" class="w-4 h-4"></i>
-                <span>Explain plan</span>
-                <i id="explain-spin-{{ entry.id }}" data-lucide="loader-2" class="htmx-indicator w-4 h-4 animate-spin"></i>
+                <span>Explain Plan</span>
+
+                <!-- Spinner -->
+                <span id="explain-spin-{{ entry.id }}" class="htmx-indicator">
+                    <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                </span>
+
+                <!-- Success icon -->
+                <span id="explain-success-{{ entry.id }}" class="hidden">
+                    <i data-lucide="check" class="w-4 h-4 text-emerald-400"></i>
+                </span>
+
             </button>
             <div id="explain-{{ entry.id }}" class="mt-2"></div>
         </div>

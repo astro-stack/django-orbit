@@ -377,6 +377,19 @@ function orbitDashboard() {
                 }
             });
 
+            // Show a success checkmark after the explain plan is loaded
+            document.body.addEventListener("htmx:afterSwap", (e) => {
+                if (!e.target.id.startsWith("explain-")) return;
+
+                const id = e.target.id.replace("explain-", "");
+
+                document
+                    .getElementById(`explain-success-${id}`)
+                    ?.classList.remove("hidden");
+
+                lucide.createIcons();
+            });
+
             // Keyboard shortcuts: Esc closes, j/k move between entries (Vim-style)
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
