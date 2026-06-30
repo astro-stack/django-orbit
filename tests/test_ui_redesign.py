@@ -4,6 +4,7 @@ version sourcing, and the Export-button removal.
 """
 
 import pytest
+from django.test import override_settings
 from django.urls import reverse
 
 from orbit import __version__ as ORBIT_VERSION
@@ -50,7 +51,9 @@ def test_export_filtered_button_removed_but_endpoint_kept(client):
     assert "exportAll" not in html
 
     # Per-entry export endpoint still works
-    entry = OrbitEntry.objects.create(type=OrbitEntry.TYPE_REQUEST, payload={"status": 200})
+    entry = OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_REQUEST, payload={"status": 200}
+    )
     assert client.get(reverse("orbit:export", args=[entry.id])).status_code == 200
 
 
@@ -72,3 +75,22 @@ def test_stats_page_renders_headline(client):
     assert "Apdex Score" in html
     # Heavy sections are lazy-loaded via HTMX, not inlined
     assert "stats/section/trends" in html
+
+
+@pytest.mark.django_db
+@override_settings(
+    ORBIT_CONFIG={
+        "ENABLED": True,
+        "MCP_ENABLED": True,
+        "MCP_INCLUDE_PAYLOADS": False,
+        "RECORD_LLM": True,
+        "LLM_CAPTURE_CONTENT": False,
+        "LLM_CAPTURE_TOOL_CALL_ARGUMENTS": False,
+    }
+)
+def test_health_page_shows_agent_safety_status(client):
+    html = client.get(reverse("orbit:health")).content.decode()
+
+    assert "Agent & MCP Safety" in html
+    assert "metadata only" in html
+    assert "not captured" in html

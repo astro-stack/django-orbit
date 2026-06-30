@@ -7,9 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-06-30
+
 ### Added
 
+- Added a metadata-first AI/LLM watcher for supported OpenAI and Anthropic SDK calls. It records provider, operation, model, status, latency, token usage, errors and tool-call names.
+- Added safe LLM watcher configuration: `RECORD_LLM`, `LLM_CAPTURE_CONTENT`, `LLM_CAPTURE_TOOL_CALL_ARGUMENTS` and `LLM_MAX_CONTENT_CHARS`. Prompt/response content and tool-call arguments are disabled by default.
+- Added AI/LLM watcher documentation and production safety guidance for metadata-only LLM and MCP usage.
 - Added release workflow safeguards: local `scripts/verify_release.py` preflight, a CI release-metadata check and a PR checklist template.
+
+### Changed
+
+- Updated package version metadata to 0.12.0.
 ## [0.11.0] - 2026-06-26
 
 ### Added

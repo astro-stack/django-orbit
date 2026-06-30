@@ -2247,6 +2247,12 @@ def get_failed_watchers() -> Dict[str, str]:
     }
 
 
+def _install_llm_watcher():
+    from orbit.llm import install_llm_watcher
+
+    install_llm_watcher()
+
+
 def install_all_watchers():
     """
     Install all watchers with plug-and-play error isolation.
@@ -2281,6 +2287,7 @@ def install_all_watchers():
     _install_watcher_safely("gates", install_gates_watcher, "RECORD_GATES")
     _install_watcher_safely("transaction", install_transaction_watcher, "RECORD_TRANSACTIONS")
     _install_watcher_safely("storage", install_storage_watcher, "RECORD_STORAGE")
+    _install_watcher_safely("llm", _install_llm_watcher, "RECORD_LLM")
     
     # Log summary
     installed = get_installed_watchers()

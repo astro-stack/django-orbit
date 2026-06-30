@@ -85,6 +85,70 @@
                 </div>
             </div>
         </section>
+
+        <!-- Agent / MCP Safety -->
+        <section class="bg-orbit-bg-secondary/50 backdrop-blur rounded-xl border border-orbit-border mb-8">
+            <div class="p-5 border-b border-orbit-border">
+                <h2 class="text-lg font-semibold text-orbit-text-primary flex items-center gap-2">
+                    <i data-lucide="shield-check" class="w-5 h-5 text-orbit-accent-cyan"></i>
+                    Agent & MCP Safety
+                </h2>
+                <p class="text-sm text-orbit-text-muted mt-1">
+                    Current data exposure posture for local AI assistants and LLM recording.
+                </p>
+            </div>
+            <div class="grid md:grid-cols-2 gap-4 p-5">
+                <div class="rounded-lg border border-orbit-border bg-orbit-bg-primary/40 p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-medium text-orbit-text-primary">MCP data exposure</h3>
+                        {% if safety_status.mcp_enabled %}
+                        <span class="px-2.5 py-1 rounded-full text-xs bg-amber-500/10 text-amber-300 border border-amber-500/30">Enabled</span>
+                        {% else %}
+                        <span class="px-2.5 py-1 rounded-full text-xs bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">Disabled</span>
+                        {% endif %}
+                    </div>
+                    <dl class="space-y-2 text-sm">
+                        <div class="flex justify-between gap-4">
+                            <dt class="text-orbit-text-muted">Payloads</dt>
+                            <dd class="text-orbit-text-primary">{% if safety_status.mcp_include_payloads %}masked payloads included{% else %}metadata only{% endif %}</dd>
+                        </div>
+                        <div class="flex justify-between gap-4">
+                            <dt class="text-orbit-text-muted">Max results</dt>
+                            <dd class="text-orbit-text-primary">{{ safety_status.mcp_max_limit }}</dd>
+                        </div>
+                        <div class="flex justify-between gap-4">
+                            <dt class="text-orbit-text-muted">Payload cap</dt>
+                            <dd class="text-orbit-text-primary">{{ safety_status.mcp_max_payload_chars }} chars</dd>
+                        </div>
+                    </dl>
+                </div>
+
+                <div class="rounded-lg border border-orbit-border bg-orbit-bg-primary/40 p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-medium text-orbit-text-primary">AI/LLM watcher</h3>
+                        {% if safety_status.record_llm %}
+                        <span class="px-2.5 py-1 rounded-full text-xs bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">Recording</span>
+                        {% else %}
+                        <span class="px-2.5 py-1 rounded-full text-xs bg-slate-500/10 text-slate-300 border border-slate-500/30">Off</span>
+                        {% endif %}
+                    </div>
+                    <dl class="space-y-2 text-sm">
+                        <div class="flex justify-between gap-4">
+                            <dt class="text-orbit-text-muted">Prompt/response content</dt>
+                            <dd class="text-orbit-text-primary">{% if safety_status.llm_capture_content %}captured{% else %}not captured{% endif %}</dd>
+                        </div>
+                        <div class="flex justify-between gap-4">
+                            <dt class="text-orbit-text-muted">Tool arguments</dt>
+                            <dd class="text-orbit-text-primary">{% if safety_status.llm_capture_tool_call_arguments %}captured after masking{% else %}not captured{% endif %}</dd>
+                        </div>
+                        <div class="flex justify-between gap-4">
+                            <dt class="text-orbit-text-muted">Default mode</dt>
+                            <dd class="text-orbit-text-primary">metadata-first</dd>
+                        </div>
+                    </dl>
+                </div>
+            </div>
+        </section>
         
         <!-- Modules List -->
         <section class="bg-orbit-bg-secondary/50 backdrop-blur rounded-xl border border-orbit-border">

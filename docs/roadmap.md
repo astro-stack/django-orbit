@@ -172,6 +172,8 @@ Possible milestones:
 
 Capture AI application behavior for Django apps that call LLM providers or agent frameworks.
 
+Status: started in v0.12.0 with metadata-first OpenAI and Anthropic SDK recording.
+
 Initial surfaces:
 
 - OpenAI Python SDK;
@@ -193,11 +195,10 @@ Possible config:
 
 ```python
 ORBIT_CONFIG = {
-    "RECORD_AI": True,
-    "AI_CAPTURE_PROMPTS": False,
-    "AI_CAPTURE_COMPLETIONS": False,
-    "AI_CAPTURE_TOOL_ARGS": False,
-    "AI_MASK_KEYS": ["password", "token", "secret"],
+    "RECORD_LLM": True,
+    "LLM_CAPTURE_CONTENT": False,
+    "LLM_CAPTURE_TOOL_CALL_ARGUMENTS": False,
+    "LLM_MAX_CONTENT_CHARS": 2000,
 }
 ```
 
@@ -240,12 +241,12 @@ generate_pr_context(bundle_id)
 
 ## Near-Term Priority
 
-The v0.11.0 release ships endpoint investigation, daily health briefs and release risk briefs from the roadmap. The next pragmatic PR sequence:
+The v0.11.0 release shipped endpoint investigation, daily health briefs and release risk briefs. The v0.12.0 release starts the AI/LLM watcher and hardens release verification. The next pragmatic PR sequence:
 
 1. Add `agent_safe_serialize_entry()` and make existing MCP tools use it.
 2. Add `investigate_request(family_hash)`.
 3. Add `investigate_exception_group(fingerprint)`.
 4. Add `create_incident_bundle(...)` as on-demand JSON.
 5. Add `build_debug_brief(query, hours=72)`.
-6. Add OpenTelemetry export design doc and config stub.
-7. Add AI watcher behind conservative defaults.
+6. Expand AI watcher integrations to LangChain, LiteLLM and provider HTTP fallbacks.
+7. Add OpenTelemetry export design doc and config stub.

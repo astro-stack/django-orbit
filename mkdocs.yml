@@ -40,6 +40,7 @@ nav:
   - User Guide:
     - Dashboard: dashboard.md
     - Stats Dashboard: stats.md
+    - AI/LLM Watcher: llm-watcher.md
     - MCP Server: mcp.md
     - Debug Django with Codex and Claude: codex-debug-demo.md
     - Storage Backends: storage-backends.md
