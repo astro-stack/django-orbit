@@ -377,16 +377,15 @@ function orbitDashboard() {
                 }
             });
 
-            // Show a success checkmark after the explain plan is loaded
+            // Show a success checkmark only after a valid explain plan is loaded
             document.body.addEventListener("htmx:afterSwap", (e) => {
                 if (!e.target.id.startsWith("explain-")) return;
 
                 const id = e.target.id.replace("explain-", "");
+                const successIcon = document.getElementById(`explain-success-${id}`);
+                const loadedPlan = e.target.querySelector('[data-orbit-explain-status="success"]');
 
-                document
-                    .getElementById(`explain-success-${id}`)
-                    ?.classList.remove("hidden");
-
+                successIcon?.classList.toggle("hidden", !loadedPlan);
                 lucide.createIcons();
             });
 

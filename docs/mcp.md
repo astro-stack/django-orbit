@@ -127,6 +127,8 @@ Incident bundles are generated on demand from current `OrbitEntry` data. They ar
 
 All MCP entry output goes through Orbit's agent-safe serializer. It masks sensitive keys using `MASK_KEYS`, can omit payloads entirely, and replaces oversized payloads with deterministic truncation metadata. Use `audit_mcp_exposure`, `preview_masked_entry`, `find_sensitive_payload_risks` and `list_agent_safe_fields` to verify the effective policy before sharing an MCP session with an assistant.
 
+Residual risk: MCP gives a local assistant read access to Orbit telemetry. Masking and truncation reduce raw secret exposure, but telemetry can still reveal sensitive operational context such as endpoint names, SQL shape, exception messages, user identifiers or business events. In shared, staging or sensitive environments, prefer `MCP_ENABLED: False`; if agents only need metadata, set `MCP_INCLUDE_PAYLOADS: False`.
+
 ## Example Prompts
 
 Once connected, ask your AI assistant questions like:
@@ -148,6 +150,15 @@ ORBIT_CONFIG = {
 ```
 
 Setting `MCP_ENABLED: False` does not disable the server itself (it's a management command), but disables data exposure if you want to prevent access programmatically.
+
+For metadata-only access, keep MCP enabled and omit payload bodies:
+
+```python
+ORBIT_CONFIG = {
+    'MCP_ENABLED': True,
+    'MCP_INCLUDE_PAYLOADS': False,
+}
+```
 
 ## Running Manually
 

@@ -13,6 +13,7 @@ pytestmark = pytest.mark.django_db
 
 # ---- B2: EXPLAIN ----------------------------------------------------------
 
+
 def test_explain_select_returns_plan():
     result = explain_query("SELECT * FROM orbit_orbitentry")
     assert result["supported"] is True
@@ -32,6 +33,7 @@ def test_explain_view_on_query_entry(client):
     )
     html = client.get(reverse("orbit:explain", args=[entry.id])).content.decode()
     assert "sqlite" in html.lower()
+    assert 'data-orbit-explain-status="success"' in html
 
 
 def test_explain_view_rejects_non_query(client):
@@ -41,27 +43,38 @@ def test_explain_view_rejects_non_query(client):
 
 
 def test_explain_disabled_by_config(client, settings):
-    settings.ORBIT_CONFIG = {**getattr(settings, "ORBIT_CONFIG", {}), "ENABLE_EXPLAIN": False}
+    settings.ORBIT_CONFIG = {
+        **getattr(settings, "ORBIT_CONFIG", {}),
+        "ENABLE_EXPLAIN": False,
+    }
     entry = OrbitEntry.objects.create(
         type=OrbitEntry.TYPE_QUERY, payload={"sql": "SELECT 1", "params": []}
     )
     html = client.get(reverse("orbit:explain", args=[entry.id])).content.decode()
     assert "disabled" in html.lower()
+    assert 'data-orbit-explain-status="error"' in html
 
 
 # ---- B4: waterfall --------------------------------------------------------
 
+
 def _request_with_queries(family="famX"):
     req = OrbitEntry.objects.create(
-        type=OrbitEntry.TYPE_REQUEST, family_hash=family, duration_ms=100.0,
+        type=OrbitEntry.TYPE_REQUEST,
+        family_hash=family,
+        duration_ms=100.0,
         payload={"method": "GET", "full_path": "/x/", "status_code": 200},
     )
     OrbitEntry.objects.create(
-        type=OrbitEntry.TYPE_QUERY, family_hash=family, duration_ms=20.0,
+        type=OrbitEntry.TYPE_QUERY,
+        family_hash=family,
+        duration_ms=20.0,
         payload={"sql": "SELECT 1", "start_offset_ms": 10.0, "is_slow": False},
     )
     OrbitEntry.objects.create(
-        type=OrbitEntry.TYPE_QUERY, family_hash=family, duration_ms=40.0,
+        type=OrbitEntry.TYPE_QUERY,
+        family_hash=family,
+        duration_ms=40.0,
         payload={"sql": "SELECT 2", "start_offset_ms": 50.0, "is_slow": False},
     )
     return req

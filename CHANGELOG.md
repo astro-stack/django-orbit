@@ -22,6 +22,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Exposed the new 0.11 agentic workflow tools through MCP with the same `MCP_ENABLED` safety gate.
 - Added a documented demo flow: "Debug Django with Codex and Claude using Orbit context".
 - Added GitHub Actions CI for PR tests, docs builds, package builds and Twine checks, plus Dependabot updates for GitHub Actions and Python dependencies.
+- Added a success indicator after the on-demand Explain Plan panel finishes loading.
+
+### Fixed
+
+- Fixed dynamically loaded query detail panels so HTMX processes the Explain Plan button after insertion.
+- Fixed the Explain Plan success indicator so it only appears when a valid plan fragment is loaded, not when the fragment contains an error.
+
+### Security
+
+- Documented the residual MCP exposure risk: Orbit masks and bounds agent-facing payloads, but MCP still gives local assistants access to runtime telemetry. Use `MCP_ENABLED: False` to disable data exposure or `MCP_INCLUDE_PAYLOADS: False` for metadata-only agent access in shared or sensitive environments.
 
 ## [0.10.0] - 2026-06-25
 

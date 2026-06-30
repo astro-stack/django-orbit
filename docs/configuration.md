@@ -300,6 +300,8 @@ When `False`, watcher failures will surface as exceptions. Useful during develop
 - **Default**: `True`
 - **Description**: Includes masked entry payloads in MCP responses. Set to `False` for metadata-only agent access.
 
+For shared, staging or sensitive environments, the conservative MCP posture is `MCP_ENABLED: False`. If MCP is needed but payload bodies are not, use `MCP_INCLUDE_PAYLOADS: False` to expose metadata without entry payloads.
+
 #### `MCP_MAX_LIMIT`
 - **Type**: `int`
 - **Default**: `100`

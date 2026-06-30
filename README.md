@@ -233,6 +233,8 @@ Agent-facing output goes through Orbit's safe serializer:
 - `MCP_ENABLED: False` blocks all MCP tools with a stable disabled response;
 - `preview_masked_entry`, `find_sensitive_payload_risks` and `list_agent_safe_fields` let teams verify exactly what coding agents can see before sharing context.
 
+Residual risk: MCP gives a local assistant read access to Orbit telemetry. Masking and truncation reduce exposure, but telemetry can still reveal sensitive operational context such as endpoints, SQL shape, exception messages or user identifiers. In shared, staging or sensitive environments, prefer `MCP_ENABLED: False`; if agents only need metadata, set `MCP_INCLUDE_PAYLOADS: False`.
+
 Example:
 
 ```python
