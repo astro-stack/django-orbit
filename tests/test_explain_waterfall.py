@@ -2,8 +2,9 @@
 Tests for B2 (query EXPLAIN) and B4 (request waterfall).
 """
 
-import pytest
 from django.urls import reverse
+
+import pytest
 
 from orbit.explain import explain_query
 from orbit.models import OrbitEntry

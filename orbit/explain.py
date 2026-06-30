@@ -2,26 +2,12 @@
 On-demand query EXPLAIN.
 
 Runs a query plan for a captured SQL statement, on demand only (never on the
-recording path).  Vendor-aware (PostgreSQL / MySQL / SQLite) with graceful
+recording path). Vendor-aware (PostgreSQL / MySQL / SQLite) with graceful
 fallback.
 
-Plain ``EXPLAIN`` does not execute the statement; ``EXPLAIN ANALYZE`` does, so
-it is gated behind config and only ever allowed for read-only ``SELECT``
-statements, wrapped in a rolled-back savepoint.
-
-Parameter replay
-----------------
-When Orbit recorded the query, any database-adapter objects (e.g. psycopg
-``Jsonb``) were unwrapped by ``orbit.adapters.unwrap_adapter`` and stored as
-plain marker dicts.  At replay time, ``rebind_params`` reconstructs the correct
-driver-level object for the current backend so the planner receives properly
-typed values.
-
-For legacy entries recorded before this mechanism existed, stored parameters may
-be bare ``dict``/``list`` values or stringified reprs such as ``"Jsonb({...})"``.
-These cannot be safely rebound; ``has_unbindable_param`` detects them and the
-function returns a clear explanatory error rather than a cryptic database
-exception.
+Plain EXPLAIN does not execute the statement. EXPLAIN ANALYZE does execute SQL,
+so Orbit only honors it for plain SELECT statements and wraps it in a rollback
+scope. PostgreSQL also gets a transaction-level read-only guard.
 """
 
 from typing import Any, Dict, Optional
@@ -37,8 +23,14 @@ def _is_select(sql: str) -> bool:
     )
 
 
+def _is_analyzable_select(sql: str) -> bool:
+    """ANALYZE executes SQL; only permit plain SELECT statements."""
+    stripped = sql.strip().rstrip(";").lower()
+    return stripped.startswith("select") and ";" not in stripped
+
+
 def _is_dml(sql: str) -> bool:
-    """True for INSERT/UPDATE/DELETE — statements plain EXPLAIN plans but does not execute."""
+    """True for INSERT/UPDATE/DELETE statements."""
     return sql.lstrip().lower().startswith(("insert", "update", "delete"))
 
 
@@ -50,7 +42,6 @@ def _build_explain_sql(vendor: str, sql: str, analyze: bool) -> Optional[str]:
     if vendor == "mysql":
         return "EXPLAIN ANALYZE {}".format(sql) if analyze else "EXPLAIN {}".format(sql)
     if vendor == "sqlite":
-        # SQLite has no ANALYZE-style timing; the query plan is the useful artifact.
         return "EXPLAIN QUERY PLAN {}".format(sql)
     return None
 
@@ -62,14 +53,11 @@ def explain_query(
     using: str = "default",
 ) -> Dict[str, Any]:
     """
-    Return a dict with keys: ``supported``, ``vendor``, ``analyze``, and either
-    ``plan`` (list of strings) or ``error`` (string).
+    Return a dict with keys: supported, vendor, analyze, and plan or error.
 
-    Never raises: any failure is reported in ``error`` so callers and the UI can
-    degrade gracefully.
+    Never raises: failures are reported in error so callers/UI degrade cleanly.
     """
-    result: Dict[str, Any] = {"supported": True,
-                              "analyze": False, "vendor": None}
+    result: Dict[str, Any] = {"supported": True, "analyze": False, "vendor": None}
 
     if not sql or not sql.strip():
         return {"supported": False, "error": "No SQL to explain"}
@@ -78,19 +66,12 @@ def explain_query(
     vendor = conn.vendor
     result["vendor"] = vendor
 
-    # ANALYZE executes the statement — restrict to read-only SELECTs.
-    if analyze and not _is_select(sql):
+    if analyze and not _is_analyzable_select(sql):
         analyze = False
     result["analyze"] = analyze
 
-    # Rebuild driver-appropriate objects for any stored adapter markers.
-    # This must run before has_unbindable_param so that successfully rebound
-    # values are not falsely flagged as unbindable.
-    params = rebind_params(params, vendor)
+    params = rebind_params(params, conn)
 
-    # Plain EXPLAIN on DML still plans (and therefore binds) the statement.
-    # Detect legacy params that cannot be rebound and return a clear message
-    # instead of letting the database raise a cryptic type error.
     if _is_dml(sql) and not analyze and has_unbindable_param(params):
         return {
             "supported": True,
@@ -101,7 +82,7 @@ def explain_query(
                 "serialised for storage and can no longer be faithfully rebound. This "
                 "is a limitation of replaying captured parameters, not a database or "
                 "EXPLAIN support issue. Entries recorded after upgrading Orbit's "
-                "recorder should not hit this — only older captured entries can."
+                "recorder should not hit this; only older captured entries can."
             ),
         }
 
@@ -119,24 +100,22 @@ def explain_query(
             rows = cursor.fetchall()
         return ["  ".join(str(c) for c in row) for row in rows]
 
-    bound = params if isinstance(params, (list, tuple)) else None
+    bound = params if isinstance(params, (list, tuple, dict)) else None
 
     try:
         if analyze:
-            # Execute inside a savepoint that is always rolled back.
             with transaction.atomic(using=using):
                 sid = transaction.savepoint(using=using)
                 try:
+                    if vendor == "postgresql":
+                        with conn.cursor() as cursor:
+                            cursor.execute("SET TRANSACTION READ ONLY")
                     plan = _run(bound)
                 finally:
                     transaction.savepoint_rollback(sid, using=using)
         elif _is_dml(sql):
-            # Bindable (confirmed above); params are required for DML planning.
             plan = _run(bound)
         else:
-            # For SELECT, fall back to no params if binding fails — the plan
-            # rarely depends on literal values, and a parameterless EXPLAIN is
-            # far more useful than an outright error.
             try:
                 plan = _run(bound)
             except Exception:
@@ -145,7 +124,7 @@ def explain_query(
         result["plan"] = plan
         return result
 
-    except Exception as e:  # pragma: no cover — defensive
+    except Exception as e:  # pragma: no cover - defensive
         return {
             "supported": True,
             "vendor": vendor,

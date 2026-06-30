@@ -13,7 +13,6 @@ from django.http import HttpRequest, HttpResponse
 
 from orbit.conf import get_config, should_ignore_path
 from orbit.handlers import set_current_family_hash
-from orbit.watchers import cachalot_disabled
 from orbit.recorders import (
     OrbitQueryWrapper,
     clear_current_context,
@@ -29,6 +28,7 @@ from orbit.utils import (
     sanitize_headers,
     serialize_for_json,
 )
+from orbit.watchers import cachalot_disabled
 
 
 class OrbitMiddleware:
@@ -80,7 +80,9 @@ class OrbitMiddleware:
 
         # Create query wrapper (pass request start so each query gets an accurate
         # offset for the request waterfall — B4)
-        query_wrapper = OrbitQueryWrapper(family_hash=family_hash, request_start=start_time)
+        query_wrapper = OrbitQueryWrapper(
+            family_hash=family_hash, request_start=start_time
+        )
 
         # Process request with query recording
         response = None
@@ -111,9 +113,11 @@ class OrbitMiddleware:
             if config.get("RECORD_REQUESTS", True):
                 # Check for duplicates across all queries in this request
                 duplicate_query_count = sum(
-                    count - 1 for count in query_wrapper.query_hashes.values() if count > 1
+                    count - 1
+                    for count in query_wrapper.query_hashes.values()
+                    if count > 1
                 )
-                
+
                 self._save_request(
                     request_data=request_data,
                     response=response,
@@ -250,7 +254,7 @@ class OrbitMiddleware:
             entry = OrbitEntry(
                 type=OrbitEntry.TYPE_QUERY,
                 family_hash=family_hash,
-                payload=query,
+                payload=OrbitEntry.prepare_payload_for_storage(query),
                 duration_ms=query.get("duration_ms"),
             )
             entries.append(entry)

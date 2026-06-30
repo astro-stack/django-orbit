@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional
 
 from django.db import connection
 
-from orbit.adapters import unwrap_adapter
+from orbit.adapters import unwrap_adapters
 from orbit.conf import get_config
 from orbit.watchers import cachalot_disabled
 
@@ -127,8 +127,7 @@ class OrbitQueryWrapper:
 
             query_hash = _get_query_hash(sql)
             is_duplicate = query_hash in self.query_hashes
-            self.query_hashes[query_hash] = self.query_hashes.get(
-                query_hash, 0) + 1
+            self.query_hashes[query_hash] = self.query_hashes.get(query_hash, 0) + 1
             duplicate_count = self.query_hashes[query_hash]
 
             is_slow = duration_ms > slow_threshold
@@ -170,9 +169,7 @@ class OrbitQueryWrapper:
             return None
 
         try:
-            if isinstance(params, (list, tuple)):
-                params = [unwrap_adapter(p) for p in params]
-            return serialize_for_json(params)
+            return serialize_for_json(unwrap_adapters(params))
         except Exception:
             return str(params)
 
@@ -211,7 +208,7 @@ def save_queries_to_orbit(
         entry = OrbitEntry(
             type=OrbitEntry.TYPE_QUERY,
             family_hash=family_hash,
-            payload=query,
+            payload=OrbitEntry.prepare_payload_for_storage(query),
             duration_ms=query.get("duration_ms"),
         )
         entries.append(entry)

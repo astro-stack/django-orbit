@@ -1,71 +1,25 @@
 """
-orbit/adapters.py — Database adapter serialisation/replay for Orbit.
+Database adapter serialization/replay helpers for Orbit.
 
-Background
-----------
-Django's ORM adapts Python values into database-driver objects before they reach
-Orbit's query recorder.  A ``JSONField`` value, by the time the recorder's
-``execute`` wrapper fires, is no longer a plain ``dict`` — it is a driver-level
-wrapper such as psycopg3's ``Jsonb`` or psycopg2's ``Json``.  If Orbit stores a
-``str(Jsonb({...}))`` repr it can never replay the value faithfully; if it stores
-the raw ``dict`` the driver later raises "cannot adapt type 'dict'" during EXPLAIN.
-
-The solution implemented here has three stages:
-
-1. **Detect** — identify live adapter objects before they are serialised.
-2. **Unwrap** — extract the underlying Python value and store it with a generic
-   marker that names the adapter *kind* (e.g. ``"json"``).
-3. **Rebind** — at EXPLAIN replay time, reconstruct a driver-appropriate bindable
-   object for the target vendor from the stored marker.
-
-Why a named-kind marker rather than a boolean ``__orbit_json_value__``?
------------------------------------------------------------------------
-A boolean flag bakes in one adapter type for ever.  A string kind tag
-(``"__orbit_adapter__": "json"``) is open: adding ``"array"`` or ``"range"``
-support in future means writing one small detection/unwrap/rebind triplet and
-registering it — no changes to the shared dispatch logic or call sites.
-
-Backend-specific rebind notes
-------------------------------
-* **PostgreSQL** — wraps the value in ``psycopg.types.json.Jsonb`` (psycopg3) or
-  ``psycopg2.extras.Json``.  Falls back to a plain JSON string which Postgres
-  accepts for ``json``/``jsonb`` columns via an implicit cast.
-* **MySQL / SQLite** — both bind JSON columns from plain text.  Django's own
-  ``JSONField.get_prep_value()`` returns ``json.dumps(value, cls=self.encoder)``
-  (verified against Django source; neither backend overrides ``adapt_json_value``
-  with a wrapper object).  Plain ``json.dumps`` is therefore correct and
-  sufficient for both.
-
-Graceful degradation
---------------------
-Every public function is safe to call with any value — including values from
-older Orbit entries, unknown adapter types, or environments where psycopg is not
-installed.  Failures are absorbed and callers receive a best-effort result or
-``None``/unchanged value, never an exception.
+Django can adapt Python values into driver-level wrapper objects before they
+reach ``connection.execute_wrapper()``. JSONField values on PostgreSQL are the
+important case: a dict may arrive as psycopg/psycopg2 Json/Jsonb. Orbit stores a
+small JSON-safe marker for supported wrappers and later rebinds that marker with
+Django's active connection operations before running on-demand EXPLAIN.
 """
 
 from __future__ import annotations
 
 import json as _json
+from collections.abc import Mapping
 from typing import Any, Dict, Optional
 
-# ---------------------------------------------------------------------------
-# Public marker constant — single source of truth shared by recorders and
-# explain modules.  Import this; never hard-code the string elsewhere.
-# ---------------------------------------------------------------------------
-
 ADAPTER_MARKER_KEY = "__orbit_adapter__"
-
-
-# ---------------------------------------------------------------------------
-# Internal per-kind implementations
-# ---------------------------------------------------------------------------
-
-# --- json -------------------------------------------------------------------
+_MISSING = object()
 
 
 def _detect_json(value: Any) -> bool:
-    """Return True if *value* is a recognised psycopg JSON/JSONB adapter."""
+    """Return True if value is a recognized psycopg JSON/JSONB adapter."""
     module = getattr(type(value), "__module__", "") or ""
     if not module.startswith("psycopg"):
         return False
@@ -73,13 +27,7 @@ def _detect_json(value: Any) -> bool:
 
 
 def _unwrap_json(value: Any) -> Optional[Dict[str, Any]]:
-    """
-    Extract the inner Python object from a psycopg Json/Jsonb wrapper.
-
-    psycopg does not document a stable public attribute for the wrapped object,
-    so we probe a short list of plausible names rather than hard-code one.  If
-    none resolves, return ``None`` so the caller can fall back to a safe repr.
-    """
+    """Extract the inner Python object from a psycopg Json/Jsonb wrapper."""
     for attr in ("obj", "adapted", "_obj", "wrapped"):
         try:
             inner = getattr(value, attr, _MISSING)
@@ -87,64 +35,53 @@ def _unwrap_json(value: Any) -> Optional[Dict[str, Any]]:
             continue
         if inner is _MISSING:
             continue
-        # Only tag values that are themselves JSON-storable.  Anything else falls
-        # through to the generic str() path in the recorder's serialiser.
-        if inner is None or isinstance(inner, (dict, list, str, int, float, bool)):
-            return {ADAPTER_MARKER_KEY: "json", "value": inner}
+        if inner is None or isinstance(
+            inner, (dict, list, tuple, str, int, float, bool)
+        ):
+            return {ADAPTER_MARKER_KEY: "json", "value": unwrap_adapters(inner)}
     return None
 
 
-def _rebind_json(marker: Dict[str, Any], vendor: str) -> Any:
-    """Reconstruct a bindable value from a ``"json"`` marker for *vendor*."""
-    inner = marker.get("value")
+def _connection_vendor(connection_or_vendor: Any) -> str:
+    return str(getattr(connection_or_vendor, "vendor", connection_or_vendor) or "")
 
-    if vendor == "postgresql":
-        # Prefer psycopg3, fall back to psycopg2, then plain JSON text.
+
+def _adapt_json_with_connection(inner: Any, connection_or_vendor: Any) -> Any:
+    ops = getattr(connection_or_vendor, "ops", None)
+    adapter = getattr(ops, "adapt_json_value", None)
+    if adapter is not None:
         try:
-            from psycopg.types.json import Jsonb  # type: ignore[import]
-
-            return Jsonb(inner)
+            return adapter(inner, encoder=None)
+        except TypeError:
+            try:
+                return adapter(inner)
+            except Exception:
+                pass
         except Exception:
             pass
+
+    vendor = _connection_vendor(connection_or_vendor)
+    if vendor == "postgresql":
         try:
             from psycopg2.extras import Json  # type: ignore[import]
 
             return Json(inner)
         except Exception:
             pass
-
-    # MySQL, SQLite, and the Postgres fallback all accept plain JSON text.
-    # Django's JSONField.get_prep_value() uses json.dumps() for these backends.
     return _json.dumps(inner)
 
 
-# ---------------------------------------------------------------------------
-# Kind registry — maps kind tag → (detect, unwrap, rebind)
-# ---------------------------------------------------------------------------
-# To add a new adapter type (e.g. "array", "range"):
-#   1. Write _detect_<kind>, _unwrap_<kind>, _rebind_<kind> functions above.
-#   2. Add one entry here.  Nothing else needs to change.
+def _rebind_json(marker: Dict[str, Any], connection_or_vendor: Any) -> Any:
+    return _adapt_json_with_connection(marker.get("value"), connection_or_vendor)
 
-_MISSING = object()  # sentinel for attribute probing
 
 _REGISTRY: Dict[str, tuple] = {
     "json": (_detect_json, _unwrap_json, _rebind_json),
 }
 
 
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
-
-
 def is_supported_adapter(value: Any) -> Optional[str]:
-    """
-    Return the adapter *kind* string (e.g. ``"json"``) if *value* is a
-    recognised database adapter object, otherwise return ``None``.
-
-    This is the single place where adapter detection logic lives.  Callers
-    should use this function rather than inspecting types directly.
-    """
+    """Return the adapter kind string if value is recognized, otherwise None."""
     for kind, (detect, _unwrap, _rebind) in _REGISTRY.items():
         try:
             if detect(value):
@@ -155,17 +92,7 @@ def is_supported_adapter(value: Any) -> Optional[str]:
 
 
 def unwrap_adapter(value: Any) -> Any:
-    """
-    If *value* is a recognised database adapter object, return a
-    JSON-serialisable marker dict that encodes the adapter kind and the
-    underlying Python value::
-
-        {"__orbit_adapter__": "json", "value": {...}}
-
-    If *value* is not a recognised adapter, or if unwrapping fails for any
-    reason, return *value* unchanged so the recorder's generic serialiser can
-    handle it (falling back to ``str()`` if necessary).
-    """
+    """Return an Orbit adapter marker for a recognized adapter, else value."""
     kind = is_supported_adapter(value)
     if kind is None:
         return value
@@ -175,76 +102,79 @@ def unwrap_adapter(value: Any) -> Any:
         result = unwrap_fn(value)
     except Exception:
         result = None
-
-    # If the per-kind unwrap couldn't produce a marker, return the original so
-    # the caller's fallback (str repr) is used instead of silently losing data.
     return result if result is not None else value
 
 
+def unwrap_adapters(value: Any) -> Any:
+    """Recursively unwrap supported adapter objects without mutating input."""
+    unwrapped = unwrap_adapter(value)
+    if unwrapped is not value:
+        return unwrapped
+    if isinstance(value, Mapping):
+        return {key: unwrap_adapters(child) for key, child in value.items()}
+    if isinstance(value, tuple):
+        return tuple(unwrap_adapters(child) for child in value)
+    if isinstance(value, list):
+        return [unwrap_adapters(child) for child in value]
+    return value
+
+
 def is_adapter_marker(value: Any) -> bool:
-    """Return True if *value* is an Orbit adapter marker dict."""
+    """Return True if value is an Orbit adapter marker dict."""
     return isinstance(value, dict) and isinstance(value.get(ADAPTER_MARKER_KEY), str)
 
 
-def rebind_adapter(marker: Dict[str, Any], vendor: str) -> Any:
-    """
-    Given an Orbit adapter *marker* dict and a Django database *vendor* string
-    (``"postgresql"``, ``"mysql"``, ``"sqlite"``), return a value that the
-    corresponding driver can bind in a fresh ``cursor.execute()`` call.
-
-    If the marker kind is unknown or rebinding fails, returns the raw ``value``
-    field from the marker (a plain Python object) so the caller can decide how
-    to handle it.
-    """
+def rebind_adapter(marker: Dict[str, Any], connection_or_vendor: Any) -> Any:
+    """Reconstruct a bindable value from an Orbit adapter marker."""
     kind = marker.get(ADAPTER_MARKER_KEY)
     if kind not in _REGISTRY:
-        # Future-proof: unknown kind, return the wrapped value as-is.
         return marker.get("value")
 
     _detect, _unwrap, rebind_fn = _REGISTRY[kind]
     try:
-        return rebind_fn(marker, vendor)
+        return rebind_fn(marker, connection_or_vendor)
     except Exception:
         return marker.get("value")
 
 
-def rebind_params(params: Any, vendor: str) -> Any:
-    """
-    Walk *params* (a list or tuple) and rebind any Orbit adapter markers using
-    ``rebind_adapter``.  Non-marker values pass through unchanged.
+def rebind_params(params: Any, connection_or_vendor: Any) -> Any:
+    """Recursively rebind Orbit adapter markers without mutating params."""
+    if is_adapter_marker(params):
+        return rebind_adapter(params, connection_or_vendor)
+    if isinstance(params, Mapping):
+        return {
+            key: rebind_params(value, connection_or_vendor)
+            for key, value in params.items()
+        }
+    if isinstance(params, tuple):
+        return tuple(rebind_params(value, connection_or_vendor) for value in params)
+    if isinstance(params, list):
+        return [rebind_params(value, connection_or_vendor) for value in params]
+    return params
 
-    Returns a new list; never mutates *params*.  Safe to call with ``None``.
-    """
-    if not isinstance(params, (list, tuple)):
-        return params
-    return [rebind_adapter(p, vendor) if is_adapter_marker(p) else p for p in params]
+
+def _looks_like_legacy_adapter_repr(value: Any) -> bool:
+    return isinstance(value, str) and value.startswith(("Jsonb(", "Json("))
+
+
+def _has_unbindable_param(value: Any, depth: int = 0) -> bool:
+    if is_adapter_marker(value):
+        return False
+    if _looks_like_legacy_adapter_repr(value):
+        return True
+    if isinstance(value, Mapping):
+        if depth > 0:
+            return True
+        return any(_has_unbindable_param(child, depth + 1) for child in value.values())
+    if isinstance(value, tuple):
+        return any(_has_unbindable_param(child, depth + 1) for child in value)
+    if isinstance(value, list):
+        if depth > 0 and not all(isinstance(child, (list, tuple)) for child in value):
+            return True
+        return any(_has_unbindable_param(child, depth + 1) for child in value)
+    return False
 
 
 def has_unbindable_param(params: Any) -> bool:
-    """
-    Return True if *params* contains a value that cannot be faithfully rebound
-    into a fresh ``cursor.execute()`` call, even after marker-tagged values have
-    been rebound by ``rebind_params``.
-
-    Unbindable shapes are legacy entries recorded before the adapter-unwrapping
-    fix was in place:
-
-    * A bare ``dict`` or ``list`` that is *not* an Orbit adapter marker — the
-      driver would raise "cannot adapt type 'dict'" when binding.
-    * A ``str`` that is a stringified adapter repr such as ``"Jsonb({...})"`` —
-      binding this raises "invalid input syntax for type json" against a JSON
-      column.
-
-    This check exists solely to produce a clear user-facing error instead of a
-    cryptic database exception.
-    """
-    if not isinstance(params, (list, tuple)):
-        return False
-    for p in params:
-        if is_adapter_marker(p):
-            continue  # handled by rebind_params
-        if isinstance(p, (dict, list)):
-            return True
-        if isinstance(p, str) and p.startswith(("Jsonb(", "Json(")):
-            return True
-    return False
+    """Return True when params contain legacy JSON values that cannot rebind."""
+    return _has_unbindable_param(params, depth=0)

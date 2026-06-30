@@ -11,6 +11,8 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock, patch
 
+from django.test import override_settings
+
 import pytest
 
 from orbit.adapters import (
@@ -21,6 +23,7 @@ from orbit.adapters import (
     rebind_adapter,
     rebind_params,
     unwrap_adapter,
+    unwrap_adapters,
 )
 
 pytestmark = pytest.mark.django_db
@@ -140,8 +143,7 @@ class TestIsAdapterMarker:
         assert is_adapter_marker({"value": 1}) is False
 
     def test_marker_key_must_be_string(self):
-        assert is_adapter_marker(
-            {ADAPTER_MARKER_KEY: True, "value": 1}) is False
+        assert is_adapter_marker({ADAPTER_MARKER_KEY: True, "value": 1}) is False
 
     def test_non_dict_is_not_marker(self):
         assert is_adapter_marker("hello") is False
@@ -348,8 +350,7 @@ class TestExplainQuery:
         bare dicts, which cannot be rebound.  Expect a clear error message.
         """
         sql = "INSERT INTO events (payload) VALUES (%s)"
-        result = self._run(
-            sql, params=[{"level": "INFO"}], vendor="postgresql")
+        result = self._run(sql, params=[{"level": "INFO"}], vendor="postgresql")
         assert result["supported"] is True
         assert "plan" not in result
         assert "error" in result
@@ -397,10 +398,93 @@ class TestExplainQuery:
             patch("orbit.explain.transaction") as mock_tx,
         ):
             mock_tx.atomic.return_value.__enter__ = lambda s: s
-            mock_tx.atomic.return_value.__exit__ = MagicMock(
-                return_value=False)
+            mock_tx.atomic.return_value.__exit__ = MagicMock(return_value=False)
             mock_tx.savepoint.return_value = "sp1"
             mock_tx.savepoint_rollback = MagicMock()
             result = explain_query(sql, analyze=True, using="postgresql")
 
         assert result.get("analyze") is True
+
+
+class TestRecursiveAdapterHandling:
+    def test_unwraps_named_and_many_params(self):
+        params = {
+            "payload": Jsonb({"password": "secret", "visible": "ok"}),
+            "rows": [(Json({"token": "hidden"}), 1)],
+        }
+
+        result = unwrap_adapters(params)
+
+        assert result["payload"] == _json_marker(
+            {"password": "secret", "visible": "ok"}
+        )
+        assert result["rows"][0][0] == _json_marker({"token": "hidden"})
+
+    def test_rebinds_named_params(self):
+        params = {"payload": _json_marker({"a": 1}), "id": 5}
+
+        result = rebind_params(params, "sqlite")
+
+        assert result == {"payload": json.dumps({"a": 1}), "id": 5}
+
+    def test_rebinds_many_param_rows(self):
+        params = [(_json_marker({"a": 1}), 1), (_json_marker({"b": 2}), 2)]
+
+        result = rebind_params(params, "sqlite")
+
+        assert result == [(json.dumps({"a": 1}), 1), (json.dumps({"b": 2}), 2)]
+
+
+@pytest.mark.django_db
+@override_settings(ORBIT_CONFIG={"MASK_ALL_PAYLOADS": True})
+def test_save_queries_to_orbit_masks_json_adapter_marker_payload(db):
+    from orbit.models import OrbitEntry
+    from orbit.recorders import OrbitQueryWrapper, save_queries_to_orbit
+    from orbit.utils import MASK_PLACEHOLDER
+
+    serialized = OrbitQueryWrapper()._serialize_params(
+        [Jsonb({"password": "secret", "visible": "ok"})]
+    )
+
+    save_queries_to_orbit(
+        [{"sql": "INSERT INTO events (payload) VALUES (%s)", "params": serialized}],
+        family_hash="fam-mask",
+    )
+
+    entry = OrbitEntry.objects.get(family_hash="fam-mask")
+    marker = entry.payload["params"][0]
+    assert marker["value"]["password"] == MASK_PLACEHOLDER
+    assert marker["value"]["visible"] == "ok"
+
+
+def test_analyze_is_downgraded_for_data_modifying_cte():
+    from orbit.explain import explain_query
+
+    conn, _cursor = _mock_connection(vendor="postgresql")
+    sql = "WITH deleted AS (DELETE FROM logs RETURNING *) SELECT * FROM deleted"
+
+    with patch("orbit.explain.connections", {"postgresql": conn}):
+        result = explain_query(sql, analyze=True, using="postgresql")
+
+    assert result["analyze"] is False
+    executed_sql = conn.cursor.return_value.execute.call_args[0][0]
+    assert "ANALYZE" not in executed_sql
+
+
+def test_postgresql_analyze_sets_transaction_read_only():
+    from orbit.explain import explain_query
+
+    conn, cursor = _mock_connection(vendor="postgresql")
+    with (
+        patch("orbit.explain.connections", {"postgresql": conn}),
+        patch("orbit.explain.transaction") as mock_tx,
+    ):
+        mock_tx.atomic.return_value.__enter__ = lambda s: s
+        mock_tx.atomic.return_value.__exit__ = MagicMock(return_value=False)
+        mock_tx.savepoint.return_value = "sp1"
+        mock_tx.savepoint_rollback = MagicMock()
+        result = explain_query("SELECT 1", analyze=True, using="postgresql")
+
+    assert result["analyze"] is True
+    assert cursor.execute.call_args_list[0].args[0] == "SET TRANSACTION READ ONLY"
+    assert cursor.execute.call_args_list[1].args[0].startswith("EXPLAIN (ANALYZE")

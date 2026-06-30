@@ -73,7 +73,9 @@ class OrbitEntryManager(models.Manager):
         fallback. Portable (no DISTINCT ON / window-function dependency).
         """
         latest = {}
-        base = self.filter(type=OrbitEntry.TYPE_EXCEPTION).annotate(group_key=self._exception_group_key())
+        base = self.filter(type=OrbitEntry.TYPE_EXCEPTION).annotate(
+            group_key=self._exception_group_key()
+        )
         for key in group_keys:
             entry = base.filter(group_key=key).order_by("-created_at").first()
             if entry is not None:
@@ -306,6 +308,22 @@ class OrbitEntry(models.Model):
             models.Index(fields=["type", "fingerprint", "-created_at"]),
         ]
 
+    @staticmethod
+    def prepare_payload_for_storage(payload):
+        """Apply storage-time payload protections used by save() and bulk_create paths."""
+        if not payload:
+            return payload
+        try:
+            from orbit.conf import get_config
+
+            if get_config().get("MASK_ALL_PAYLOADS", False):
+                from orbit.utils import mask_sensitive_data
+
+                return mask_sensitive_data(payload)
+        except Exception:
+            pass
+        return payload
+
     def save(self, *args, **kwargs):
         # On insert only, and never allowed to break recording.
         if self._state.adding:
@@ -314,10 +332,7 @@ class OrbitEntry(models.Model):
 
                 config = get_config()
                 # B5: optional defense-in-depth masking of the whole payload.
-                if self.payload and config.get("MASK_ALL_PAYLOADS", False):
-                    from orbit.utils import mask_sensitive_data
-
-                    self.payload = mask_sensitive_data(self.payload)
+                self.payload = self.prepare_payload_for_storage(self.payload)
 
                 # B1: auto-tagging via a user-supplied callback (Telescope-style).
                 self._apply_tag_callback(config)
@@ -475,7 +490,7 @@ class OrbitEntry(models.Model):
             result = payload.get("result", "?")
             icon = "✓" if result == "granted" else "✗"
             return f"{icon} {permission} → {user}"
-        
+
         elif self.type == self.TYPE_TRANSACTION:
             status = payload.get("status", "?")
             using = payload.get("using", "default")

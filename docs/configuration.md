@@ -249,8 +249,9 @@ ORBIT_CONFIG = {
 - **Type**: `bool`
 - **Default**: `False`
 - **Description**: Use `EXPLAIN ANALYZE`, which **executes** the statement to gather real
-  timings. Only ever applied to read-only `SELECT`s and wrapped in a rolled-back savepoint.
-  Leave off unless you understand the implications.
+  timings. Only applied to plain `SELECT` statements, wrapped in a rollback scope, and
+  guarded with a PostgreSQL read-only transaction when available. Leave off unless you
+  understand the implications.
 
 #### `MAX_BODY_SIZE`
 - **Type**: `int`
