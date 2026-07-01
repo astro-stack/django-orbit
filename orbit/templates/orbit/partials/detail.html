@@ -53,6 +53,16 @@
             <h3 class="text-lg font-medium text-orbit-text-primary capitalize">{{ entry.type }}</h3>
             <p class="text-sm text-orbit-text-muted font-mono">{{ entry.id }}</p>
         </div>
+        {% if can_copy_agent_prompt %}
+        <button
+           type="button"
+           data-agent-prompt-url="{% url 'orbit:agent_prompt' entry.id %}"
+           onclick="copyOrbitAgentPrompt(this)"
+           class="p-2 hover:bg-orbit-bg-tertiary rounded-lg transition-colors text-orbit-text-secondary hover:text-orbit-text-primary group"
+           title="Copy agent prompt">
+            <i data-lucide="clipboard-copy" class="w-5 h-5 group-hover:text-orbit-accent-cyan"></i>
+        </button>
+        {% endif %}
         <a href="{% url 'orbit:export' entry.id %}" 
            class="p-2 hover:bg-orbit-bg-tertiary rounded-lg transition-colors text-orbit-text-secondary hover:text-orbit-text-primary group" 
            title="Export JSON">
@@ -493,4 +503,26 @@
             el.innerHTML = syntaxHighlight(el.textContent);
         }
     })();
+
+    async function copyOrbitAgentPrompt(button) {
+        const url = button.getAttribute('data-agent-prompt-url');
+        const icon = button.innerHTML;
+        try {
+            const response = await fetch(url, {headers: {'Accept': 'text/plain'}});
+            const text = await response.text();
+            if (!response.ok) {
+                throw new Error(text || 'Could not build prompt');
+            }
+            await navigator.clipboard.writeText(text);
+            button.innerHTML = '<i data-lucide="check" class="w-5 h-5 text-emerald-400"></i>';
+        } catch (error) {
+            button.innerHTML = '<i data-lucide="alert-triangle" class="w-5 h-5 text-rose-400"></i>';
+        } finally {
+            lucide.createIcons();
+            setTimeout(() => {
+                button.innerHTML = icon;
+                lucide.createIcons();
+            }, 1400);
+        }
+    }
 </script>

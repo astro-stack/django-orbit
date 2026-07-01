@@ -94,3 +94,50 @@ def test_health_page_shows_agent_safety_status(client):
     assert "Agent & MCP Safety" in html
     assert "metadata only" in html
     assert "not captured" in html
+
+
+@pytest.mark.django_db
+def test_detail_panel_exposes_copy_agent_prompt_button(client):
+    entry = OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_REQUEST,
+        family_hash="fam-agent-prompt",
+        payload={"method": "GET", "path": "/checkout/", "status_code": 500},
+    )
+
+    html = client.get(reverse("orbit:detail", args=[entry.id])).content.decode()
+
+    assert "Copy agent prompt" in html
+    assert reverse("orbit:agent_prompt", args=[entry.id]) in html
+
+
+@pytest.mark.django_db
+def test_agent_prompt_endpoint_returns_prompt_for_family(client):
+    entry = OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_REQUEST,
+        family_hash="fam-agent-prompt",
+        payload={"method": "GET", "path": "/checkout/", "status_code": 500},
+    )
+    OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_EXCEPTION,
+        family_hash="fam-agent-prompt",
+        fingerprint="fp-agent-prompt",
+        payload={"exception_type": "ValueError", "message": "bad checkout"},
+    )
+
+    response = client.get(reverse("orbit:agent_prompt", args=[entry.id]))
+
+    assert response.status_code == 200
+    assert response["Content-Type"].startswith("text/plain")
+    content = response.content.decode()
+    assert "You are debugging a Django issue" in content
+    assert "fam-agent-prompt" in content
+
+
+@pytest.mark.django_db
+def test_agent_prompt_endpoint_rejects_unlinked_entries(client):
+    entry = OrbitEntry.objects.create(type=OrbitEntry.TYPE_LOG, payload={"message": "orphan"})
+
+    response = client.get(reverse("orbit:agent_prompt", args=[entry.id]))
+
+    assert response.status_code == 400
+    assert "family_hash" in response.content.decode()

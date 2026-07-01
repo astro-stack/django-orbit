@@ -23,6 +23,7 @@ __all__ = [
     "OrbitStatsSectionView",
     "OrbitExplainView",
     "OrbitExportView",
+    "OrbitAgentPromptView",
     "OrbitHealthView",
 ]
 
@@ -544,6 +545,10 @@ class OrbitDetailPartial(OrbitProtectedView, View):
                 "duplicate_entries": duplicate_entries,
                 "duplicate_query_stats": duplicate_query_stats,
                 "waterfall": waterfall,
+                "can_copy_agent_prompt": bool(
+                    entry.family_hash
+                    or (entry.type == OrbitEntry.TYPE_EXCEPTION and entry.fingerprint)
+                ),
             },
         )
 
@@ -586,6 +591,36 @@ class OrbitDetailPartial(OrbitProtectedView, View):
         if not spans:
             return None
         return {"total_ms": round(total, 1), "spans": spans, "count": len(spans)}
+
+
+class OrbitAgentPromptView(OrbitProtectedView, View):
+    """
+    Return a copy/paste coding-agent prompt for an entry's incident context.
+    """
+
+    def get(self, request: HttpRequest, entry_id: str) -> HttpResponse:
+        entry = get_object_or_404(OrbitEntry, id=entry_id)
+        if entry.family_hash:
+            source_type = "family_hash"
+            source_value = entry.family_hash
+        elif entry.type == OrbitEntry.TYPE_EXCEPTION and entry.fingerprint:
+            source_type = "fingerprint"
+            source_value = entry.fingerprint
+        else:
+            return HttpResponse(
+                "This entry does not have a family_hash or exception fingerprint for an agent prompt.",
+                status=400,
+                content_type="text/plain; charset=utf-8",
+            )
+
+        from orbit.agentic import create_incident_bundle
+
+        prompt = create_incident_bundle(source_type, source_value, format="prompt")
+        if isinstance(prompt, dict) and prompt.get("error"):
+            return HttpResponse(
+                prompt["error"], status=404, content_type="text/plain; charset=utf-8"
+            )
+        return HttpResponse(prompt, content_type="text/plain; charset=utf-8")
 
 
 class OrbitClearView(OrbitProtectedView, View):

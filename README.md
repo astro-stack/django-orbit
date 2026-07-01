@@ -70,6 +70,7 @@ Orbit v0.12.0 makes Orbit more useful for AI-native Django apps and safer to rel
 
 - AI/LLM watcher records provider, model, token usage, latency, status and tool-call names;
 - prompts, completions and tool-call arguments are not captured by default;
+- entry details can copy a coding-agent prompt from the current request family or exception fingerprint;
 - release verification now checks version consistency, changelog, package build, Twine metadata and strict docs;
 - PRs include a release/readiness checklist for tests, docs and safety review.
 
