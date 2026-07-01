@@ -122,6 +122,10 @@ class OrbitEntryManager(models.Manager):
         """Get all gate/permission entries."""
         return self.filter(type=OrbitEntry.TYPE_GATE)
 
+    def llm_calls(self):
+        """Get all AI/LLM call entries."""
+        return self.filter(type=OrbitEntry.TYPE_LLM)
+
     def slow_queries(self):
         """Get all slow queries (marked in payload)."""
         return self.filter(type=OrbitEntry.TYPE_QUERY, payload__is_slow=True)
@@ -172,6 +176,7 @@ class OrbitEntry(models.Model):
     TYPE_GATE = "gate"
     TYPE_TRANSACTION = "transaction"
     TYPE_STORAGE = "storage"
+    TYPE_LLM = "llm"
 
     TYPE_CHOICES = [
         (TYPE_REQUEST, "HTTP Request"),
@@ -190,6 +195,7 @@ class OrbitEntry(models.Model):
         (TYPE_GATE, "Gate/Policy"),
         (TYPE_TRANSACTION, "Transaction"),
         (TYPE_STORAGE, "Storage"),
+        (TYPE_LLM, "AI/LLM Call"),
     ]
 
     # Type to icon mapping for UI
@@ -210,6 +216,7 @@ class OrbitEntry(models.Model):
         TYPE_GATE: "shield",
         TYPE_TRANSACTION: "layers",
         TYPE_STORAGE: "archive",
+        TYPE_LLM: "bot",
     }
 
     # Type to color mapping for UI
@@ -230,6 +237,7 @@ class OrbitEntry(models.Model):
         TYPE_GATE: "indigo",
         TYPE_TRANSACTION: "teal",
         TYPE_STORAGE: "sky",
+        TYPE_LLM: "purple",
     }
 
     # Primary key

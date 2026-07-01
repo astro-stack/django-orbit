@@ -6,7 +6,7 @@ without touching it. Unlike Django Debug Toolbar, Orbit lives in its own
 isolated URL and exposes structured evidence through a dashboard and MCP tools.
 """
 
-__version__ = "0.11.0"
+__version__ = "0.12.0"
 __author__ = "Django Orbit Contributors"
 
 default_app_config = "orbit.apps.OrbitConfig"

@@ -63,6 +63,22 @@ jobs:
       - name: Run tests
         run: ${{ matrix.test-command }}
 
+  release-metadata:
+    name: Release metadata
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify release metadata
+        run: python scripts/verify_release.py --metadata-only
+
   package:
     name: Package build
     runs-on: ubuntu-latest

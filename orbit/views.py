@@ -23,6 +23,7 @@ __all__ = [
     "OrbitStatsSectionView",
     "OrbitExplainView",
     "OrbitExportView",
+    "OrbitAgentPromptView",
     "OrbitHealthView",
 ]
 
@@ -66,6 +67,7 @@ NAV_GROUPS = [
         "open": False,
         "items": [
             (OrbitEntry.TYPE_MODEL, "Models"),
+            (OrbitEntry.TYPE_LLM, "AI/LLM"),
             (OrbitEntry.TYPE_JOB, "Jobs"),
             (OrbitEntry.TYPE_COMMAND, "Commands"),
             (OrbitEntry.TYPE_SIGNAL, "Signals"),
@@ -153,6 +155,7 @@ class OrbitDashboardView(OrbitProtectedView, TemplateView):
             # Phase 4 types (v0.6.0)
             "transaction": OrbitEntry.objects.filter(type=OrbitEntry.TYPE_TRANSACTION).count(),
             "storage": OrbitEntry.objects.filter(type=OrbitEntry.TYPE_STORAGE).count(),
+            "llm": OrbitEntry.objects.llm_calls().count(),
         }
 
         # Get error and warning counts for alerts
@@ -542,6 +545,10 @@ class OrbitDetailPartial(OrbitProtectedView, View):
                 "duplicate_entries": duplicate_entries,
                 "duplicate_query_stats": duplicate_query_stats,
                 "waterfall": waterfall,
+                "can_copy_agent_prompt": bool(
+                    entry.family_hash
+                    or (entry.type == OrbitEntry.TYPE_EXCEPTION and entry.fingerprint)
+                ),
             },
         )
 
@@ -584,6 +591,36 @@ class OrbitDetailPartial(OrbitProtectedView, View):
         if not spans:
             return None
         return {"total_ms": round(total, 1), "spans": spans, "count": len(spans)}
+
+
+class OrbitAgentPromptView(OrbitProtectedView, View):
+    """
+    Return a copy/paste coding-agent prompt for an entry's incident context.
+    """
+
+    def get(self, request: HttpRequest, entry_id: str) -> HttpResponse:
+        entry = get_object_or_404(OrbitEntry, id=entry_id)
+        if entry.family_hash:
+            source_type = "family_hash"
+            source_value = entry.family_hash
+        elif entry.type == OrbitEntry.TYPE_EXCEPTION and entry.fingerprint:
+            source_type = "fingerprint"
+            source_value = entry.fingerprint
+        else:
+            return HttpResponse(
+                "This entry does not have a family_hash or exception fingerprint for an agent prompt.",
+                status=400,
+                content_type="text/plain; charset=utf-8",
+            )
+
+        from orbit.agentic import create_incident_bundle
+
+        prompt = create_incident_bundle(source_type, source_value, format="prompt")
+        if isinstance(prompt, dict) and prompt.get("error"):
+            return HttpResponse(
+                prompt["error"], status=404, content_type="text/plain; charset=utf-8"
+            )
+        return HttpResponse(prompt, content_type="text/plain; charset=utf-8")
 
 
 class OrbitClearView(OrbitProtectedView, View):
@@ -889,6 +926,21 @@ class OrbitHealthView(OrbitProtectedView, TemplateView):
                 'installed_count': 0,
                 'failed_count': 0,
             }
+
+        from orbit.conf import get_config
+
+        config = get_config()
+        context["safety_status"] = {
+            "mcp_enabled": bool(config.get("MCP_ENABLED", True)),
+            "mcp_include_payloads": bool(config.get("MCP_INCLUDE_PAYLOADS", True)),
+            "mcp_max_limit": config.get("MCP_MAX_LIMIT", 100),
+            "mcp_max_payload_chars": config.get("MCP_MAX_PAYLOAD_CHARS", 12000),
+            "record_llm": bool(config.get("RECORD_LLM", True)),
+            "llm_capture_content": bool(config.get("LLM_CAPTURE_CONTENT", False)),
+            "llm_capture_tool_call_arguments": bool(
+                config.get("LLM_CAPTURE_TOOL_CALL_ARGUMENTS", False)
+            ),
+        }
         
         # Add URLs
         from django.urls import reverse

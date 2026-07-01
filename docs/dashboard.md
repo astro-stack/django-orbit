@@ -36,6 +36,7 @@ turns red when non-zero.
 | Type | Description |
 |------|-------------|
 | **Models** | ORM signals (post_save, post_delete) |
+| **AI/LLM** | Provider/model/token metadata, latency, errors and tool-call names |
 | **Jobs** | Background jobs (Celery, Django-Q, RQ, APScheduler) |
 | **Commands** | Management command executions |
 | **Signals** | Django signals |
@@ -67,6 +68,10 @@ analytics, use the **Full analytics** link or the **Stats** button to open the
 
 Open any entry and use the **download** link in the detail panel header to export it as
 JSON — handy for sharing a specific request or exception.
+Entries with a `family_hash` or exception fingerprint also show a **copy agent prompt**
+action. It generates a safe prompt from `create_incident_bundle(..., format="prompt")`
+so you can paste the current runtime context into Codex, Claude, Cursor or another
+coding agent even when MCP is not connected.
 
 ## Detailed Views
 

@@ -12,13 +12,14 @@ Welcome to the Django Orbit documentation. This guide covers installation, confi
 4. [Running the Demo](running-demo.md)
 5. [Dashboard Guide](dashboard.md)
 6. [Stats Dashboard](stats.md)
-7. [MCP Server](mcp.md) ✨ **New in v0.7.0**
-8. [Storage Backends](storage-backends.md) ✨ **New in v0.8.0**
-9. [Agent-Native Roadmap](roadmap.md)
-10. [API Reference](api.md)
-11. [Customization](customization.md)
-12. [Security](security.md)
-13. [Troubleshooting](troubleshooting.md)
+7. [AI/LLM Watcher](llm-watcher.md) - New in v0.12.0
+8. [MCP Server](mcp.md)
+9. [Storage Backends](storage-backends.md)
+10. [Agent-Native Roadmap](roadmap.md)
+11. [API Reference](api.md)
+12. [Customization](customization.md)
+13. [Security](security.md)
+14. [Troubleshooting](troubleshooting.md)
 
 ## What is Django Orbit?
 
@@ -44,6 +45,13 @@ Django Orbit is an AI agent-native observability and debugging tool for Django a
 | Modern UI | Basic | Focused dashboard |
 | Agent-native MCP tools | No | Yes |
 | Ticket-to-fix handoff bundles | No | Yes |
+
+### What's New in v0.12.0
+
+- **AI/LLM watcher**: Orbit records provider, model, operation, latency, status, token usage and tool-call names for supported OpenAI and Anthropic SDK calls.
+- **Metadata-first defaults**: prompts, completions and tool-call arguments are not captured unless explicitly enabled.
+- **Release safeguards**: local release verification checks version consistency, changelog, package build, Twine metadata and strict docs.
+- **Production safety guidance**: docs now spell out conservative MCP and LLM capture settings for shared environments.
 
 ### What's New in v0.11.0
 

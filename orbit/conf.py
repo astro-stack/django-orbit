@@ -19,9 +19,23 @@ DEFAULTS = {
     # (case-insensitive) has its value redacted. Used to strengthen request masking and,
     # importantly, to scrub data before it is ever sent to an AI provider (Track C).
     "MASK_KEYS": [
-        "password", "passwd", "secret", "token", "api_key", "apikey", "access_key",
-        "authorization", "auth", "cookie", "csrf", "credential", "private_key",
-        "client_secret", "session", "ssn", "card_number",
+        "password",
+        "passwd",
+        "secret",
+        "token",
+        "api_key",
+        "apikey",
+        "access_key",
+        "authorization",
+        "auth",
+        "cookie",
+        "csrf",
+        "credential",
+        "private_key",
+        "client_secret",
+        "session",
+        "ssn",
+        "card_number",
     ],
     # When True, every entry's payload is recursively masked at write time (defense in
     # depth across all watchers). Off by default to avoid over-redaction; request
@@ -62,6 +76,13 @@ DEFAULTS = {
     # Phase 4 watchers (v0.6.0)
     "RECORD_TRANSACTIONS": True,
     "RECORD_STORAGE": True,
+    # AI/LLM watcher (v0.12.0+). Metadata-first by default: provider/model/tokens,
+    # latency, status and tool-call names are recorded, but prompts/responses and
+    # tool-call arguments are not captured unless explicitly enabled.
+    "RECORD_LLM": True,
+    "LLM_CAPTURE_CONTENT": False,
+    "LLM_CAPTURE_TOOL_CALL_ARGUMENTS": False,
+    "LLM_MAX_CONTENT_CHARS": 2000,
     # Plug-and-play: if True, watchers fail silently and don't break the app
     "WATCHER_FAIL_SILENTLY": True,
     # Command watcher settings
@@ -90,7 +111,9 @@ def get_config():
     Returns:
         dict: Complete configuration dictionary
     """
-    user_config = getattr(settings, "ORBIT", {}) or getattr(settings, "ORBIT_CONFIG", {})
+    user_config = getattr(settings, "ORBIT", {}) or getattr(
+        settings, "ORBIT_CONFIG", {}
+    )
     config = DEFAULTS.copy()
     config.update(user_config)
     return config

@@ -129,6 +129,22 @@ All MCP entry output goes through Orbit's agent-safe serializer. It masks sensit
 
 Residual risk: MCP gives a local assistant read access to Orbit telemetry. Masking and truncation reduce raw secret exposure, but telemetry can still reveal sensitive operational context such as endpoint names, SQL shape, exception messages, user identifiers or business events. In shared, staging or sensitive environments, prefer `MCP_ENABLED: False`; if agents only need metadata, set `MCP_INCLUDE_PAYLOADS: False`.
 
+### What an Agent Can See
+
+With default MCP settings, an assistant can read Orbit entries through tool responses: common fields such as type, timestamps, duration, family hash, tags and masked payload data. For LLM entries, the default payload contains provider/model/token metadata and tool-call names, not prompts or completions.
+
+An agent does not get direct database access, shell access or code-editing permission through Orbit MCP. It only receives the data returned by Orbit's read-only tools. If `MCP_INCLUDE_PAYLOADS` is `False`, entry payloads are omitted and the assistant sees metadata-only records.
+
+Use this sequence before sharing a sensitive session:
+
+```text
+audit_mcp_exposure()
+find_sensitive_payload_risks(limit=20)
+list_agent_safe_fields("request")
+list_agent_safe_fields("llm")
+preview_masked_entry("<entry-id>")
+```
+
 ## Example Prompts
 
 Once connected, ask your AI assistant questions like:

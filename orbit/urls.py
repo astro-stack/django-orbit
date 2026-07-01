@@ -9,6 +9,7 @@ from django.urls import path
 from orbit.views import (
     OrbitClearView,
     OrbitDashboardView,
+    OrbitAgentPromptView,
     OrbitDetailPartial,
     OrbitExportView,
     OrbitFeedPartial,
@@ -26,6 +27,7 @@ urlpatterns = [
     # HTMX partials
     path("feed/", OrbitFeedPartial.as_view(), name="feed"),
     path("detail/<uuid:entry_id>/", OrbitDetailPartial.as_view(), name="detail"),
+    path("agent-prompt/<uuid:entry_id>/", OrbitAgentPromptView.as_view(), name="agent_prompt"),
     path("explain/<uuid:entry_id>/", OrbitExplainView.as_view(), name="explain"),
     # Actions
     path("clear/", OrbitClearView.as_view(), name="clear"),

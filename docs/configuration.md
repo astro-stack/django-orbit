@@ -36,6 +36,12 @@ ORBIT_CONFIG = {
     # Recording Settings - Phase 4 (v0.6.0)
     'RECORD_TRANSACTIONS': True,  # Database transaction blocks
     'RECORD_STORAGE': True,       # File storage operations
+
+    # AI/LLM Watcher (v0.12.0+)
+    'RECORD_LLM': True,
+    'LLM_CAPTURE_CONTENT': False,
+    'LLM_CAPTURE_TOOL_CALL_ARGUMENTS': False,
+    'LLM_MAX_CONTENT_CHARS': 2000,
     
     # MCP Server (v0.7.0+)
     'MCP_ENABLED': True,
@@ -160,6 +166,19 @@ ORBIT_CONFIG = {
 |--------|---------|-------------|
 | `RECORD_TRANSACTIONS` | `True` | Database transaction blocks (`atomic()`) |
 | `RECORD_STORAGE` | `True` | File storage operations (save, open, delete, exists) |
+
+#### AI/LLM Watcher (v0.12.0+)
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `RECORD_LLM` | `True` | AI/LLM provider calls from supported SDKs |
+| `LLM_CAPTURE_CONTENT` | `False` | Capture prompts/messages/inputs and response text |
+| `LLM_CAPTURE_TOOL_CALL_ARGUMENTS` | `False` | Capture tool-call arguments after masking |
+| `LLM_MAX_CONTENT_CHARS` | `2000` | Maximum serialized content size before truncation metadata |
+
+The LLM watcher is metadata-first. By default it records provider, operation,
+model, status, latency, token usage and tool-call names/ids, but not prompts,
+responses or tool-call arguments. See [AI/LLM Watcher](llm-watcher.md).
 
 ### Performance Settings
 

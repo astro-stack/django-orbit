@@ -60,19 +60,20 @@ Inspired by Laravel Telescope, Spatie Ray and Django Debug Toolbar.
 | Permissions | Authorization checks, granted/denied |
 | Transactions | `atomic()` commits and rollbacks |
 | Storage | File save/open/delete operations |
+| AI/LLM | Provider/model/token metadata, latency, errors and tool-call names |
 
 All events can be linked by `family_hash`, which lets you inspect every query, log and exception associated with one request or operation.
 
-## What's New in v0.11.0
+## What's New in v0.12.0
 
-Orbit v0.11.0 expands the agent-native debugging workflow from single requests into daily and release-oriented triage:
+Orbit v0.12.0 makes Orbit more useful for AI-native Django apps and safer to release:
 
-- `investigate_endpoint` summarizes endpoint health across recent traffic;
-- `daily_health_brief` produces local morning triage for exceptions, failed jobs, slow queries, N+1 candidates and warning logs;
-- `generate_release_risk_brief` flags blocker and caution signals before deploys;
-- all new workflow tools are exposed through MCP and honor `MCP_ENABLED: False`.
+- AI/LLM watcher records provider, model, token usage, latency, status and tool-call names;
+- prompts, completions and tool-call arguments are not captured by default;
+- entry details can copy a coding-agent prompt from the current request family or exception fingerprint;
+- release verification now checks version consistency, changelog, package build, Twine metadata and strict docs;
+- PRs include a release/readiness checklist for tests, docs and safety review.
 
-The 0.11 line keeps these capabilities local/open-source. Cloud monetization should focus on persistence, collaboration, alerts, shared bundles, team policies and scheduled workflows.
 ## Installation
 
 ```bash
@@ -243,6 +244,11 @@ ORBIT_CONFIG = {
     "MCP_INCLUDE_PAYLOADS": True,
     "MCP_MAX_LIMIT": 100,
     "MCP_MAX_PAYLOAD_CHARS": 12000,
+
+    # AI/LLM watcher. Metadata-only by default.
+    "RECORD_LLM": True,
+    "LLM_CAPTURE_CONTENT": False,
+    "LLM_CAPTURE_TOOL_CALL_ARGUMENTS": False,
 }
 ```
 
@@ -315,12 +321,25 @@ python manage.py migrate orbit --database=orbit
 
 Orbit is powerful because it records application behavior. Treat access to `/orbit/` and MCP as developer/operator access.
 
+### Production Safety Checklist
+
+- Protect `/orbit/` with `AUTH_CHECK`.
+- Keep `WATCHER_FAIL_SILENTLY: True` so Orbit cannot break the host app.
+- Disable MCP with `MCP_ENABLED: False` unless a local assistant explicitly needs access.
+- Use `MCP_INCLUDE_PAYLOADS: False` for metadata-only agent access.
+- Keep `LLM_CAPTURE_CONTENT: False` and `LLM_CAPTURE_TOOL_CALL_ARGUMENTS: False` outside local debugging.
+- Prefer a dedicated storage backend/database for heavier or shared environments.
+- Keep `IGNORE_PATHS` aligned with internal health, metrics and static paths.
+
 Recommended defaults for shared environments:
 
 ```python
 ORBIT_CONFIG = {
     "AUTH_CHECK": lambda request: request.user.is_staff,
     "MCP_ENABLED": False,  # enable only where local agent access is intended
+    "MCP_INCLUDE_PAYLOADS": False,
+    "LLM_CAPTURE_CONTENT": False,
+    "LLM_CAPTURE_TOOL_CALL_ARGUMENTS": False,
     "WATCHER_FAIL_SILENTLY": True,
 }
 ```
@@ -329,10 +348,10 @@ Orbit masks common sensitive keys in request data and agent-facing output, but y
 
 ## Roadmap
 
-The v0.10.0 base makes Orbit agent-native. Next tracks:
+The current base makes Orbit agent-native. Next tracks:
 
 - OpenTelemetry bridge for interoperability with wider observability tooling;
-- AI/LLM watcher for provider/model/token/tool-call metadata;
+- deeper AI/LLM integrations for LangChain, LiteLLM and raw provider HTTP calls;
 - dashboard affordances for copying incident bundles;
 - GitHub/Jira ticket handoff flows;
 - deeper query and regression analysis.
