@@ -151,6 +151,7 @@ example_project/db.sqlite3
 test_db.sqlite3
 orbit_test_storage/
 django_orbit-*/
+output/video/
 PLANNING.md
 
 # claude — ignore machine-local settings and transient workspace; track agents

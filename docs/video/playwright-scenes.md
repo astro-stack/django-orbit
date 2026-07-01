@@ -17,12 +17,24 @@ Suggested script structure:
 
 ```text
 scripts/video/
-  scene_install_smoke.py
-  scene_debug_500.py
-  scene_n_plus_one.py
-  scene_llm_metadata.py
-  scene_release_readiness.py
+  record-orbit-scenes.cjs
+  run-local-recording.ps1
 ```
+
+Run one local scene:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/video/run-local-recording.ps1 -Scene dashboard-smoke
+```
+
+Run all browser scenes:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/video/run-local-recording.ps1 -Scene all
+```
+
+Raw Playwright videos are written to `output/video/raw/`. MP4 files are written to
+`output/video/mp4/`. Both directories are ignored by Git.
 
 ## Scene: Dashboard Smoke
 
@@ -150,4 +162,3 @@ Recording notes:
 
 - This is a credibility video, not a debugging video.
 - Trim the long test output unless the goal is to show the whole command.
-
