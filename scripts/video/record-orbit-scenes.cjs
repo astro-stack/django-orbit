@@ -4,9 +4,11 @@ Record repeatable Django Orbit product-demo scenes with Playwright.
 
 Usage:
   node scripts/video/record-orbit-scenes.cjs --scene dashboard-smoke
+  node scripts/video/record-orbit-scenes.cjs --scene dashboard-tour
   node scripts/video/record-orbit-scenes.cjs --scene debug-500
   node scripts/video/record-orbit-scenes.cjs --scene n-plus-one
   node scripts/video/record-orbit-scenes.cjs --scene health-safety
+  node scripts/video/record-orbit-scenes.cjs --scene llm-metadata
   node scripts/video/record-orbit-scenes.cjs --scene all
 
 Set ORBIT_VIDEO_BASE_URL to target a different server.
@@ -20,6 +22,7 @@ const ROOT = path.resolve(__dirname, "..", "..");
 const RAW_DIR = path.join(ROOT, "output", "video", "raw");
 const BASE_URL = process.env.ORBIT_VIDEO_BASE_URL || "http://127.0.0.1:8000";
 const VIEWPORT = { width: 1440, height: 900 };
+const DEFAULT_CALLOUT_MS = 3200;
 
 const args = process.argv.slice(2);
 const sceneArg = valueFor("--scene") || "all";
@@ -62,16 +65,16 @@ async function installVisualHelpers(page) {
       }
       .orbit-video-callout {
         position: fixed;
-        left: 28px;
-        bottom: 28px;
+        left: 36px;
+        bottom: 36px;
         z-index: 999998;
-        max-width: 520px;
-        padding: 14px 18px;
-        border-radius: 10px;
+        max-width: 720px;
+        padding: 18px 22px;
+        border-radius: 12px;
         border: 1px solid rgba(34, 211, 238, 0.5);
         background: rgba(2, 6, 23, 0.88);
         color: #e2e8f0;
-        font: 600 18px/1.35 Inter, system-ui, sans-serif;
+        font: 650 22px/1.38 Inter, system-ui, sans-serif;
         box-shadow: 0 20px 50px rgba(0,0,0,0.35);
         backdrop-filter: blur(10px);
       }
@@ -86,7 +89,7 @@ async function installVisualHelpers(page) {
   });
 }
 
-async function callout(page, text, ms = 1600) {
+async function callout(page, text, ms = DEFAULT_CALLOUT_MS) {
   await page.evaluate((message) => {
     let el = document.querySelector(".orbit-video-callout");
     if (!el) {
@@ -136,21 +139,42 @@ async function openOrbit(page) {
     await highlightClick(page, gotIt, 500);
   }
   await page.waitForSelector("#feed-container", { timeout: 15000 });
-  await sleep(1200);
+  await sleep(1800);
 }
 
 async function clickSidebar(page, label) {
   const item = page.getByText(label, { exact: true }).first();
-  await highlightClick(page, item, 1000);
+  if (!(await item.isVisible().catch(() => false))) {
+    const groupByItem = {
+      "Cache": "Infrastructure",
+      "Redis": "Infrastructure",
+      "HTTP Client": "Infrastructure",
+      "Mail": "Infrastructure",
+      "Storage": "Infrastructure",
+      "Models": "Application",
+      "AI/LLM": "Application",
+      "Jobs": "Application",
+      "Commands": "Application",
+      "Signals": "Application",
+      "Gates": "Application",
+      "Transactions": "Application",
+      "Dumps": "Application",
+    };
+    const group = groupByItem[label];
+    if (group) {
+      await highlightClick(page, page.getByText(group, { exact: true }).first(), 600);
+    }
+  }
+  await highlightClick(page, item, 1400);
   await page.waitForSelector("#feed-container [data-entry-id]", { timeout: 15000 });
 }
 
 async function openFirstEntry(page) {
   const row = page.locator("#feed-container [data-entry-id]").first();
   await row.waitFor({ timeout: 15000 });
-  await highlightClick(page, row, 1400);
+  await highlightClick(page, row, 1800);
   await page.waitForSelector("#detail-container #json-payload", { timeout: 15000 });
-  await sleep(1200);
+  await sleep(1800);
 }
 
 async function generateTraffic(page) {
@@ -210,11 +234,29 @@ const scenes = {
   async "dashboard-smoke"(page) {
     await generateTraffic(page);
     await openOrbit(page);
-    await callout(page, "Django Orbit records runtime evidence outside your app UI");
+    await callout(page, "Smoke check: live telemetry is flowing into the Orbit dashboard");
     await clickSidebar(page, "Requests");
     await openFirstEntry(page);
-    await callout(page, "Every request links related SQL, logs and exceptions by family_hash");
-    await sleep(1200);
+    await callout(page, "Open any request to inspect related SQL, logs and exceptions");
+    await sleep(1800);
+  },
+
+  async "dashboard-tour"(page) {
+    await generateTraffic(page);
+    await openOrbit(page);
+    await callout(page, "The main dashboard is a live timeline of Django runtime evidence");
+    await callout(page, "Use the sidebar to pivot between requests, queries, exceptions and logs");
+    await clickSidebar(page, "Exceptions");
+    await callout(page, "Filters keep noisy local debugging sessions readable");
+    const stats = page.getByRole("link", { name: /Stats/ }).first();
+    await highlightClick(page, stats, 1600);
+    await page.waitForURL(/\/orbit\/stats\//, { timeout: 10000 });
+    await installVisualHelpers(page);
+    await callout(page, "Stats turns raw events into trends, bottlenecks and release signals");
+    await page.goto(`${BASE_URL}/orbit/health/`, { waitUntil: "networkidle" });
+    await installVisualHelpers(page);
+    await callout(page, "Health shows watcher status plus agent and MCP safety posture");
+    await sleep(2200);
   },
 
   async "debug-500"(page) {
@@ -230,7 +272,7 @@ const scenes = {
       await highlightClick(page, promptButton, 1200);
       await callout(page, "Copy an agent-ready prompt with masked Orbit context");
     }
-    await sleep(1200);
+    await sleep(1800);
   },
 
   async "n-plus-one"(page) {
@@ -241,9 +283,9 @@ const scenes = {
     await clickSidebar(page, "Requests");
     await openFirstEntry(page);
     await page.mouse.wheel(0, 520);
-    await sleep(1000);
+    await sleep(1400);
     await callout(page, "Use request detail to inspect related queries before changing ORM code");
-    await sleep(1200);
+    await sleep(1800);
   },
 
   async "health-safety"(page) {
@@ -253,6 +295,15 @@ const scenes = {
     await page.waitForURL(/\/orbit\/health\//, { timeout: 10000 });
     await installVisualHelpers(page);
     await callout(page, "Health shows watcher status and agent/MCP safety posture");
+    await sleep(3200);
+  },
+
+  async "llm-metadata"(page) {
+    await openOrbit(page);
+    await callout(page, "Orbit records AI/LLM calls as metadata-first telemetry");
+    await clickSidebar(page, "AI/LLM");
+    await openFirstEntry(page);
+    await callout(page, "Provider, model, latency and token usage are visible without prompt capture");
     await sleep(2200);
   },
 };

@@ -19,6 +19,7 @@ try {
     Write-Host "Preparing demo database..."
     python manage.py migrate --noinput | Out-Host
     python demo.py setup | Out-Host
+    python manage.py shell -c "from orbit.llm import record_llm_call; record_llm_call(provider='openai', operation='chat.completions.create', model='gpt-4.1-mini', duration_ms=842.5, status='success', response={'model': 'gpt-4.1-mini', 'usage': {'input_tokens': 421, 'output_tokens': 138, 'total_tokens': 559}, 'output': [{'type': 'function_call', 'name': 'investigate_endpoint', 'arguments': {'path': '/checkout/'}}]}, kwargs={'messages': 'hidden demo prompt'}, metadata={'demo': True, 'workflow': 'debugging'})" | Out-Host
 
     $outLog = Join-Path $logDir "runserver.out.log"
     $errLog = Join-Path $logDir "runserver.err.log"
@@ -54,7 +55,7 @@ try {
         }
 
         $scenes = if ($Scene -eq "all") {
-            @("dashboard-smoke", "debug-500", "n-plus-one", "health-safety")
+            @("dashboard-smoke", "dashboard-tour", "debug-500", "n-plus-one", "health-safety", "llm-metadata")
         } else {
             @($Scene)
         }

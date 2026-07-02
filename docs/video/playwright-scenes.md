@@ -36,7 +36,21 @@ powershell -ExecutionPolicy Bypass -File scripts/video/run-local-recording.ps1 -
 Raw Playwright videos are written to `output/video/raw/`. MP4 files are written to
 `output/video/mp4/`. Both directories are ignored by Git.
 
+Available scripted scenes:
+
+| Scene | Purpose |
+|-------|---------|
+| `dashboard-smoke` | Fast sanity check: Orbit opens, telemetry appears, request detail works. |
+| `dashboard-tour` | Longer product tour: live feed, sidebar filters, stats and health/safety. |
+| `debug-500` | Runtime error to exception detail to copyable agent prompt. |
+| `n-plus-one` | Slow request and duplicate-query evidence in request detail. |
+| `health-safety` | Watcher status plus Agent & MCP Safety posture. |
+| `llm-metadata` | AI/LLM metadata-first entry without prompt/response capture. |
+
 ## Scene: Dashboard Smoke
+
+This is intentionally short. It does not show every dashboard surface; use
+`dashboard-tour` for the full product walkthrough.
 
 Steps:
 
@@ -53,6 +67,24 @@ Recording notes:
 - Zoom into the sidebar.
 - Zoom into the entry feed.
 - End on the detail panel.
+
+## Scene: Dashboard Tour
+
+Steps:
+
+1. Generate demo traffic.
+2. Open `/orbit/`.
+3. Pause on the live event feed and metric strip.
+4. Explain sidebar filtering.
+5. Click **Exceptions**.
+6. Open **Stats**.
+7. Open `/orbit/health/`.
+8. Pause on **Agent & MCP Safety**.
+
+Recording notes:
+
+- This is the best source for a broad product demo.
+- Keep callouts readable; this scene should feel closer to 45-60 seconds than a smoke test.
 
 ## Scene: Debug 500
 
@@ -123,7 +155,8 @@ Recording notes:
 
 Steps:
 
-1. Show config:
+1. Seed or trigger an LLM call. The local runner seeds a metadata-only demo entry.
+2. Show config:
 
 ```python
 ORBIT_CONFIG = {
@@ -133,7 +166,6 @@ ORBIT_CONFIG = {
 }
 ```
 
-2. Trigger a stubbed or local provider call.
 3. Open `/orbit/`.
 4. Click **AI/LLM**.
 5. Open the latest LLM entry.
