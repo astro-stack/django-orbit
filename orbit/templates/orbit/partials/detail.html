@@ -393,14 +393,24 @@
     {% endif %}
 
     <!-- Full Payload JSON -->
-    <div class="space-y-2">
+    <div class="flex items-center gap-2 mb-2">
         <h4 class="text-sm font-medium text-orbit-text-secondary flex items-center gap-2">
             <i data-lucide="code" class="w-4 h-4"></i>
             Full Payload
         </h4>
-        <div class="bg-orbit-bg-tertiary rounded-lg p-4 overflow-x-auto">
-            <pre class="text-xs font-mono leading-relaxed" id="json-payload">{{ payload_json }}</pre>
-        </div>
+
+        <button
+            type="button"
+            class="orbit-copy-btn p-1 rounded hover:bg-orbit-bg-secondary transition-colors"
+            data-copy-target="json-payload"
+            title="Copy payload">
+
+            <i data-lucide="copy" class="w-4 h-4"></i>
+        </button>
+    </div>
+
+    <div class="bg-orbit-bg-tertiary rounded-lg p-4 overflow-x-auto">
+        <pre id="json-payload" class="text-xs font-mono leading-relaxed">{{ payload_json }}</pre>
     </div>
     
     <!-- Related Entries -->
@@ -503,7 +513,6 @@
             el.innerHTML = syntaxHighlight(el.textContent);
         }
     })();
-
     async function copyOrbitAgentPrompt(button) {
         const url = button.getAttribute('data-agent-prompt-url');
         const icon = button.innerHTML;
