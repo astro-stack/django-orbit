@@ -36,6 +36,8 @@ powershell -ExecutionPolicy Bypass -File scripts/video/run-local-recording.ps1 -
 Raw Playwright videos are written to `output/video/raw/`. MP4 files are written to
 `output/video/mp4/`. Both directories are ignored by Git.
 
+The recorder generates setup traffic through Playwright request calls before opening Orbit. That traffic is intentionally invisible in the browser recording, so public videos do not start on raw JSON endpoints or demo error pages.
+
 Available scripted scenes:
 
 | Scene | Purpose |
@@ -76,7 +78,7 @@ Steps:
 2. Open `/orbit/`.
 3. Pause on the live event feed and metric strip.
 4. Explain sidebar filtering.
-5. Click **Exceptions**.
+5. Click **Exceptions**. The demo uses seeded exception data; dashboard-tour should not visually trigger `/error/`.
 6. Open **Stats**.
 7. Open `/orbit/health/`.
 8. Pause on **Agent & MCP Safety**.
@@ -90,7 +92,7 @@ Recording notes:
 
 Steps:
 
-1. Open `/error/` or the demo error endpoint.
+1. Use seeded demo exception/500 data so the browser recording starts in Orbit, not on Django's error page.
 2. Return to `/orbit/`.
 3. Click **Exceptions**.
 4. Open the latest exception.

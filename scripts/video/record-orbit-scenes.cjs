@@ -177,28 +177,27 @@ async function openFirstEntry(page) {
   await sleep(1800);
 }
 
+async function requestTraffic(page, targets) {
+  for (const target of targets) {
+    try {
+      await page.request.get(`${BASE_URL}${target}`, { timeout: 10000 });
+    } catch (_) {
+      // Demo generation should continue even if one endpoint fails.
+    }
+  }
+}
+
 async function generateTraffic(page) {
-  const paths = [
+  await requestTraffic(page, [
     "/",
     "/books/",
     "/duplicate-queries/",
     "/slow/?delay=0.2",
     "/log/",
     "/api/data/",
-  ];
-  for (const target of paths) {
-    try {
-      await page.goto(`${BASE_URL}${target}`, { waitUntil: "networkidle", timeout: 10000 });
-    } catch (_) {
-      // Demo generation should continue even if one endpoint fails.
-    }
-  }
-  try {
-    await page.goto(`${BASE_URL}/error/`, { waitUntil: "domcontentloaded", timeout: 10000 });
-  } catch (_) {
-    // Expected 500 path for exception capture.
-  }
+  ]);
 }
+
 
 async function recordScene(name, fn) {
   await ensureOutput();
@@ -260,9 +259,6 @@ const scenes = {
   },
 
   async "debug-500"(page) {
-    try {
-      await page.goto(`${BASE_URL}/error/`, { waitUntil: "domcontentloaded", timeout: 10000 });
-    } catch (_) {}
     await openOrbit(page);
     await callout(page, "Start from the runtime error, not a guess");
     await clickSidebar(page, "Exceptions");
@@ -276,8 +272,7 @@ const scenes = {
   },
 
   async "n-plus-one"(page) {
-    await page.goto(`${BASE_URL}/duplicate-queries/`, { waitUntil: "networkidle" });
-    await page.goto(`${BASE_URL}/slow/?delay=0.3`, { waitUntil: "networkidle" });
+    await requestTraffic(page, ["/duplicate-queries/", "/slow/?delay=0.3"]);
     await openOrbit(page);
     await callout(page, "Orbit surfaces slow queries and duplicate-query signals");
     await clickSidebar(page, "Requests");
