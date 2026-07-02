@@ -55,12 +55,6 @@ nav:
     - Publishing: publishing.md
     - Security: security.md
     - Troubleshooting: troubleshooting.md
-    - Video Production:
-      - Overview: video/index.md
-      - Storyboard: video/storyboard.md
-      - Recording Checklist: video/recording-checklist.md
-      - Tool Options: video/tool-options.md
-      - Playwright Scenes: video/playwright-scenes.md
 
 markdown_extensions:
   - pymdownx.highlight:

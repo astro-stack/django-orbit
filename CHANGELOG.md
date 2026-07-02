@@ -15,7 +15,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added safe LLM watcher configuration: `RECORD_LLM`, `LLM_CAPTURE_CONTENT`, `LLM_CAPTURE_TOOL_CALL_ARGUMENTS` and `LLM_MAX_CONTENT_CHARS`. Prompt/response content and tool-call arguments are disabled by default.
 - Added a detail-panel action to copy a coding-agent prompt generated from the current request family or exception fingerprint.
 - Added AI/LLM watcher documentation and production safety guidance for metadata-only LLM and MCP usage.
-- Added a video production kit with storyboards, recording checklist, tooling options and Playwright scene specs for repeatable Orbit demos.
 - Added release workflow safeguards: local `scripts/verify_release.py` preflight, a CI release-metadata check and a PR checklist template.
 - Added a detail-panel copy action for the full payload viewer.
 
