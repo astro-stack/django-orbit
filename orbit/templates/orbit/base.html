@@ -236,10 +236,50 @@
                 return '<span class="' + cls + '">' + match + '</span>';
             });
         }
-        
-        // Reinitialize Lucide icons after HTMX swaps
-        document.body.addEventListener('htmx:afterSwap', function(event) {
-            lucide.createIcons();
+
+        async function copyElement(button) {
+            const target = document.getElementById(button.dataset.copyTarget);
+
+            if (!target || button.disabled) {
+                return;
+            }
+
+            button.disabled = true;
+
+            try {
+                await navigator.clipboard.writeText(target.textContent.trim());
+
+                const original = button.innerHTML;
+
+                button.innerHTML = `
+                    <span class="flex items-center gap-1 text-emerald-400 text-xs">
+                        <i data-lucide="check" class="w-4 h-4"></i>
+                        Copied
+                    </span>
+                `;
+
+                lucide.createIcons();
+
+                setTimeout(() => {
+                    button.innerHTML = original;
+                    button.disabled = false;
+                    lucide.createIcons();
+                }, 1500);
+
+            } catch (err) {
+                button.disabled = false;
+                console.error("Failed to copy:", err);
+            }
+        }
+
+        document.addEventListener("click", (event) => {
+            const button = event.target.closest(".orbit-copy-btn");
+
+            if (!button) {
+                return;
+            }
+
+            copyElement(button);
         });
     </script>
     
