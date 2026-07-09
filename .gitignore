@@ -148,10 +148,19 @@ Thumbs.db
 
 # Project specific
 example_project/db.sqlite3
+example_project/codex_runtime_settings.py
 test_db.sqlite3
 orbit_test_storage/
 django_orbit-*/
 PLANNING.md
+AGENTS.md
+.codex/
+.private/
+.claude/
+*.mp4
+*.mov
+*.webm
+*.gif
 
 # claude — ignore machine-local settings and transient workspace; track agents
 .claude/settings.local.json
