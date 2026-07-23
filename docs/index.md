@@ -25,6 +25,11 @@ Welcome to the Django Orbit documentation. This guide covers installation, confi
 
 Django Orbit is an AI agent-native observability and debugging tool for Django applications. Unlike Django Debug Toolbar, which injects HTML into your templates, Orbit runs on its own isolated URL and exposes structured runtime evidence through both a human dashboard and MCP tools for AI assistants.
 
+!!! info "Orbit Pro founder waitlist"
+    Django Orbit remains MIT-licensed. [Orbit Pro](https://labs.wearehik.com/django-orbit/pro/)
+    is the planned self-hosted verification layer for release comparison, saved
+    investigations and evidence-backed validation of agent-assisted changes.
+
 ### Key Concepts
 
 - **OrbitEntry**: The central model that stores all telemetry data

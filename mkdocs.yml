@@ -55,6 +55,9 @@ nav:
     - Publishing: publishing.md
     - Security: security.md
     - Troubleshooting: troubleshooting.md
+  - Product:
+    - Django Orbit Site: https://labs.wearehik.com/django-orbit/
+    - Orbit Pro: https://labs.wearehik.com/django-orbit/pro/
 
 markdown_extensions:
   - pymdownx.highlight:

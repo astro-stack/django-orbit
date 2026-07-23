@@ -18,6 +18,7 @@ Unlike Django Debug Toolbar, Orbit does not inject HTML into your app. It lives 
 - [Documentation](https://astro-stack.github.io/django-orbit)
 - [Try the demo](#try-the-demo)
 - [MCP / AI assistant setup](#mcp-ai-assistant-setup)
+- [Orbit Pro founder waitlist](https://labs.wearehik.com/django-orbit/pro/)
 
 ## Why Orbit
 
@@ -40,6 +41,18 @@ Django teams increasingly debug with AI coding agents, but most local observabil
 | Plug-and-play watcher health | No | Yes |
 
 Inspired by Laravel Telescope, Spatie Ray and Django Debug Toolbar.
+
+## Orbit Pro
+
+Django Orbit remains MIT-licensed and fully useful on its own: the local dashboard,
+watchers, MCP tools, masking, incident bundles and safety controls stay in the open
+source package.
+
+[Orbit Pro](https://labs.wearehik.com/django-orbit/pro/) is the planned self-hosted
+verification layer for teams using coding agents. It will build on the open core
+with release comparison, saved investigations and verification of agent-assisted
+changes against new runtime evidence. Join the founder waitlist to help define the
+first paid release.
 
 ## What Orbit Tracks
 
