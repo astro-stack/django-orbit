@@ -85,6 +85,108 @@ NAV_GROUPS = [
 ALERT_TYPES = {OrbitEntry.TYPE_EXCEPTION}
 
 
+def build_entry_investigation_guidance(entry, n_plus_one_findings=None):
+    """Return conservative, evidence-backed next steps for an entry detail panel."""
+    payload = entry.payload or {}
+    n_plus_one_findings = n_plus_one_findings or []
+
+    event_label = (
+        "log event"
+        if entry.type == OrbitEntry.TYPE_LOG
+        else entry.get_type_display().lower()
+    )
+    guidance = {
+        "tone": "neutral",
+        "what_happened": f"A {event_label} was recorded.",
+        "why_it_matters": "No problem signal was inferred from this event.",
+        "next_step": "Review the captured fields and related entries before deciding whether follow-up is needed.",
+    }
+
+    if entry.type == OrbitEntry.TYPE_EXCEPTION:
+        exception_type = payload.get("exception_type") or "application"
+        guidance.update(
+            {
+                "tone": "critical",
+                "what_happened": f"A {exception_type} exception was recorded.",
+                "why_it_matters": "Orbit captured the exception evidence for this runtime event.",
+                "next_step": "Inspect the stack trace and related entries, then copy the agent prompt when you want a proposed fix path.",
+            }
+        )
+        return guidance
+
+    if entry.type == OrbitEntry.TYPE_REQUEST:
+        status_code = payload.get("status_code")
+        method = payload.get("method") or "HTTP"
+        path = payload.get("full_path") or payload.get("path") or "request"
+        if isinstance(status_code, int) and status_code >= 500:
+            guidance.update(
+                {
+                    "tone": "critical",
+                    "what_happened": f"{method} {path} returned HTTP {status_code}.",
+                    "why_it_matters": "This request failed before a successful response was recorded.",
+                    "next_step": "Open the related entries or copy the agent prompt to inspect the exception, logs, and query evidence from this request.",
+                }
+            )
+        elif isinstance(status_code, int) and status_code >= 400:
+            guidance.update(
+                {
+                    "tone": "warning",
+                    "what_happened": f"{method} {path} returned HTTP {status_code}.",
+                    "why_it_matters": "The application rejected or could not complete this client request.",
+                    "next_step": "Check the response context and related entries to determine whether this result was expected.",
+                }
+            )
+        elif n_plus_one_findings:
+            guidance.update(
+                {
+                    "tone": "warning",
+                    "what_happened": f"{method} {path} completed with a probable repeated-query pattern.",
+                    "why_it_matters": "Orbit found query repetition within this request; it is a performance lead, not proof of a root cause.",
+                    "next_step": "Inspect the N+1 evidence and query timeline, then compare the calling code before optimizing.",
+                }
+            )
+        return guidance
+
+    if entry.type == OrbitEntry.TYPE_QUERY:
+        duration = entry.duration_ms
+        if payload.get("is_slow") and duration is not None:
+            guidance.update(
+                {
+                    "tone": "warning",
+                    "what_happened": f"A SQL query took {float(duration):.1f}ms.",
+                    "why_it_matters": "It exceeded Orbit's slow-query threshold; duration alone does not identify the cause.",
+                    "next_step": "Run Explain Plan and inspect the caller and related requests before changing indexes or query code.",
+                }
+            )
+        elif payload.get("is_duplicate"):
+            guidance.update(
+                {
+                    "tone": "warning",
+                    "what_happened": "This SQL query was repeated within its request.",
+                    "why_it_matters": "Repeated SQL can add avoidable database work, but is not by itself proof of an N+1 issue.",
+                    "next_step": "Inspect the duplicate query evidence, parameters, and calling code before optimizing.",
+                }
+            )
+        return guidance
+
+    if entry.type == OrbitEntry.TYPE_LOG and str(payload.get("level", "")).upper() in {
+        "ERROR",
+        "CRITICAL",
+        "WARNING",
+    }:
+        level = str(payload.get("level")).upper()
+        guidance.update(
+            {
+                "tone": "warning" if level == "WARNING" else "critical",
+                "what_happened": f"A {level.lower()} log event was recorded.",
+                "why_it_matters": "The application emitted a runtime signal that may be relevant to the surrounding request.",
+                "next_step": "Read the message and related entries to establish whether this signal belongs to an active incident.",
+            }
+        )
+
+    return guidance
+
+
 def build_nav_groups(counts, current_type="all"):
     """Render NAV_GROUPS into template-ready dicts with counts, icons and colors.
 
@@ -565,6 +667,10 @@ class OrbitDetailPartial(OrbitProtectedView, View):
                 in {"n_plus_one_candidate", "per_row_aggregate_candidate"}
             ]
 
+        investigation_guidance = build_entry_investigation_guidance(
+            entry, n_plus_one_findings=n_plus_one_findings
+        )
+
         # Request waterfall (B4): position child query spans on the request timeline.
         waterfall = self._build_waterfall(entry, related_entries)
 
@@ -583,6 +689,7 @@ class OrbitDetailPartial(OrbitProtectedView, View):
                 "duplicate_entries": duplicate_entries,
                 "duplicate_query_stats": duplicate_query_stats,
                 "n_plus_one_findings": n_plus_one_findings,
+                "investigation_guidance": investigation_guidance,
                 "waterfall": waterfall,
                 "can_copy_agent_prompt": bool(
                     entry.family_hash

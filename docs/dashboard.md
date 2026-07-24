@@ -77,6 +77,18 @@ coding agent even when MCP is not connected.
 
 Click on any row in the feed to open the **Detail Panel**.
 
+### Investigation Guide
+
+Every detail panel starts with an **Investigation guide** that separates the
+captured fact, its operational relevance, and a bounded next step. It supports
+quick reading without hiding the underlying payload, trace, query, or related
+entry evidence.
+
+The guide is deterministic: it only uses signals Orbit already captured, such
+as an HTTP status, an exception, a slow-query flag, a repeated-query finding or
+a warning/error log level. It does not claim a root cause. Use the related
+entries, **Explain Plan**, and the copy-agent-prompt action to investigate
+further.
 ### JSON Payload
 
 The core of every entry is its JSON payload. Orbit renders this with syntax highlighting, making it easy to explore complex data structures.

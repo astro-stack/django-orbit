@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added an evidence-backed Investigation guide to detail panels, separating the captured fact, its operational relevance, and a bounded next step.
+
 - Added the public `orbit.evidence.v1` API for deterministic, metadata-first,
   fail-silent reads of normalized request-family evidence, including explicit
   completeness signals, structured recovery actions, bounded identifiers, and

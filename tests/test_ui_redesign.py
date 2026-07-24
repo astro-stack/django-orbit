@@ -111,6 +111,51 @@ def test_detail_panel_exposes_copy_agent_prompt_button(client):
 
 
 @pytest.mark.django_db
+def test_detail_panel_explains_a_failed_request_with_evidence(client):
+    entry = OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_REQUEST,
+        family_hash="fam-detail-guidance",
+        payload={"method": "POST", "full_path": "/checkout/", "status_code": 500},
+    )
+
+    html = client.get(reverse("orbit:detail", args=[entry.id])).content.decode()
+
+    assert "Investigation guide" in html
+    assert "POST /checkout/ returned HTTP 500." in html
+    assert "This request failed before a successful response was recorded." in html
+    assert "Open the related entries or copy the agent prompt" in html
+
+
+@pytest.mark.django_db
+def test_detail_panel_explains_a_slow_query_without_claiming_a_cause(client):
+    entry = OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_QUERY,
+        duration_ms=825,
+        payload={"sql": "SELECT * FROM orders", "is_slow": True},
+    )
+
+    html = client.get(reverse("orbit:detail", args=[entry.id])).content.decode()
+
+    assert "A SQL query took 825.0ms." in html
+    assert "exceeded Orbit" in html
+    assert "slow-query threshold" in html
+    assert "Run Explain Plan" in html
+
+
+@pytest.mark.django_db
+def test_detail_panel_keeps_neutral_events_factual(client):
+    entry = OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_LOG,
+        payload={"level": "INFO", "message": "worker started"},
+    )
+
+    html = client.get(reverse("orbit:detail", args=[entry.id])).content.decode()
+
+    assert "A log event was recorded." in html
+    assert "No problem signal was inferred from this event." in html
+
+
+@pytest.mark.django_db
 def test_agent_prompt_endpoint_returns_prompt_for_family(client):
     entry = OrbitEntry.objects.create(
         type=OrbitEntry.TYPE_REQUEST,
@@ -135,7 +180,9 @@ def test_agent_prompt_endpoint_returns_prompt_for_family(client):
 
 @pytest.mark.django_db
 def test_agent_prompt_endpoint_rejects_unlinked_entries(client):
-    entry = OrbitEntry.objects.create(type=OrbitEntry.TYPE_LOG, payload={"message": "orphan"})
+    entry = OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_LOG, payload={"message": "orphan"}
+    )
 
     response = client.get(reverse("orbit:agent_prompt", args=[entry.id]))
 
