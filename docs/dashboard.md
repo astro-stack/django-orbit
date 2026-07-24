@@ -17,7 +17,7 @@ turns red when non-zero.
 | Type | Description |
 |------|-------------|
 | **Requests** | HTTP requests (method, path, status, duration) |
-| **Queries** | SQL queries with N+1 detection |
+| **Queries** | SQL queries with duplicate evidence and N+1 classification |
 | **Exceptions** | Unhandled exceptions with tracebacks |
 | **Logs** | Python logging messages |
 
@@ -101,12 +101,15 @@ Plain-text-only emails (sent via `EmailMessage`) display the body directly with 
 !!! note
     HTML bodies are capped at **100 KB** during capture. Templates larger than this will be truncated.
 
-### Duplicate Queries (N+1 Detection)
+### Duplicate Queries and N+1 Candidates
 
-When viewing a query marked as duplicate, a special section appears showing all queries with the same SQL. This helps debug N+1 query issues:
+When viewing a query marked as duplicate, a special section shows matching
+queries from the same request family. Duplicate SQL is evidence, not proof of
+N+1.
 
-- Click any duplicate to view its details
-- Tips for optimization (`select_related()`, `prefetch_related()`) are shown
+For newly captured requests, Orbit also analyzes query shape, parameter
+variation, operation and callsite. Probable N+1 and per-row aggregate patterns
+carry a confidence level, supporting evidence and capture limitations.
 
 ## Actions
 

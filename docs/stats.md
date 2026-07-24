@@ -95,7 +95,10 @@ Sparkline showing cache efficiency over time.
 | **Total Queries** | Number of SQL queries executed |
 | **Total Duration** | Cumulative query time |
 | **Slow Queries** | Queries exceeding threshold (500ms default) |
-| **Duplicate (N+1)** | Repeated identical queries |
+| **Duplicate Executions** | Query executions marked as exact repeats |
+| **Duplicate-only Requests** | Requests with repeats but no classified N+1 finding |
+| **N+1 Requests** | Requests containing at least one classified N+1 pattern |
+| **N+1 Findings** | Total relational or per-row aggregate findings |
 
 ### Top Slow Queries
 

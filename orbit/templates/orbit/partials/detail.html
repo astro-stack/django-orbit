@@ -167,6 +167,29 @@
     </div>
     {% endif %}
     
+    {% if n_plus_one_findings %}
+    <div class="space-y-3 mt-2">
+        <div class="flex items-center gap-2">
+            <i data-lucide="scan-search" class="w-4 h-4 text-amber-400"></i>
+            <span class="text-sm font-medium text-amber-400">Probable N+1</span>
+        </div>
+        {% for finding in n_plus_one_findings %}
+        <div class="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
+            <div class="flex items-center justify-between gap-3">
+                <span class="text-xs font-mono text-orbit-text-primary">{{ finding.query_summary }}</span>
+                <span class="text-xs text-amber-400 whitespace-nowrap">{{ finding.confidence }} confidence</span>
+            </div>
+            <p class="mt-2 text-xs text-orbit-text-muted">
+                {{ finding.occurrences }} executions, {{ finding.unique_parameter_sets }} parameter sets, {{ finding.total_duration_ms }}ms total.
+            </p>
+            <p class="mt-1 text-xs text-orbit-text-muted">
+                Evidence: {{ finding.evidence|join:", " }}
+            </p>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <!-- Duplicate Query Stats for REQUEST entries -->
     {% if duplicate_query_stats and duplicate_query_stats.total_duplicates > 0 %}
     <div class="space-y-1 mt-2">
@@ -473,16 +496,16 @@
     </div>
     {% endif %}
     
-    <!-- Duplicate Queries (N+1 Debug) -->
+    <!-- Duplicate query evidence -->
     {% if duplicate_entries %}
     <div class="mt-6">
         <div class="flex items-center gap-2 mb-3">
             <i data-lucide="copy" class="w-4 h-4 text-amber-400"></i>
-            <h4 class="text-sm font-medium text-amber-400">Duplicate Queries (N+1 Detected)</h4>
+            <h4 class="text-sm font-medium text-amber-400">Duplicate Query Evidence</h4>
             <span class="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full">{{ duplicate_entries|length }} similar</span>
         </div>
         <p class="text-xs text-orbit-text-muted mb-3">
-            These queries have the same SQL. Consider using <code class="text-amber-300">select_related()</code> or <code class="text-amber-300">prefetch_related()</code> to optimize.
+            These queries repeat the same SQL in this request. Repetition alone does not prove N+1; inspect parameters and the calling code before choosing an optimization.
         </p>
         <div class="space-y-1 max-h-40 overflow-y-auto bg-orbit-bg-tertiary/30 rounded-lg p-2">
             {% for dup in duplicate_entries %}

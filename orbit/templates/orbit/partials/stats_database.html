@@ -7,22 +7,34 @@
         <i data-lucide="database" class="w-4 h-4 text-emerald-400"></i>
         Database Performance
     </h2>
-    <div class="grid grid-cols-2 gap-4 mb-4">
-        <div class="p-3 bg-orbit-bg-primary/50 rounded-lg">
+    <div class="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+        <div class="p-3 bg-orbit-bg-primary/50 rounded-md">
             <div class="text-xl font-bold text-orbit-text-primary">{{ database.total_queries }}</div>
             <div class="text-xs text-orbit-text-muted">Total Queries</div>
         </div>
-        <div class="p-3 bg-orbit-bg-primary/50 rounded-lg">
+        <div class="p-3 bg-orbit-bg-primary/50 rounded-md">
             <div class="text-xl font-bold text-emerald-400">{{ database.avg_time }}<span class="text-sm text-orbit-text-muted">ms</span></div>
             <div class="text-xs text-orbit-text-muted">Avg Duration</div>
         </div>
-        <div class="p-3 bg-orbit-bg-primary/50 rounded-lg">
+        <div class="p-3 bg-orbit-bg-primary/50 rounded-md">
             <div class="text-xl font-bold {% if database.slow_pct > 10 %}text-rose-400{% elif database.slow_pct > 5 %}text-amber-400{% else %}text-emerald-400{% endif %}">{{ database.slow_count }}</div>
             <div class="text-xs text-orbit-text-muted">Slow Queries ({{ database.slow_pct }}%)</div>
         </div>
-        <div class="p-3 bg-orbit-bg-primary/50 rounded-lg">
-            <div class="text-xl font-bold {% if database.duplicate_count > 5 %}text-amber-400{% else %}text-orbit-text-primary{% endif %}">{{ database.duplicate_count }}</div>
-            <div class="text-xs text-orbit-text-muted">Duplicate (N+1)</div>
+        <div class="p-3 bg-orbit-bg-primary/50 rounded-md">
+            <div class="text-xl font-bold {% if database.duplicate_query_executions > 5 %}text-amber-400{% else %}text-orbit-text-primary{% endif %}">{{ database.duplicate_query_executions }}</div>
+            <div class="text-xs text-orbit-text-muted">Duplicate Executions</div>
+        </div>
+        <div class="p-3 bg-orbit-bg-primary/50 rounded-md">
+            <div class="text-xl font-bold text-violet-400">{{ database.n_plus_one_requests }}</div>
+            <div class="text-xs text-orbit-text-muted">N+1 Requests</div>
+        </div>
+        <div class="p-3 bg-orbit-bg-primary/50 rounded-md">
+            <div class="text-xl font-bold text-cyan-400">{{ database.n_plus_one_findings }}</div>
+            <div class="text-xs text-orbit-text-muted">N+1 Findings</div>
+        </div>
+        <div class="p-3 bg-orbit-bg-primary/50 rounded-md">
+            <div class="text-xl font-bold text-orbit-text-primary">{{ database.duplicate_only_requests }}</div>
+            <div class="text-xs text-orbit-text-muted">Duplicate-only Requests</div>
         </div>
     </div>
 

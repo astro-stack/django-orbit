@@ -15,6 +15,7 @@ from django.db import connection
 
 from orbit.adapters import unwrap_adapters
 from orbit.conf import get_config
+from orbit.query_analysis import build_query_evidence, caller_key_from_payload
 from orbit.watchers import cachalot_disabled
 
 # Thread-local storage for tracking queries per request
@@ -60,7 +61,7 @@ def _extract_caller_info() -> Dict[str, Any]:
     stack = traceback.extract_stack()
 
     for frame in reversed(stack):
-        filename = frame.filename
+        filename = frame.filename.replace("\\", "/")
 
         # Skip Django internals and Orbit itself
         if any(
@@ -132,16 +133,26 @@ class OrbitQueryWrapper:
 
             is_slow = duration_ms > slow_threshold
             caller = _extract_caller_info()
+            serialized_params = self._serialize_params(params)
+            database = context.get("alias", "default") if context else "default"
+            evidence = build_query_evidence(
+                sql=sql,
+                params=serialized_params,
+                database=database,
+                caller_key=caller_key_from_payload(caller),
+            )
 
             query_info = {
                 "sql": sql,
-                "params": self._serialize_params(params),
+                "params": serialized_params,
                 "duration_ms": round(duration_ms, 3),
                 "is_slow": is_slow,
                 "is_duplicate": is_duplicate,
                 "duplicate_count": duplicate_count,
-                "database": context.get("alias", "default") if context else "default",
+                "database": database,
                 "caller": caller,
+                "sequence_index": len(self.queries),
+                **evidence,
             }
 
             if self.request_start is not None:
@@ -214,6 +225,10 @@ def save_queries_to_orbit(
         entries.append(entry)
 
     if entries:
+        from orbit.watchers import _table_exists
+
+        if not _table_exists():
+            return
         try:
             with cachalot_disabled():
                 OrbitEntry.objects.bulk_create(entries)

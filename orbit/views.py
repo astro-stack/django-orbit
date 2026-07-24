@@ -5,12 +5,14 @@ Dashboard views for the Orbit interface.
 """
 
 import json
+from pprint import pformat
 
-from django.db.models import Window, F, Case, When, BooleanField
+from django.db.models import BooleanField, Case, F, When, Window
 from django.db.models.functions import RowNumber
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
+from django.urls import reverse
 from django.views import View
 from django.views.generic import TemplateView
 
@@ -20,6 +22,7 @@ __all__ = [
     "OrbitDetailPartial",
     "OrbitClearView",
     "OrbitStatsView",
+    "OrbitConfigurationView",
     "OrbitStatsSectionView",
     "OrbitExplainView",
     "OrbitExportView",
@@ -28,9 +31,9 @@ __all__ = [
 ]
 
 from orbit import __version__ as ORBIT_VERSION
-from orbit.models import OrbitEntry
 from orbit.mixins import OrbitProtectedView
-
+from orbit.models import OrbitEntry
+from orbit.query_analysis import request_n_plus_one_count, valid_query_patterns
 
 # Sidebar navigation, grouped for progressive disclosure (see DESIGN.md › Layout).
 # Each item: (type_key, label). Icons/colors come from OrbitEntry.TYPE_ICONS/TYPE_COLORS.
@@ -92,8 +95,16 @@ def build_nav_groups(counts, current_type="all"):
     for group in NAV_GROUPS:
         items = []
         for type_key, label in group["items"]:
-            icon = "layers" if type_key == "all" else OrbitEntry.TYPE_ICONS.get(type_key, "circle")
-            color = "cyan" if type_key == "all" else OrbitEntry.TYPE_COLORS.get(type_key, "slate")
+            icon = (
+                "layers"
+                if type_key == "all"
+                else OrbitEntry.TYPE_ICONS.get(type_key, "circle")
+            )
+            color = (
+                "cyan"
+                if type_key == "all"
+                else OrbitEntry.TYPE_COLORS.get(type_key, "slate")
+            )
             items.append(
                 {
                     "type": type_key,
@@ -153,7 +164,9 @@ class OrbitDashboardView(OrbitProtectedView, TemplateView):
             "redis": OrbitEntry.objects.redis_ops().count(),
             "gate": OrbitEntry.objects.gates().count(),
             # Phase 4 types (v0.6.0)
-            "transaction": OrbitEntry.objects.filter(type=OrbitEntry.TYPE_TRANSACTION).count(),
+            "transaction": OrbitEntry.objects.filter(
+                type=OrbitEntry.TYPE_TRANSACTION
+            ).count(),
             "storage": OrbitEntry.objects.filter(type=OrbitEntry.TYPE_STORAGE).count(),
             "llm": OrbitEntry.objects.llm_calls().count(),
         }
@@ -175,10 +188,17 @@ class OrbitDashboardView(OrbitProtectedView, TemplateView):
         # Grouped sidebar navigation + package version (single source of truth)
         context["nav_groups"] = build_nav_groups(context["counts"], entry_type)
         context["orbit_version"] = ORBIT_VERSION
+        from orbit.conf import get_config
+
+        orbit_config = get_config()
+        context["project_name"] = orbit_config.get("PROJECT_NAME")
+        context["environment"] = orbit_config.get("ENVIRONMENT")
+        context["project_release"] = orbit_config.get("RELEASE")
 
         # Calculate statistics for dashboard
-        from django.db.models import Avg
         from datetime import timedelta
+
+        from django.db.models import Avg
         from django.utils import timezone
 
         now = timezone.now()
@@ -187,82 +207,70 @@ class OrbitDashboardView(OrbitProtectedView, TemplateView):
 
         # Performance stats
         requests_last_hour = OrbitEntry.objects.filter(
-            type=OrbitEntry.TYPE_REQUEST,
-            created_at__gte=last_hour
+            type=OrbitEntry.TYPE_REQUEST, created_at__gte=last_hour
         )
-        
+
         queries_last_hour = OrbitEntry.objects.filter(
-            type=OrbitEntry.TYPE_QUERY,
-            created_at__gte=last_hour
+            type=OrbitEntry.TYPE_QUERY, created_at__gte=last_hour
         )
 
         context["stats"] = {
             # Request metrics
             "requests_per_hour": requests_last_hour.count(),
-            "avg_response_time": requests_last_hour.aggregate(
-                avg=Avg("duration_ms")
-            )["avg"] or 0,
-            
+            "avg_response_time": requests_last_hour.aggregate(avg=Avg("duration_ms"))[
+                "avg"
+            ]
+            or 0,
             # Query metrics
             "queries_per_hour": queries_last_hour.count(),
-            "avg_query_time": queries_last_hour.aggregate(
-                avg=Avg("duration_ms")
-            )["avg"] or 0,
+            "avg_query_time": queries_last_hour.aggregate(avg=Avg("duration_ms"))["avg"]
+            or 0,
             "slow_queries_pct": (
                 (context["slow_query_count"] / context["counts"]["query"] * 100)
-                if context["counts"]["query"] > 0 else 0
+                if context["counts"]["query"] > 0
+                else 0
             ),
             "duplicate_queries": OrbitEntry.objects.filter(
-                type=OrbitEntry.TYPE_QUERY,
-                payload__is_duplicate=True
+                type=OrbitEntry.TYPE_QUERY, payload__is_duplicate=True
             ).count(),
-            
             # Error metrics
             "error_rate": (
                 (context["error_count"] / context["counts"]["request"] * 100)
-                if context["counts"]["request"] > 0 else 0
+                if context["counts"]["request"] > 0
+                else 0
             ),
             "exceptions_24h": OrbitEntry.objects.filter(
-                type=OrbitEntry.TYPE_EXCEPTION,
-                created_at__gte=last_24h
+                type=OrbitEntry.TYPE_EXCEPTION, created_at__gte=last_24h
             ).count(),
-            
             # Cache metrics
             "cache_hits": OrbitEntry.objects.filter(
-                type=OrbitEntry.TYPE_CACHE,
-                payload__hit=True
+                type=OrbitEntry.TYPE_CACHE, payload__hit=True
             ).count(),
             "cache_misses": OrbitEntry.objects.filter(
-                type=OrbitEntry.TYPE_CACHE,
-                payload__hit=False
+                type=OrbitEntry.TYPE_CACHE, payload__hit=False
             ).count(),
-            
             # Permission metrics
             "permission_denied": OrbitEntry.objects.filter(
-                type=OrbitEntry.TYPE_GATE,
-                payload__result="denied"
+                type=OrbitEntry.TYPE_GATE, payload__result="denied"
             ).count(),
             "permission_granted": OrbitEntry.objects.filter(
-                type=OrbitEntry.TYPE_GATE,
-                payload__result="granted"
+                type=OrbitEntry.TYPE_GATE, payload__result="granted"
             ).count(),
-            
             # Job metrics
             "jobs_failed": OrbitEntry.objects.filter(
-                type=OrbitEntry.TYPE_JOB,
-                payload__status="failed"
+                type=OrbitEntry.TYPE_JOB, payload__status="failed"
             ).count(),
             "jobs_success": OrbitEntry.objects.filter(
-                type=OrbitEntry.TYPE_JOB,
-                payload__status="success"
+                type=OrbitEntry.TYPE_JOB, payload__status="success"
             ).count(),
         }
-        
+
         # Calculate cache hit rate
         total_cache = context["stats"]["cache_hits"] + context["stats"]["cache_misses"]
         context["stats"]["cache_hit_rate"] = (
             (context["stats"]["cache_hits"] / total_cache * 100)
-            if total_cache > 0 else 0
+            if total_cache > 0
+            else 0
         )
 
         from django.urls import reverse
@@ -317,12 +325,18 @@ class OrbitFeedPartial(OrbitProtectedView, View):
         # Exception grouping (B3): on the plain Exceptions view, collapse identical
         # exceptions into one row with a count + first/last seen. Skipped when searching
         # or drilling into a family so those flows still show individual occurrences.
-        if entry_type == OrbitEntry.TYPE_EXCEPTION and not family_hash and not query and not tag:
+        if (
+            entry_type == OrbitEntry.TYPE_EXCEPTION
+            and not family_hash
+            and not query
+            and not tag
+        ):
             return self._exception_groups_response(request, per_page, page)
 
         # Filter by search query "q"
         if query:
             import uuid
+
             try:
                 # Try explicit UUID search
                 uuid_obj = uuid.UUID(query)
@@ -330,11 +344,11 @@ class OrbitFeedPartial(OrbitProtectedView, View):
             except ValueError:
                 # Text search on payload using generic "contains"
                 # For SQLite/Postgres JSONField, we can use __icontains
-                # Ideally we cast to text for better compatibility if needed, 
+                # Ideally we cast to text for better compatibility if needed,
                 # but let's try direct first as it handles some string casting implicitly in Django 4.2+
                 from django.db.models import TextField
                 from django.db.models.functions import Cast
-                
+
                 # Cast payload to text to search inside keys and values
                 queryset = queryset.annotate(
                     payload_text=Cast("payload", TextField())
@@ -347,9 +361,16 @@ class OrbitFeedPartial(OrbitProtectedView, View):
 
         # Get entries for current page - only load necessary fields for performance
         offset = (page - 1) * per_page
-        entries = queryset.only(
-            'id', 'type', 'payload', 'duration_ms', 'created_at'
-        ).order_by("-created_at")[offset : offset + per_page]
+        entries = list(
+            queryset.only(
+                "id", "type", "payload", "duration_ms", "created_at"
+            ).order_by("-created_at")[offset : offset + per_page]
+        )
+        for entry in entries:
+            entry.has_n_plus_one = (
+                entry.type == OrbitEntry.TYPE_REQUEST
+                and request_n_plus_one_count(entry.payload) > 0
+            )
 
         # Render partial
         return TemplateResponse(
@@ -454,6 +475,7 @@ class OrbitDetailPartial(OrbitProtectedView, View):
                 duplicate_entries = (
                     OrbitEntry.objects.filter(
                         type=OrbitEntry.TYPE_QUERY,
+                        family_hash=entry.family_hash,
                         payload__sql=sql,
                     )
                     .exclude(id=entry.id)
@@ -487,7 +509,7 @@ class OrbitDetailPartial(OrbitProtectedView, View):
                     sql = query.payload.get("sql")
                     if not sql:
                         continue
-                    
+
                     duplicate_count = query.payload.get("duplicate_count", 1)
                     is_duplicate = query.payload.get("is_duplicate", False)
 
@@ -498,12 +520,19 @@ class OrbitDetailPartial(OrbitProtectedView, View):
                     # Track unique duplicated queries (those executed more than once)
                     if duplicate_count > 1:
                         # Keep track of the highest execution count and a representative ID
-                        if sql not in query_groups or duplicate_count > query_groups[sql]:
+                        if (
+                            sql not in query_groups
+                            or duplicate_count > query_groups[sql]
+                        ):
                             query_groups[sql] = duplicate_count
                             query_ids[sql] = query.id
 
                 # Use precomputed total if available (fallback to calculated for old data)
-                final_total = precomputed_total if precomputed_total is not None else total_duplicates
+                final_total = (
+                    precomputed_total
+                    if precomputed_total is not None
+                    else total_duplicates
+                )
 
                 # Find the most duplicated query
                 most_duplicated_sql = None
@@ -527,6 +556,15 @@ class OrbitDetailPartial(OrbitProtectedView, View):
                     "most_duplicated_query_id": most_duplicated_query_id,
                 }
 
+        n_plus_one_findings = []
+        if entry.type == OrbitEntry.TYPE_REQUEST:
+            n_plus_one_findings = [
+                pattern
+                for pattern in valid_query_patterns(entry.payload.get("query_patterns"))
+                if pattern.get("kind")
+                in {"n_plus_one_candidate", "per_row_aggregate_candidate"}
+            ]
+
         # Request waterfall (B4): position child query spans on the request timeline.
         waterfall = self._build_waterfall(entry, related_entries)
 
@@ -544,6 +582,7 @@ class OrbitDetailPartial(OrbitProtectedView, View):
                 "related_entries": related_entries,
                 "duplicate_entries": duplicate_entries,
                 "duplicate_query_stats": duplicate_query_stats,
+                "n_plus_one_findings": n_plus_one_findings,
                 "waterfall": waterfall,
                 "can_copy_agent_prompt": bool(
                     entry.family_hash
@@ -649,6 +688,116 @@ def normalize_stats_range(value):
     return value if value in STATS_TIME_RANGES else "24h"
 
 
+CONFIGURATION_BOOLEAN_KEYS = (
+    "ENABLED",
+    "RECORD_REQUESTS",
+    "RECORD_QUERIES",
+    "RECORD_LOGS",
+    "RECORD_EXCEPTIONS",
+    "RECORD_COMMANDS",
+    "RECORD_CACHE",
+    "RECORD_MODELS",
+    "RECORD_HTTP_CLIENT",
+    "RECORD_DUMPS",
+    "RECORD_MAIL",
+    "RECORD_SIGNALS",
+    "RECORD_JOBS",
+    "RECORD_REDIS",
+    "RECORD_GATES",
+    "RECORD_TRANSACTIONS",
+    "RECORD_STORAGE",
+    "RECORD_LLM",
+    "LLM_CAPTURE_CONTENT",
+    "LLM_CAPTURE_TOOL_CALL_ARGUMENTS",
+    "N_PLUS_ONE_ENABLED",
+    "WATCHER_FAIL_SILENTLY",
+    "MASK_ALL_PAYLOADS",
+    "ENABLE_EXPLAIN",
+    "EXPLAIN_ANALYZE",
+    "MCP_ENABLED",
+    "MCP_INCLUDE_PAYLOADS",
+)
+
+
+class OrbitConfigurationView(OrbitProtectedView, TemplateView):
+    """Inspect effective settings and build a validated ORBIT_CONFIG snippet."""
+
+    template_name = "orbit/configuration.html"
+
+    def _builder_values(self, effective):
+        keys = (
+            "PROJECT_NAME",
+            "ENVIRONMENT",
+            "RELEASE",
+            *CONFIGURATION_BOOLEAN_KEYS,
+            "N_PLUS_ONE_MIN_OCCURRENCES",
+        )
+        return {key: effective.get(key) for key in keys}
+
+    def _post_values(self, effective):
+        values = self._builder_values(effective)
+        for key in ("PROJECT_NAME", "ENVIRONMENT", "RELEASE"):
+            values[key] = self.request.POST.get(key, "").strip()[:100]
+        for key in CONFIGURATION_BOOLEAN_KEYS:
+            values[key] = key in self.request.POST
+        return values
+
+    def get_context_data(self, **kwargs):
+        from orbit.conf import get_config_diagnostics
+
+        context = super().get_context_data(**kwargs)
+        diagnostics = get_config_diagnostics()
+        values = kwargs.get("builder_values") or self._builder_values(
+            diagnostics["effective"]
+        )
+        context.update(
+            {
+                "diagnostics": diagnostics,
+                "builder_values": values,
+                "capture_flags": [
+                    (key, values[key])
+                    for key in CONFIGURATION_BOOLEAN_KEYS
+                    if key.startswith("RECORD_")
+                ],
+                "safety_flags": [
+                    (key, values[key])
+                    for key in CONFIGURATION_BOOLEAN_KEYS
+                    if not key.startswith("RECORD_")
+                ],
+                "dashboard_url": reverse("orbit:dashboard"),
+                "orbit_version": ORBIT_VERSION,
+            }
+        )
+        return context
+
+    def post(self, request, *args, **kwargs):
+        from orbit.conf import get_config_diagnostics
+
+        diagnostics = get_config_diagnostics()
+        values = self._post_values(diagnostics["effective"])
+        errors = {}
+        raw_threshold = request.POST.get("N_PLUS_ONE_MIN_OCCURRENCES", "4")
+        try:
+            threshold = int(raw_threshold)
+            if not 2 <= threshold <= 100:
+                raise ValueError
+        except (TypeError, ValueError):
+            threshold = diagnostics["effective"]["N_PLUS_ONE_MIN_OCCURRENCES"]
+            errors["N_PLUS_ONE_MIN_OCCURRENCES"] = "Use a value between 2 and 100."
+        values["N_PLUS_ONE_MIN_OCCURRENCES"] = threshold
+
+        context = self.get_context_data(builder_values=values)
+        context["errors"] = errors
+        if not errors:
+            snippet_values = {
+                key: value for key, value in values.items() if value not in ("", None)
+            }
+            context["generated_snippet"] = "ORBIT_CONFIG = " + pformat(
+                snippet_values, sort_dicts=False, width=88
+            )
+        return self.render_to_response(context)
+
+
 class OrbitStatsView(OrbitProtectedView, TemplateView):
     """
     Full-page Stats Dashboard.
@@ -658,6 +807,7 @@ class OrbitStatsView(OrbitProtectedView, TemplateView):
     are loaded lazily via OrbitStatsSectionView, which keeps each DB hit small and
     avoids the SQLite lock that the old "compute everything at once" path caused.
     """
+
     template_name = "orbit/stats.html"
 
     def get_context_data(self, **kwargs):
@@ -678,8 +828,9 @@ class OrbitStatsView(OrbitProtectedView, TemplateView):
 
         # Add URLs
         from django.urls import reverse
-        context['dashboard_url'] = reverse('orbit:dashboard')
-        context['orbit_version'] = ORBIT_VERSION
+
+        context["dashboard_url"] = reverse("orbit:dashboard")
+        context["orbit_version"] = ORBIT_VERSION
 
         return context
 
@@ -703,6 +854,7 @@ class OrbitStatsSectionView(OrbitProtectedView, View):
 
     def get(self, request: HttpRequest, section: str) -> HttpResponse:
         from django.http import Http404
+
         from orbit import stats
 
         template = self.SECTIONS.get(section)
@@ -769,7 +921,7 @@ class OrbitExportView(OrbitProtectedView, View):
         # Single Entry Export
         if entry_id:
             entry = get_object_or_404(OrbitEntry, id=entry_id)
-            
+
             data = {
                 "entry": {
                     "id": str(entry.id),
@@ -788,26 +940,30 @@ class OrbitExportView(OrbitProtectedView, View):
                     .exclude(id=entry.id)
                     .order_by("created_at")
                 )
-                
+
                 for rel in related_qs:
-                    data["related"].append({
-                        "id": str(rel.id),
-                        "type": rel.type,
-                        "created_at": rel.created_at.isoformat(),
-                        "payload": rel.payload,
-                        "duration_ms": rel.duration_ms,
-                    })
-            
+                    data["related"].append(
+                        {
+                            "id": str(rel.id),
+                            "type": rel.type,
+                            "created_at": rel.created_at.isoformat(),
+                            "payload": rel.payload,
+                            "duration_ms": rel.duration_ms,
+                        }
+                    )
+
             response = JsonResponse(data, json_dumps_params={"indent": 2})
-            response["Content-Disposition"] = f'attachment; filename="orbit_entry_{entry.id}.json"'
+            response["Content-Disposition"] = (
+                f'attachment; filename="orbit_entry_{entry.id}.json"'
+            )
             return response
 
         # Bulk Export (Streaming)
         from django.http import StreamingHttpResponse
-        
+
         # 1. Reuse filtering logic from OrbitFeedPartial
         queryset = OrbitEntry.objects.all().order_by("-created_at")
-        
+
         entry_type = request.GET.get("type", "all")
         if entry_type and entry_type != "all":
             queryset = queryset.filter(type=entry_type)
@@ -819,12 +975,14 @@ class OrbitExportView(OrbitProtectedView, View):
         query = request.GET.get("q")
         if query:
             import uuid
+
             try:
                 uuid_obj = uuid.UUID(query)
                 queryset = queryset.filter(id=uuid_obj)
             except ValueError:
                 from django.db.models import TextField
                 from django.db.models.functions import Cast
+
                 queryset = queryset.annotate(
                     payload_text=Cast("payload", TextField())
                 ).filter(payload_text__icontains=query)
@@ -837,22 +995,24 @@ class OrbitExportView(OrbitProtectedView, View):
                 if not first:
                     yield ",\n"
                 first = False
-                
+
                 # Manual JSON serialization for speed/simplicity in generator
                 # using json.dumps for the dict is safest
-                yield json.dumps({
-                    "id": str(entry.id),
-                    "type": entry.type,
-                    "created_at": entry.created_at.isoformat(),
-                    "payload": entry.payload,
-                    "duration_ms": entry.duration_ms,
-                    "family_hash": entry.family_hash,
-                }, default=str)
+                yield json.dumps(
+                    {
+                        "id": str(entry.id),
+                        "type": entry.type,
+                        "created_at": entry.created_at.isoformat(),
+                        "payload": entry.payload,
+                        "duration_ms": entry.duration_ms,
+                        "family_hash": entry.family_hash,
+                    },
+                    default=str,
+                )
             yield "\n]"
 
         response = StreamingHttpResponse(
-            stream_generator(), 
-            content_type="application/json"
+            stream_generator(), content_type="application/json"
         )
         response["Content-Disposition"] = 'attachment; filename="orbit_export_all.json"'
         return response
@@ -861,70 +1021,85 @@ class OrbitExportView(OrbitProtectedView, View):
 class OrbitHealthView(OrbitProtectedView, TemplateView):
     """
     Health Dashboard view showing the status of all Orbit modules.
-    
+
     This is the plug-and-play diagnostics page that shows:
     - Which modules are installed and working (green)
     - Which modules failed and why (red)
     - Which modules are disabled via configuration
     """
+
     template_name = "orbit/health.html"
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        
+
         # Get health status from the health module
         try:
             from orbit.health import get_health_status, is_orbit_healthy
+
             health = get_health_status()
-            context['health'] = health
-            context['is_healthy'] = is_orbit_healthy()
+            context["health"] = health
+            context["is_healthy"] = is_orbit_healthy()
         except Exception as e:
-            context['health'] = {
-                'error': str(e),
-                'total': 0,
-                'healthy_count': 0,
-                'failed_count': 0,
-                'modules': [],
+            context["health"] = {
+                "error": str(e),
+                "total": 0,
+                "healthy_count": 0,
+                "failed_count": 0,
+                "modules": [],
             }
-            context['is_healthy'] = False
-        
+            context["is_healthy"] = False
+
         # Also get watcher status from the watchers module
         try:
-            from orbit.watchers import get_watcher_status, get_installed_watchers, get_failed_watchers
+            from orbit.watchers import (
+                get_failed_watchers,
+                get_installed_watchers,
+                get_watcher_status,
+            )
+
             watcher_status = get_watcher_status()
-            
+
             # Convert watcher status to module format for unified display
             watcher_modules = []
             for name, status in watcher_status.items():
-                watcher_modules.append({
-                    'name': name,
-                    'description': f'Watcher: {name}',
-                    'category': 'watcher',
-                    'status': 'healthy' if status.get('installed') else ('disabled' if status.get('disabled') else 'failed'),
-                    'is_healthy': status.get('installed', False),
-                    'is_failed': not status.get('installed') and not status.get('disabled') and status.get('error'),
-                    'is_disabled': status.get('disabled', False),
-                    'error': status.get('error'),
-                    'error_traceback': None,
-                })
-            
-            context['watchers'] = {
-                'modules': watcher_modules,
-                'installed': get_installed_watchers(),
-                'failed': get_failed_watchers(),
-                'total': len(watcher_status),
-                'installed_count': len(get_installed_watchers()),
-                'failed_count': len(get_failed_watchers()),
+                watcher_modules.append(
+                    {
+                        "name": name,
+                        "description": f"Watcher: {name}",
+                        "category": "watcher",
+                        "status": (
+                            "healthy"
+                            if status.get("installed")
+                            else ("disabled" if status.get("disabled") else "failed")
+                        ),
+                        "is_healthy": status.get("installed", False),
+                        "is_failed": not status.get("installed")
+                        and not status.get("disabled")
+                        and status.get("error"),
+                        "is_disabled": status.get("disabled", False),
+                        "error": status.get("error"),
+                        "error_traceback": None,
+                    }
+                )
+
+            context["watchers"] = {
+                "modules": watcher_modules,
+                "installed": get_installed_watchers(),
+                "failed": get_failed_watchers(),
+                "total": len(watcher_status),
+                "installed_count": len(get_installed_watchers()),
+                "failed_count": len(get_failed_watchers()),
             }
         except Exception as e:
-            context['watchers'] = {
-                'error': str(e),
-                'modules': [],
-                'installed': [],
-                'failed': {},
-                'total': 0,
-                'installed_count': 0,
-                'failed_count': 0,
+            context["watchers"] = {
+                "error": str(e),
+                "modules": [],
+                "installed": [],
+                "failed": {},
+                "total": 0,
+                "installed_count": 0,
+                "failed_count": 0,
             }
 
         from orbit.conf import get_config
@@ -941,11 +1116,12 @@ class OrbitHealthView(OrbitProtectedView, TemplateView):
                 config.get("LLM_CAPTURE_TOOL_CALL_ARGUMENTS", False)
             ),
         }
-        
+
         # Add URLs
         from django.urls import reverse
-        context['dashboard_url'] = reverse('orbit:dashboard')
-        context['stats_url'] = reverse('orbit:stats')
-        context['orbit_version'] = ORBIT_VERSION
+
+        context["dashboard_url"] = reverse("orbit:dashboard")
+        context["stats_url"] = reverse("orbit:stats")
+        context["orbit_version"] = ORBIT_VERSION
 
         return context

@@ -241,9 +241,54 @@ def get_database_metrics(time_range: str = '24h') -> Dict[str, Any]:
     slow_count = queries.filter(payload__is_slow=True).count()
     slow_pct = (slow_count / total * 100) if total > 0 else 0
     
-    # Duplicate queries
+    # Duplicate executions and N+1 findings are separate signals. Historical
+    # request payloads may only include duplicate_query_count.
     duplicate_count = queries.filter(payload__is_duplicate=True).count()
-    
+    request_payloads = OrbitEntry.objects.filter(
+        type=OrbitEntry.TYPE_REQUEST,
+        created_at__gte=start_time,
+        created_at__lte=end_time,
+    ).values_list("payload", flat=True)
+    duplicate_only_requests = 0
+    n_plus_one_requests = 0
+    n_plus_one_findings = 0
+    n_plus_one_by_kind = {}
+    n_plus_one_by_confidence = {}
+    n_plus_one_kinds = {
+        "n_plus_one_candidate",
+        "per_row_aggregate_candidate",
+    }
+
+    for payload in request_payloads:
+        if not isinstance(payload, dict):
+            continue
+        patterns = payload.get("query_patterns")
+        patterns = patterns if isinstance(patterns, list) else []
+        findings = [
+            pattern
+            for pattern in patterns
+            if isinstance(pattern, dict) and pattern.get("kind") in n_plus_one_kinds
+        ]
+        reported_count = payload.get("n_plus_one_count", 0)
+        try:
+            reported_count = max(0, int(reported_count))
+        except (TypeError, ValueError):
+            reported_count = 0
+        finding_count = max(reported_count, len(findings))
+        if finding_count:
+            n_plus_one_requests += 1
+            n_plus_one_findings += finding_count
+        elif payload.get("duplicate_query_count", 0):
+            duplicate_only_requests += 1
+
+        for finding in findings:
+            kind = finding["kind"]
+            confidence = finding.get("confidence", "unknown")
+            n_plus_one_by_kind[kind] = n_plus_one_by_kind.get(kind, 0) + 1
+            n_plus_one_by_confidence[confidence] = (
+                n_plus_one_by_confidence.get(confidence, 0) + 1
+            )
+
     # Top slow queries
     slow_queries = queries.filter(payload__is_slow=True).order_by('-duration_ms')[:10]
     
@@ -255,6 +300,12 @@ def get_database_metrics(time_range: str = '24h') -> Dict[str, Any]:
         'slow_count': slow_count,
         'slow_pct': round(slow_pct, 1),
         'duplicate_count': duplicate_count,
+        'duplicate_query_executions': duplicate_count,
+        'duplicate_only_requests': duplicate_only_requests,
+        'n_plus_one_requests': n_plus_one_requests,
+        'n_plus_one_findings': n_plus_one_findings,
+        'n_plus_one_by_kind': n_plus_one_by_kind,
+        'n_plus_one_by_confidence': n_plus_one_by_confidence,
         'top_slow': [
             {
                 'id': str(q.id),
