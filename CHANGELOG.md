@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-07-23
+
+### Added
+
+- Added an authenticated Configuration Center that reports the effective
+  settings source, exposes project identity and capture/safety controls, and
+  generates a validated `ORBIT_CONFIG` preview without mutating runtime state.
+- Added separate deterministic demo scenarios for exact duplicates, relational
+  N+1 lookups and per-row aggregates, plus balanced AI/LLM sample events.
+- Added database statistics for duplicate executions, duplicate-only requests,
+  N+1-affected requests and total classified findings.
+
+- Added versioned query signatures, parameter-shape fingerprints and bounded,
+  deterministic N+1 pattern analysis.
+- Added N+1 classification configuration and structured confidence, evidence,
+  counter-evidence and capture-limit fields for agentic tools.
+
+### Changed
+
+- `ORBIT_CONFIG` is now the canonical configuration name. When the legacy
+  `ORBIT` alias is also defined, non-conflicting keys are preserved and
+  `ORBIT_CONFIG` overrides matching keys.
+- Project name, environment and release metadata can be displayed in the
+  dashboard.
+
+- Duplicate SQL is now presented as evidence rather than automatically labeled
+  as a detected N+1 issue.
+- `get_n1_patterns` and `find_n_plus_one_candidates` distinguish classified
+  candidates from legacy duplicate-only requests.
+- Historical request rows without a materialized `n_plus_one_count` now retain their
+  N+1 ranking and feed indicator when their structured findings identify a candidate.
+- MCP serialization now reduces caller and traceback filenames to their basename, preventing
+  directory names from leaving the local process.
+- Daily health briefs count classified N+1 candidates separately from duplicate-only requests.
+- Added `explain_n_plus_one` and `investigate_slow_query` MCP diagnostics with same-family evidence, capture limits and bounded next actions.
+- MCP JSON output now applies path redaction consistently to derived agentic summaries.
+- Query diagnostics now tolerate malformed historical query payloads, materialized N+1 counts without findings, and mixed legacy/current query evidence.
+
+### Fixed
+
+- Request, exception and bulk query writes now check that the Orbit table exists
+  before touching storage.
+- Query caller paths are normalized across operating systems, and duplicate
+  query detail results are scoped to the current request family.
+
 ## [0.12.0] - 2026-07-02
 
 ### Added
