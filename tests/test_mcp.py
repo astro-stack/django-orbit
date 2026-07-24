@@ -388,6 +388,38 @@ def test_get_n1_patterns_finds_duplicates(mcp_server, sample_n1_request):
 
 
 @pytest.mark.django_db
+def test_get_n1_patterns_prioritizes_classified_requests_over_historical_rows(
+    mcp_server,
+):
+    OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_REQUEST,
+        family_hash="historical-duplicates",
+        payload={"path": "/historical/", "duplicate_query_count": 100},
+    )
+    OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_REQUEST,
+        family_hash="classified-n1",
+        payload={
+            "path": "/classified/",
+            "duplicate_query_count": 3,
+            "n_plus_one_count": 1,
+            "query_patterns": [
+                {
+                    "kind": "n_plus_one_candidate",
+                    "confidence": "high",
+                    "query_summary": "SELECT reviews",
+                }
+            ],
+        },
+    )
+
+    data = _call_tool(mcp_server, "get_n1_patterns", limit=1)
+
+    assert data["n1_patterns"][0]["family_hash"] == "classified-n1"
+    assert data["n1_patterns"][0]["classification"] == "n_plus_one_candidate"
+
+
+@pytest.mark.django_db
 def test_get_n1_patterns_excludes_clean_requests(mcp_server, sample_request):
     # sample_request has duplicate_query_count=0 â€” should not appear
     data = _call_tool(mcp_server, "get_n1_patterns")

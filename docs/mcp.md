@@ -76,7 +76,7 @@ The MCP server exposes raw telemetry tools plus higher-level agentic investigati
 | `get_recent_requests` | Last N HTTP requests with status, path, duration |
 | `get_slow_queries` | SQL queries above threshold, sorted by duration |
 | `get_exceptions` | Exceptions in a time window with full traceback |
-| `get_n1_patterns` | Requests where N+1 duplicate queries were detected |
+| `get_n1_patterns` | Requests with classified N+1 candidates or legacy duplicate evidence |
 | `get_request_detail` | Every event for one request via `family_hash` |
 | `search_entries` | Keyword search across all event types |
 | `get_stats_summary` | Error rate, avg response time, cache hit rate |
@@ -90,7 +90,9 @@ The MCP server exposes raw telemetry tools plus higher-level agentic investigati
 | `build_debug_brief` | Match natural-language ticket/error text to recent Orbit evidence |
 | `investigate_endpoint` | Endpoint health summary with error rate, slowest requests, query analysis and exception groups |
 | `compare_endpoint_windows` | Current-vs-baseline endpoint comparison for regression, stable, improving or insufficient-data calls |
-| `find_n_plus_one_candidates` | Ranked recent requests with duplicate-query/N+1 evidence |
+| `find_n_plus_one_candidates` | Ranked requests with classification, confidence and duplicate/N+1 evidence |
+| `explain_n_plus_one` | Same-family explanation of classified N+1 findings, limits and next steps |
+| `investigate_slow_query` | One slow query with same-family executions, context and bounded next steps |
 | `summarize_exception_groups` | Recent exception fingerprints with counts, affected paths and representatives |
 | `daily_health_brief` | Local daily triage of exceptions, failed jobs, slow queries, N+1 candidates and warning logs |
 | `generate_release_risk_brief` | Pre-release blocker/caution summary from recent runtime evidence |
@@ -115,6 +117,8 @@ generate_pr_context("fingerprint", "<fingerprint-from-brief>")
 investigate_endpoint("/checkout/", method="POST")
 compare_endpoint_windows("/checkout/", method="POST")
 find_n_plus_one_candidates(hours=24)
+explain_n_plus_one("<family-hash>")
+investigate_slow_query("<query-entry-id>")
 summarize_exception_groups(hours=24)
 generate_release_risk_brief(hours=24)
 investigate_exception_group("<fingerprint>")
@@ -123,9 +127,21 @@ investigate_request("<family_hash>")
 
 Incident bundles are generated on demand from current `OrbitEntry` data. They are not persisted. Each bundle includes primary evidence, a safety report, recommended next actions, likely code surfaces, a suggested coding-agent prompt and a next-tool sequence for deeper investigation. Use `create_incident_bundle(..., format="prompt")` when MCP is unavailable and you need a safe copy/paste prompt. Use `generate_pr_context` when you need a paste-ready PR section after the fix path is understood.
 
+## Request-to-Fix Handoff Model
+
+Use the MCP tools as investigation primitives, not as an autopilot. A practical workflow is:
+
+1. Start from the symptom: ticket text, endpoint, exception fingerprint, or request `family_hash`.
+2. Build a short evidence brief with `build_debug_brief(...)` or `investigate_request(...)`.
+3. Generate a portable handoff with `create_incident_bundle(..., format="markdown")` for tickets, PRs, or coding-agent context.
+4. Ask for likely causes with `propose_fix_hypotheses(...)`.
+5. Ask for validation steps with `propose_test_plan(...)` before editing code.
+
+Orbit's job is to make the runtime evidence compact, safe, and structured. The developer or coding agent still owns the code change.
+
 ## Agent Safety
 
-All MCP entry output goes through Orbit's agent-safe serializer. It masks sensitive keys using `MASK_KEYS`, can omit payloads entirely, and replaces oversized payloads with deterministic truncation metadata. Use `audit_mcp_exposure`, `preview_masked_entry`, `find_sensitive_payload_risks` and `list_agent_safe_fields` to verify the effective policy before sharing an MCP session with an assistant.
+All MCP entry output goes through Orbit's agent-safe serializer. It masks sensitive keys using `MASK_KEYS`, can omit payloads entirely, and replaces oversized payloads with deterministic truncation metadata. Use `audit_mcp_exposure`, `preview_masked_entry`, `find_sensitive_payload_risks` and `list_agent_safe_fields` to verify the effective policy before sharing an MCP session with an assistant. Caller and traceback filenames, including textual Python traceback locations, are reduced to a basename before serialization, so local directory segments are not exposed through MCP.
 
 Residual risk: MCP gives a local assistant read access to Orbit telemetry. Masking and truncation reduce raw secret exposure, but telemetry can still reveal sensitive operational context such as endpoint names, SQL shape, exception messages, user identifiers or business events. In shared, staging or sensitive environments, prefer `MCP_ENABLED: False`; if agents only need metadata, set `MCP_INCLUDE_PAYLOADS: False`.
 
