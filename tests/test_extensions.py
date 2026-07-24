@@ -16,10 +16,7 @@ def test_manifest_declares_stable_django_adapter_capabilities():
     assert manifest["evidence_schema_versions"] == ["orbit.evidence.v1"]
     assert manifest["capabilities"]["family_evidence.read"]["status"] == "available"
     assert manifest["capabilities"]["capture_health.read"]["status"] == "available"
-    assert manifest["capabilities"]["release_window.compare"] == {
-        "status": "unavailable",
-        "reason": "provided_by_orbit_pro",
-    }
+    assert "release_window.compare" not in manifest["capabilities"]
 
 
 def test_family_resource_delegates_to_versioned_evidence(monkeypatch):

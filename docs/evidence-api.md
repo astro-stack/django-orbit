@@ -12,7 +12,7 @@ evidence = read_family_evidence("request-family-hash")
 The current schema identifier is `orbit.evidence.v1`.
 ## Runtime Adapter Boundary
 
-Extensions can use orbit.extensions to discover the Django runtime adapter and read versioned family_evidence or capture_health resources. The manifest declares capabilities and Evidence schema versions without importing optional extensions.
+Extensions can use orbit.extensions to discover the Django runtime adapter and read versioned family_evidence or capture_health resources. The manifest declares only adapter-provided capabilities and Evidence schema versions, without importing optional extensions.
 
 This boundary is read-only. It does not load commercial packages, validate licenses, alter capture, or add work to the request path.
 

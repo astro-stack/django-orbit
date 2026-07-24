@@ -20,7 +20,6 @@ def get_runtime_adapter_manifest() -> dict[str, Any]:
         "capabilities": {
             "family_evidence.read": {"status": "available", "schema_versions": [EVIDENCE_SCHEMA_VERSION]},
             "capture_health.read": {"status": "available", "schema_versions": [EVIDENCE_SCHEMA_VERSION]},
-            "release_window.compare": {"status": "unavailable", "reason": "provided_by_orbit_pro"},
         },
     }
 
