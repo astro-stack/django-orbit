@@ -476,6 +476,19 @@ def test_get_request_detail_returns_all_events(
 
 
 # ---------------------------------------------------------------------------
+@pytest.mark.django_db
+def test_get_request_detail_returns_versioned_metadata_only_evidence(
+    mcp_server, sample_request, sample_slow_query
+):
+    data = _call_tool(mcp_server, "get_request_detail", family_hash="abc123")
+
+    assert data["schema_version"] == "orbit.evidence.v1"
+    assert data["evidence_quality"]["status"] in {"complete", "partial"}
+    assert data["events"][1]["type"] == "query"
+    assert "payload" not in data["events"][1]
+    assert "SELECT * FROM products" not in json.dumps(data)
+
+
 # Tool: get_capture_health
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db

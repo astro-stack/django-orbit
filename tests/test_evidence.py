@@ -80,6 +80,7 @@ def test_serialize_entry_exposes_only_normalized_request_metadata(evidence_famil
             "query_count": 0,
             "duplicate_query_count": 2,
             "had_exception": True,
+            "traceback_filename": None,
         },
         "truncated_fields": [],
     }
@@ -89,6 +90,22 @@ def test_serialize_entry_exposes_only_normalized_request_metadata(evidence_famil
     assert "summary" not in data
     assert "tags" not in data
 
+
+def test_serialize_entry_exposes_traceback_basename_only(db):
+    from orbit.evidence import serialize_entry
+
+    entry = OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_REQUEST,
+        family_hash="traceback-file",
+        payload={
+            "traceback_string": 'File "/srv/private/app/views.py", line 4',
+        },
+    )
+
+    data = serialize_entry(entry)
+
+    assert data["attributes"]["traceback_filename"] == "views.py"
+    assert "/srv/private" not in json.dumps(data)
 
 def test_serialize_entry_normalizes_query_and_exception(evidence_family):
     from orbit.evidence import serialize_entry
@@ -133,6 +150,7 @@ def test_serialize_entry_preserves_unknowns_as_none(db):
         "query_count": None,
         "duplicate_query_count": None,
         "had_exception": None,
+        "traceback_filename": None,
     }
 
 

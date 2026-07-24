@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Request-family correlation now uses async-task-local context, preventing
   concurrent ASGI tasks from associating logs or LLM watcher entries with the
   wrong request family.
+- `get_request_detail` now returns the versioned, metadata-only Evidence API
+  envelope instead of the legacy payload-bearing entry serialization.
 
 ## [0.13.0] - 2026-07-23
 

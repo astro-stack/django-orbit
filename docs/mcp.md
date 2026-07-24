@@ -77,7 +77,7 @@ The MCP server exposes raw telemetry tools plus higher-level agentic investigati
 | `get_slow_queries` | SQL queries above threshold, sorted by duration |
 | `get_exceptions` | Exceptions in a time window with full traceback |
 | `get_n1_patterns` | Requests with classified N+1 candidates or legacy duplicate evidence |
-| `get_request_detail` | Every event for one request via `family_hash` |
+| `get_request_detail` | Versioned, metadata-only evidence for one request via `family_hash` |
 | `get_capture_health` | Metadata-only capture readiness, safe flags and watcher state through Evidence API |
 | `search_entries` | Keyword search across all event types |
 | `get_stats_summary` | Error rate, avg response time, cache hit rate |

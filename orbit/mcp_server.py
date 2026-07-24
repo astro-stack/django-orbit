@@ -304,38 +304,36 @@ def create_mcp_server():
     # -------------------------------------------------------------------------
     @mcp.tool()
     def get_request_detail(family_hash: str) -> str:
-        """
-        Get all events associated with a specific HTTP request.
-
-        Given a family_hash from any entry, returns the originating request
-        plus all SQL queries, logs, exceptions, and other events that occurred
-        during that request's lifecycle. Essential for root-cause analysis.
-
-        Args:
-            family_hash: The family_hash value from any OrbitEntry
-        """
+        """Get normalized, metadata-only evidence for one request family."""
         if not get_config().get("MCP_ENABLED", True):
             return _mcp_disabled_output()
 
-        entries = OrbitEntry.objects.for_family(family_hash)
-        if not entries.exists():
-            return _format_output(
-                {"error": f"No entries found for family_hash: {family_hash}"}
+        from orbit.evidence import read_family_evidence
+
+        evidence = read_family_evidence(family_hash)
+        if evidence["status"] != "ok":
+            reason = evidence.get("reason") or "unavailable"
+            error = (
+                f"No entries found for family_hash: {family_hash}"
+                if reason == "family_not_found"
+                else f"Request detail is unavailable: {reason}"
             )
+            return _format_output({"error": error, "evidence": evidence})
 
-        result = [_serialize_entry(e) for e in entries]
-
-        # Build a summary
-        by_type: dict = {}
-        for e in result:
-            by_type.setdefault(e["type"], []).append(e)
+        event_types: dict[str, int] = {}
+        for entry in evidence["entries"]:
+            event_type = entry["type"]
+            event_types[event_type] = event_types.get(event_type, 0) + 1
 
         return _format_output(
             {
-                "family_hash": family_hash,
-                "total_events": len(result),
-                "event_types": {k: len(v) for k, v in by_type.items()},
-                "events": result,
+                "schema_version": evidence["schema_version"],
+                "family_hash": evidence["family_hash"],
+                "total_events": evidence["count"],
+                "event_types": event_types,
+                "truncated": evidence["truncated"],
+                "evidence_quality": evidence["evidence_quality"],
+                "events": evidence["entries"],
             }
         )
 

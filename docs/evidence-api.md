@@ -205,7 +205,7 @@ Normalized attributes by entry type:
 
 | Entry type | Attributes |
 |------------|------------|
-| `request` | `method`, `path`, `status_code`, `query_count`, `duplicate_query_count`, `had_exception` |
+| `request` | `method`, `path`, `status_code`, `query_count`, `duplicate_query_count`, `had_exception`, `traceback_filename` |
 | `query` | `is_slow`, `is_duplicate`, `duplicate_count`, `database` |
 | `exception` | `exception_type`, `request_method`, `request_path` |
 | Other | Empty object; the family quality becomes `partial` and lists the type in `unsupported_entry_types` |
@@ -243,6 +243,7 @@ Version 1 never returns:
 - request headers, cookies, bodies, query strings, or URL fragments;
 - SQL text or parameters;
 - exception messages, tracebacks, or locals;
+- `traceback_filename` may expose only a Python traceback filename basename, never its directory or traceback text;
 - log messages;
 - mail, cache, storage, user, or session values.
 

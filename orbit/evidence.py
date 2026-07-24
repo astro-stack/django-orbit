@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import math
+import re
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -143,6 +144,20 @@ def _finite_number(value: Any) -> int | float | None:
     return value if math.isfinite(value) else None
 
 
+_TRACEBACK_FILE_RE = re.compile(r"File\s+['\"]([^'\"]+)['\"]")
+
+
+def _traceback_filename(
+    value: Any, field: str, truncated_fields: list[str]
+) -> str | None:
+    if not isinstance(value, str):
+        return None
+    match = _TRACEBACK_FILE_RE.search(value)
+    if match is None:
+        return None
+    filename = match.group(1).replace("\\", "/").rstrip("/").rsplit("/", 1)[-1]
+    return _bounded_string(filename, field, truncated_fields)
+
 def _request_attributes(
     payload: dict[str, Any], truncated_fields: list[str]
 ) -> dict[str, Any]:
@@ -157,6 +172,11 @@ def _request_attributes(
             payload.get("duplicate_query_count")
         ),
         "had_exception": _strict_bool(payload.get("had_exception")),
+        "traceback_filename": _traceback_filename(
+            payload.get("traceback_string"),
+            "attributes.traceback_filename",
+            truncated_fields,
+        ),
     }
 
 
