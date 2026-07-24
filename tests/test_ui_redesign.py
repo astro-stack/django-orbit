@@ -97,7 +97,7 @@ def test_health_page_shows_agent_safety_status(client):
 
 
 @pytest.mark.django_db
-def test_detail_panel_exposes_copy_agent_prompt_button(client):
+def test_detail_panel_exposes_copy_fix_handoff_button(client):
     entry = OrbitEntry.objects.create(
         type=OrbitEntry.TYPE_REQUEST,
         family_hash="fam-agent-prompt",
@@ -106,8 +106,8 @@ def test_detail_panel_exposes_copy_agent_prompt_button(client):
 
     html = client.get(reverse("orbit:detail", args=[entry.id])).content.decode()
 
-    assert "Copy agent prompt" in html
-    assert reverse("orbit:agent_prompt", args=[entry.id]) in html
+    assert "Copy fix handoff" in html
+    assert reverse("orbit:agent_handoff", args=[entry.id]) in html
 
 
 @pytest.mark.django_db
@@ -153,6 +153,54 @@ def test_detail_panel_keeps_neutral_events_factual(client):
 
     assert "A log event was recorded." in html
     assert "No problem signal was inferred from this event." in html
+
+
+@pytest.mark.django_db
+def test_agent_handoff_endpoint_includes_evidence_hypotheses_and_tests(client):
+    entry = OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_REQUEST,
+        family_hash="fam-agent-handoff",
+        payload={
+            "method": "POST",
+            "path": "/checkout/",
+            "status_code": 500,
+            "headers": {"Authorization": "secret-handoff-token"},
+        },
+    )
+    OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_EXCEPTION,
+        family_hash="fam-agent-handoff",
+        fingerprint="fp-agent-handoff",
+        payload={
+            "exception_type": "ValueError",
+            "message": "payment token rejected",
+        },
+    )
+
+    response = client.get(reverse("orbit:agent_handoff", args=[entry.id]))
+
+    assert response.status_code == 200
+    assert response["Content-Type"].startswith("text/plain")
+    content = response.content.decode()
+    assert content.startswith(
+        "You are debugging a Django issue using Django Orbit runtime evidence."
+    )
+    assert "## Fix hypotheses" in content
+    assert "## Regression test plan" in content
+    assert "fam-agent-handoff" in content
+    assert "secret-handoff-token" not in content
+
+
+@pytest.mark.django_db
+def test_agent_handoff_endpoint_rejects_unlinked_entries(client):
+    entry = OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_LOG, payload={"message": "orphan"}
+    )
+
+    response = client.get(reverse("orbit:agent_handoff", args=[entry.id]))
+
+    assert response.status_code == 400
+    assert "family_hash" in response.content.decode()
 
 
 @pytest.mark.django_db

@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added a **Copy fix handoff** detail-panel action that assembles masked incident evidence, ranked hypotheses, and regression-test suggestions for coding agents.
+
 - Added the metadata-only `capture_health` Evidence API resource for safe
   inspection of storage availability, effective capture flags, and sanitized
   watcher readiness.

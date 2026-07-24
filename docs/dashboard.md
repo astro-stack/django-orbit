@@ -87,8 +87,9 @@ entry evidence.
 The guide is deterministic: it only uses signals Orbit already captured, such
 as an HTTP status, an exception, a slow-query flag, a repeated-query finding or
 a warning/error log level. It does not claim a root cause. Use the related
-entries, **Explain Plan**, and the copy-agent-prompt action to investigate
-further.
+entries, **Explain Plan**, and the **Copy fix handoff** action to investigate
+further. The handoff puts the same masked evidence, ranked hypotheses, and
+regression-test suggestions on the clipboard for Codex, Claude, or Cursor.
 ### JSON Payload
 
 The core of every entry is its JSON payload. Orbit renders this with syntax highlighting, making it easy to explore complex data structures.
