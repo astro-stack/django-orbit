@@ -318,6 +318,63 @@ def setup_demo():
     # Create sample request entries
     print("\n🌐 Creating sample request entries...")
     request_samples = [
+        {
+            "method": "GET",
+            "path": "/query-patterns/exact-duplicate/",
+            "status_code": 200,
+            "client_ip": "127.0.0.1",
+            "duplicate_query_count": 5,
+            "n_plus_one_count": 0,
+            "query_patterns": [
+                {
+                    "kind": "exact_duplicate",
+                    "confidence": "high",
+                    "occurrences": 6,
+                    "distinct_parameter_count": 1,
+                    "query_summary": "SELECT book WHERE id = ?",
+                    "evidence": ["same_parameter_values"],
+                    "counter_evidence": ["no_parameter_variation"],
+                }
+            ],
+        },
+        {
+            "method": "GET",
+            "path": "/query-patterns/n-plus-one/",
+            "status_code": 200,
+            "client_ip": "127.0.0.1",
+            "duplicate_query_count": 5,
+            "n_plus_one_count": 1,
+            "query_patterns": [
+                {
+                    "kind": "n_plus_one_candidate",
+                    "confidence": "high",
+                    "occurrences": 6,
+                    "distinct_parameter_count": 6,
+                    "query_summary": "SELECT review WHERE book_id = ?",
+                    "evidence": ["varying_parameter_values", "stable_callsite"],
+                    "counter_evidence": [],
+                }
+            ],
+        },
+        {
+            "method": "GET",
+            "path": "/query-patterns/per-row-aggregate/",
+            "status_code": 200,
+            "client_ip": "127.0.0.1",
+            "duplicate_query_count": 5,
+            "n_plus_one_count": 1,
+            "query_patterns": [
+                {
+                    "kind": "per_row_aggregate_candidate",
+                    "confidence": "medium",
+                    "occurrences": 6,
+                    "distinct_parameter_count": 6,
+                    "query_summary": "SELECT COUNT(review) WHERE book_id = ?",
+                    "evidence": ["aggregate_per_parameter", "stable_callsite"],
+                    "counter_evidence": [],
+                }
+            ],
+        },
         {'method': 'GET', 'path': '/', 'status_code': 200, 'client_ip': '192.168.1.1'},
         {'method': 'GET', 'path': '/books/', 'status_code': 200, 'client_ip': '192.168.1.2'},
         {'method': 'POST', 'path': '/api/login/', 'status_code': 200, 'client_ip': '10.0.0.1'},
@@ -352,6 +409,51 @@ def setup_demo():
         emoji = "✓" if job['status'] == 'completed' else ("⏳" if job['status'] == 'processing' else "✗")
         print(f"   {emoji} {job['name']} ({job['status']})")
     
+    # AI/LLM coverage is balanced across providers, outcomes, tokens and tools.
+    print("\nCreating AI/LLM sample entries...")
+    llm_samples = [
+        {
+            "provider": "openai",
+            "model": "gpt-5-mini",
+            "operation": "responses.create",
+            "status": "success",
+            "usage": {"input_tokens": 420, "output_tokens": 96, "total_tokens": 516},
+            "tool_calls": [{"name": "search_entries"}],
+        },
+        {
+            "provider": "anthropic",
+            "model": "claude-sonnet",
+            "operation": "messages.create",
+            "status": "success",
+            "usage": {"input_tokens": 880, "output_tokens": 210, "total_tokens": 1090},
+            "tool_calls": [],
+        },
+        {
+            "provider": "openai",
+            "model": "gpt-5",
+            "operation": "responses.create",
+            "status": "error",
+            "error_type": "RateLimitError",
+            "usage": {"input_tokens": 120, "output_tokens": 0, "total_tokens": 120},
+            "tool_calls": [],
+        },
+        {
+            "provider": "ollama",
+            "model": "qwen-local",
+            "operation": "chat",
+            "status": "success",
+            "usage": {"input_tokens": 230, "output_tokens": 144, "total_tokens": 374},
+            "tool_calls": [{"name": "get_slow_queries"}],
+        },
+    ]
+    for llm in llm_samples:
+        OrbitEntry.objects.create(
+            type="llm",
+            payload=llm,
+            duration_ms=random.uniform(180, 2400),
+        )
+        print(f"   {llm['provider']} / {llm['model']} ({llm['status']})")
+
     # Create sample command entries (Phase 1)
     print("\n🟣 Creating sample command entries...")
     command_samples = [
@@ -579,7 +681,9 @@ def fill_dashboard():
         ("/books/", "List books (queries)"),
         ("/books/", "List books (queries)"),
         ("/books/create/", "Create book"),
-        ("/duplicate-queries/", "N+1 queries"),
+        ("/query-patterns/n-plus-one/", "N+1 relation lookups"),
+        ("/query-patterns/per-row-aggregate/", "N+1 aggregate counts"),
+        ("/query-patterns/exact-duplicate/", "Exact duplicate queries"),
         ("/slow/?delay=0.3", "Slow request"),
     ]
     
@@ -688,7 +792,9 @@ def simulate_activity(duration=60, interval=0.5):
         ("GET", "/books/create/", 10),
         ("GET", "/slow/?delay=0.5", 5),
         ("GET", "/log/", 15),
-        ("GET", "/duplicate-queries/", 5),
+        ("GET", "/query-patterns/n-plus-one/", 4),
+        ("GET", "/query-patterns/per-row-aggregate/", 3),
+        ("GET", "/query-patterns/exact-duplicate/", 3),
         ("POST", "/api/data/", 8),
         ("GET", "/error/", 2),
     ]
