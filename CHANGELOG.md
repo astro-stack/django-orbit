@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added the public `orbit.evidence.v1` API for deterministic, metadata-first,
+  fail-silent reads of normalized request-family evidence, including explicit
+  completeness signals, structured recovery actions, bounded identifiers, and
+  query-string-free endpoint paths.
 - Added an authenticated Configuration Center that reports the effective
   settings source, exposes project identity and capture/safety controls, and
   generates a validated `ORBIT_CONFIG` preview without mutating runtime state.
