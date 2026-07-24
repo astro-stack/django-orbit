@@ -153,6 +153,7 @@ def test_mcp_enabled_false_blocks_all_tools(db):
         ("get_n1_patterns", {}),
         ("search_entries", {"query": "private"}),
         ("get_request_detail", {"family_hash": "blocked"}),
+        ("get_capture_health", {}),
         ("get_stats_summary", {}),
         ("audit_mcp_exposure", {}),
         ("preview_masked_entry", {"entry_id": "00000000-0000-0000-0000-000000000000"}),
@@ -472,6 +473,19 @@ def test_get_request_detail_returns_all_events(
     assert data["family_hash"] == "abc123"
     assert data["total_events"] == 3
     assert set(data["event_types"].keys()) == {"request", "query", "exception"}
+
+
+# ---------------------------------------------------------------------------
+# Tool: get_capture_health
+# ---------------------------------------------------------------------------
+@pytest.mark.django_db
+def test_get_capture_health_returns_evidence_envelope(mcp_server):
+    data = _call_tool(mcp_server, "get_capture_health")
+
+    assert data["schema_version"] == "orbit.evidence.v1"
+    assert data["resource"] == "capture_health"
+    assert data["status"] == "ok"
+    assert data["capture"]["storage_available"] is True
 
 
 # ---------------------------------------------------------------------------

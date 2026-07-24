@@ -78,6 +78,7 @@ The MCP server exposes raw telemetry tools plus higher-level agentic investigati
 | `get_exceptions` | Exceptions in a time window with full traceback |
 | `get_n1_patterns` | Requests with classified N+1 candidates or legacy duplicate evidence |
 | `get_request_detail` | Every event for one request via `family_hash` |
+| `get_capture_health` | Metadata-only capture readiness, safe flags and watcher state through Evidence API |
 | `search_entries` | Keyword search across all event types |
 | `get_stats_summary` | Error rate, avg response time, cache hit rate |
 | `audit_mcp_exposure` | Effective MCP safety policy: payload inclusion, masking and limits |

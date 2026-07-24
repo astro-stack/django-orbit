@@ -186,6 +186,7 @@ The server launches on demand over stdio. It is read-only: it queries `OrbitEntr
 | `get_exceptions` | Exceptions within a time window |
 | `get_n1_patterns` | Requests with duplicate-query evidence |
 | `get_request_detail` | All events for one `family_hash` |
+| `get_capture_health` | Metadata-only capture readiness, safe flags and watcher state |
 | `search_entries` | Keyword search across entries |
 | `get_stats_summary` | Error rate, average response time and cache stats |
 
