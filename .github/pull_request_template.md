@@ -21,6 +21,14 @@ python scripts/verify_release.py
 - [ ] `python -m build`
 - [ ] `python -m twine check dist/*`
 
+## UX / Contributor Experience
+
+- [ ] User-facing copy is clear for both Django experts and AI-assisted developers.
+- [ ] Dashboard/UI changes include a screenshot, short recording or written visual verification.
+- [ ] MCP/agentic tool changes include a sample response and the recommended next tool/action.
+- [ ] New contributor impact is documented when setup, tests, docs, or release workflow changes.
+- [ ] Errors, empty states and safety warnings tell the user what to do next.
+
 ## Merge Requirements
 
 Required GitHub checks should be green before merge:

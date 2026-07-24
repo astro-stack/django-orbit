@@ -46,7 +46,7 @@ Inspired by Laravel Telescope, Spatie Ray and Django Debug Toolbar.
 | Category | Events |
 |---|---|
 | HTTP | Requests, responses, headers, body, status codes |
-| Database | SQL queries, slow queries, duplicate query / N+1 signals |
+| Database | SQL queries, slow queries, duplicate evidence and classified N+1 candidates |
 | Logging | Python `logging` output, any level |
 | Exceptions | Exception type, message, traceback and request context |
 | Cache | GET hits/misses, SET, DELETE |
@@ -63,6 +63,16 @@ Inspired by Laravel Telescope, Spatie Ray and Django Debug Toolbar.
 | AI/LLM | Provider/model/token metadata, latency, errors and tool-call names |
 
 All events can be linked by `family_hash`, which lets you inspect every query, log and exception associated with one request or operation.
+
+## What's New in v0.13.0
+
+Orbit v0.13.0 starts the maturity and query-intelligence track:
+
+- versioned, privacy-safe query signatures and bounded pattern analysis;
+- deterministic N+1 candidates with confidence, evidence and limitations;
+- duplicate SQL remains visible without being mislabeled as proven N+1;
+- MCP tools distinguish classified findings from historical duplicate evidence;
+- request, exception and bulk-query writes verify Orbit storage availability.
 
 ## What's New in v0.12.0
 
@@ -193,7 +203,7 @@ The server launches on demand over stdio. It is read-only: it queries `OrbitEntr
 | `build_debug_brief` | Match natural-language ticket text to recent evidence |
 | `investigate_endpoint` | Summarize endpoint health, errors, slow requests and related exceptions |
 | `compare_endpoint_windows` | Compare recent endpoint behavior against a baseline window to spot regressions |
-| `find_n_plus_one_candidates` | Rank recent duplicate-query/N+1 candidates with suggested next tools |
+| `find_n_plus_one_candidates` | Rank classified N+1 candidates and legacy duplicate evidence |
 | `summarize_exception_groups` | Group recent exceptions by fingerprint with affected paths and representatives |
 | `daily_health_brief` | Produce local daily triage from recent runtime signals |
 | `generate_release_risk_brief` | Flag blocker/caution signals before a release |
@@ -254,7 +264,7 @@ ORBIT_CONFIG = {
 
 ## Configuration
 
-All settings go in `ORBIT_CONFIG` or `ORBIT` in `settings.py`. Most projects can start with defaults.
+`ORBIT_CONFIG` is the canonical settings dictionary. The legacy `ORBIT` alias remains supported; when both are present, their keys are merged and `ORBIT_CONFIG` overrides matching keys. Most projects can start with defaults.
 
 ```python
 ORBIT_CONFIG = {

@@ -250,3 +250,61 @@ The v0.11.0 release shipped endpoint investigation, daily health briefs and rele
 5. Add `build_debug_brief(query, hours=72)`.
 6. Expand AI watcher integrations to LangChain, LiteLLM and provider HTTP fallbacks.
 7. Add OpenTelemetry export design doc and config stub.
+
+## v0.13.0 Focus: Maturity and Intelligence Foundations
+
+The v0.13.0 release should make Orbit more reliable, semantically honest and
+easier to use as an agent-native debugging surface. It introduces versioned
+query evidence and distinguishes duplicate SQL from probable N+1 patterns while
+continuing the contributor and dashboard UX work. It does not start hosted
+Cloud infrastructure or add other runtime adapters.
+
+### Candidate Scope
+
+1. **Reliability and query intelligence**
+   - Keep all Orbit write paths isolated from the host application.
+   - Distinguish duplicate SQL evidence from probable N+1 patterns.
+   - Add versioned query signatures, confidence, evidence and capture limits.
+   - Build a deterministic corpus for positive cases and false positives.
+
+2. **Contributor PR experience**
+   - Improve PR checklists for tests, docs, screenshots and agentic tool sample output.
+   - Document how contributors should react when the CI matrix fails.
+   - Make it obvious which local command reproduces each GitHub check.
+
+3. **Dedicated UX review loop**
+   - Add a `ux-reviewer` agent role for dashboard, docs, onboarding, MCP output and contributor-workflow changes.
+   - Require UX review notes for user-facing PRs.
+   - Treat MCP/tool output as UX: responses should include clear evidence, confidence, limits and next actions.
+
+4. **Dashboard detail UX**
+   - Improve request/exception/query detail panels for both technical users and AI-assisted developers.
+   - Add clearer "what happened / why it matters / next step" summaries where evidence is strong enough.
+   - Make copy/export/agent prompt actions more discoverable without adding noise.
+
+5. **Agentic tool response quality**
+   - Harden daily workflow tools with edge cases and richer, more consistent responses.
+   - Add output examples to docs so Codex, Claude and Cursor users understand expected usage.
+   - Prefer compact, action-oriented results over raw telemetry dumps.
+
+6. **Interoperability foundations without Cloud lock-in**
+   - Keep local Orbit fully useful.
+   - Add only package-side design or zero-network primitives if they improve safety or future migration.
+   - Defer hosted ingestion, billing and team workspaces until the local agentic workflow is clearly validated.
+
+### Non-Goals for v0.13.0
+
+- Hosted Cloud ingestion service.
+- Billing or team accounts.
+- Automatic code mutation by agents.
+- Raw prompt/response capture by default.
+- Additional language/runtime adapters; v0.13 only prepares versioned contracts.
+
+### Path to v1.0
+
+Version 1.0 is an operational and contract-stability milestone, not a
+feature-count milestone. It requires versioned event, finding and MCP contracts;
+safe sync/ASGI correlation; multi-database coverage; measured overhead; privacy
+audits; and a tested upgrade path. Django remains the reference adapter.
+OpenTelemetry/OTLP provides the interoperability lane for future runtimes
+without weakening Django-specific evidence.

@@ -9,7 +9,7 @@
 
 ```python
 # settings.py
-ORBIT = {
+ORBIT_CONFIG = {
     'ENABLED': DEBUG,  # Only enable when DEBUG=True
 }
 ```

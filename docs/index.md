@@ -4,6 +4,8 @@ Welcome to the Django Orbit documentation. This guide covers installation, confi
 
 [![Star on GitHub](https://img.shields.io/github/stars/astro-stack/django-orbit?style=social)](https://github.com/astro-stack/django-orbit)
 
+Looking for the product overview and visual landing page? Visit the [Django Orbit product site](https://labs.wearehik.com/django-orbit/).
+
 ## Table of Contents
 
 1. [Installation](installation.md)
@@ -46,6 +48,21 @@ Django Orbit is an AI agent-native observability and debugging tool for Django a
 | Agent-native MCP tools | No | Yes |
 | Ticket-to-fix handoff bundles | No | Yes |
 
+### What's New in v0.13.0
+
+- **Honest query semantics**: duplicate SQL is evidence, not automatic proof of
+  an N+1 issue.
+- **Deterministic N+1 analysis**: versioned signatures, parameter variation,
+  callsite correlation, confidence and explicit limitations.
+- **Agent-ready findings**: MCP responses distinguish classified candidates
+  from duplicate-only historical entries.
+- **Storage guards**: request, exception and bulk-query paths check that Orbit
+  storage exists before writing.
+- **Configuration Center**: inspect effective settings and generate a safe,
+  validated `ORBIT_CONFIG` block without runtime mutation.
+- **Honest database stats and demo corpus**: duplicate-only requests, N+1
+  requests and findings are separate, with reproducible examples for each.
+
 ### What's New in v0.12.0
 
 - **AI/LLM watcher**: Orbit records provider, model, operation, latency, status, token usage and tool-call names for supported OpenAI and Anthropic SDK calls.
@@ -65,6 +82,21 @@ Django Orbit is an AI agent-native observability and debugging tool for Django a
 - **Copy/paste agent prompts**: `create_incident_bundle(..., format="prompt")` produces safe prompts for Claude, Codex and Cursor when MCP is unavailable.
 - **MCP workflow expansion**: all new tools are available through MCP and honor the existing `MCP_ENABLED` safety gate.
 - **Codex and Claude debugging demo**: the docs now include a practical ticket-to-test-to-fix workflow using Orbit context.
+
+### Agent-Native Debugging Workflow
+
+Orbit is most useful when it turns a vague symptom into a focused handoff:
+
+```text
+ticket or runtime error
+  -> build_debug_brief(...)
+  -> create_incident_bundle(...)
+  -> propose_fix_hypotheses(...)
+  -> propose_test_plan(...)
+  -> developer or coding-agent fix
+```
+
+The local dashboard remains the first surface for humans. MCP is the optional agent surface: read-only tools that query captured runtime evidence, apply masking and limits, and return compact context that can be used by Codex, Claude, Cursor, Windsurf or another MCP-compatible assistant.
 
 ### What's New in v0.10.0
 
@@ -90,14 +122,15 @@ Telemetry opt-in is intentionally not included in v0.10.0. It is planned for a s
 - **Exception grouping**: group identical exceptions by fingerprint.
 - **Dashboard redesign**: grouped sidebar, All Events, compact KPI strip, keyboard navigation and onboarding.
 - **Faster Stats page**: heavy sections now lazy-load.
+
 ### What's New in v0.8.1
 
-- **HTML Email Preview**: Emails sent with `EmailMultiAlternatives` now show a **Plain text / HTML preview** tab switcher in the dashboard. The HTML body renders in a sandboxed iframe — great for testing email templates. See [Email Preview](dashboard.md#mail-html-preview).
+- **HTML Email Preview**: Emails sent with `EmailMultiAlternatives` now show a **Plain text / HTML preview** tab switcher in the dashboard. The HTML body renders in a sandboxed iframe - great for testing email templates. See [Email Preview](dashboard.md#mail-html-preview).
 - **MySQL `max_allowed_packet` fix**: New `BULK_CREATE_BATCH_SIZE` config key prevents `OperationalError (2006, 'Server has gone away')` on requests that trigger thousands of SQL queries. See [`BULK_CREATE_BATCH_SIZE`](configuration.md#bulk_create_batch_size).
 
 ### What's New in v0.8.0
 
-- **External Storage Backends**: Route all Orbit writes to a dedicated Django database alias — keep telemetry out of your app's main database. See [Storage Backends](storage-backends.md).
+- **External Storage Backends**: Route all Orbit writes to a dedicated Django database alias - keep telemetry out of your app's main database. See [Storage Backends](storage-backends.md).
 
 ### What's New in v0.7.0
 
