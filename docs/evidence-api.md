@@ -10,6 +10,16 @@ evidence = read_family_evidence("request-family-hash")
 ```
 
 The current schema identifier is `orbit.evidence.v1`.
+## Correlation Scope
+
+Orbit keeps the active request family in task-local context. Logs and LLM watcher
+entries created during the same synchronous request or async task retain that
+family hash, so they appear in the same local evidence timeline.
+
+Context is intentionally not propagated across processes, worker queues, or
+unrelated threads. Use `OrbitLogContext` when a background operation has an
+explicit family hash to associate with it. A matching hash shows correlation,
+not proof that every operation or downstream service was captured.
 
 ## Why Use It
 

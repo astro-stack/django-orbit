@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added the metadata-only `capture_health` Evidence API resource for safe
+  inspection of storage availability, effective capture flags, and sanitized
+  watcher readiness.
+
+### Changed
+
+- Request-family correlation now uses async-task-local context, preventing
+  concurrent ASGI tasks from associating logs or LLM watcher entries with the
+  wrong request family.
+
 ## [0.13.0] - 2026-07-23
 
 ### Added
