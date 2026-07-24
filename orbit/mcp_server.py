@@ -308,9 +308,16 @@ def create_mcp_server():
         if not get_config().get("MCP_ENABLED", True):
             return _mcp_disabled_output()
 
-        from orbit.evidence import read_family_evidence
+        from orbit.evidence import MAX_FAMILY_LIMIT, read_family_evidence
 
-        evidence = read_family_evidence(family_hash)
+        try:
+            limit = min(
+                MAX_FAMILY_LIMIT,
+                max(1, int(get_config().get("MCP_MAX_LIMIT", 100))),
+            )
+        except (TypeError, ValueError):
+            limit = 100
+        evidence = read_family_evidence(family_hash, limit=limit)
         if evidence["status"] != "ok":
             reason = evidence.get("reason") or "unavailable"
             error = (

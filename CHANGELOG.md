@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `get_request_detail` now applies `MCP_MAX_LIMIT` and caps it to the Evidence API contract limit before reading a request family.
+
 - Request-family correlation now uses async-task-local context, preventing
   concurrent ASGI tasks from associating logs or LLM watcher entries with the
   wrong request family.

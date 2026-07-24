@@ -522,3 +522,34 @@ def test_get_stats_summary_with_data(
     assert data["requests"]["total"] == 1
     assert data["queries"]["slow"] == 1
     assert data["exceptions"]["total"] == 1
+
+
+@pytest.mark.django_db
+def test_get_request_detail_honors_mcp_max_limit(settings, mcp_server):
+    settings.ORBIT_CONFIG = {"MCP_MAX_LIMIT": 1}
+    OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_REQUEST,
+        family_hash="limited",
+        payload={"path": "/limited/"},
+    )
+    OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_LOG, family_hash="limited", payload={"message": "second"}
+    )
+    data = _call_tool(mcp_server, "get_request_detail", family_hash="limited")
+    assert data["total_events"] == 1
+    assert data["truncated"] is True
+
+
+@pytest.mark.django_db
+def test_get_request_detail_caps_mcp_limit_to_evidence_contract(settings, mcp_server):
+    settings.ORBIT_CONFIG = {"MCP_MAX_LIMIT": 999999}
+    OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_REQUEST,
+        family_hash="evidence-cap",
+        payload={"path": "/evidence-cap/"},
+    )
+
+    data = _call_tool(mcp_server, "get_request_detail", family_hash="evidence-cap")
+
+    assert data["total_events"] == 1
+    assert data["truncated"] is False
