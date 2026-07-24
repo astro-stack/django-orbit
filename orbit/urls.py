@@ -8,6 +8,7 @@ from django.urls import path
 
 from orbit.views import (
     OrbitClearView,
+    OrbitConfigurationView,
     OrbitDashboardView,
     OrbitAgentPromptView,
     OrbitDetailPartial,
@@ -35,6 +36,7 @@ urlpatterns = [
     path("export/<uuid:entry_id>/", OrbitExportView.as_view(), name="export"),
     # Stats & Health
     path("stats/", OrbitStatsView.as_view(), name="stats"),
+    path("configuration/", OrbitConfigurationView.as_view(), name="configuration"),
     path("stats/section/<str:section>/", OrbitStatsSectionView.as_view(), name="stats_section"),
     path("health/", OrbitHealthView.as_view(), name="health"),
 ]

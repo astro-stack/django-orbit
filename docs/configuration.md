@@ -2,6 +2,15 @@
 
 Django Orbit is configured through the `ORBIT_CONFIG` dictionary in your Django settings.
 
+`ORBIT_CONFIG` is the canonical name. `ORBIT` remains a compatibility alias for
+older installations. If both are present, Orbit merges both dictionaries and
+`ORBIT_CONFIG` overrides matching keys; the Configuration Center reports conflicts.
+
+The authenticated dashboard exposes `/orbit/configuration/`, where you can
+inspect the effective source, project identity, capture flags and safety flags,
+then generate a validated settings block. The preview is never applied at
+runtime and Orbit never rewrites `settings.py`.
+
 ## Full Configuration
 
 ```python
@@ -10,6 +19,9 @@ Django Orbit is configured through the `ORBIT_CONFIG` dictionary in your Django 
 ORBIT_CONFIG = {
     # Core Settings
     'ENABLED': True,
+    'PROJECT_NAME': 'Checkout API',
+    'ENVIRONMENT': 'staging',
+    'RELEASE': '2026.07.23',
     'AUTH_CHECK': None,  # Callable or path to function
     'STORAGE_LIMIT': 1000,
     
@@ -136,7 +148,7 @@ ORBIT_CONFIG = {
 | Option | Default | Description |
 |--------|---------|-------------|
 | `RECORD_REQUESTS` | `True` | HTTP request/response cycles |
-| `RECORD_QUERIES` | `True` | SQL queries with N+1 detection |
+| `RECORD_QUERIES` | `True` | SQL queries and duplicate/N+1 evidence |
 | `RECORD_LOGS` | `True` | Python logging output |
 | `RECORD_EXCEPTIONS` | `True` | Unhandled exceptions |
 | `RECORD_DUMPS` | `True` | Debug dumps via `orbit.dump()` |
@@ -188,6 +200,28 @@ responses or tool-call arguments. See [AI/LLM Watcher](llm-watcher.md).
 - **Description**: Threshold in milliseconds for marking a query as "slow"
 
 Queries exceeding this threshold are highlighted in the dashboard and stats.
+
+#### `N_PLUS_ONE_ENABLED`
+- **Type**: `bool`
+- **Default**: `True`
+- **Description**: Analyze captured query evidence for probable N+1 patterns
+
+Disabling this option leaves SQL and duplicate-query capture active. It only
+disables the higher-level deterministic classification.
+
+#### `N_PLUS_ONE_MIN_OCCURRENCES`
+- **Type**: `int`
+- **Default**: `4`
+- **Description**: Minimum executions of one query shape and callsite before a
+  pattern is classified
+
+#### `N_PLUS_ONE_MAX_QUERIES`
+- **Type**: `int`
+- **Default**: `1000`
+- **Description**: Maximum queries analyzed per request
+
+When the limit is exceeded, findings include
+`capture_limits=["query_analysis_truncated"]`. Query capture remains unchanged.
 
 ### Path Filtering
 
