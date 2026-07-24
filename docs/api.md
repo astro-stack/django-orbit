@@ -18,6 +18,26 @@ Orbit ships a dashboard UI plus a small set of internal routes used by that inte
 !!! note
     Orbit does not currently expose a public REST API for entries. The routes above are the dashboard and its internal UI endpoints.
 
+## Evidence API
+
+For integrations, use the public metadata-first Evidence API instead of
+depending on model payload internals:
+
+```python
+from orbit.evidence import read_family_evidence
+
+evidence = read_family_evidence("request-family-hash", limit=250)
+```
+
+The response uses the versioned `orbit.evidence.v1` schema and contains
+normalized plain dictionaries. Storage failures return a structured
+`unavailable` state instead of raising into the host application. Callers must
+check both `status` and `evidence_quality.status`. Raw payloads, summaries, SQL,
+headers, bodies, messages, and tracebacks are not included.
+
+See the [Evidence API guide](evidence-api.md) for the schema, safety boundary,
+limits, and compatibility policy.
+
 ## Models
 
 ### OrbitEntry
@@ -53,5 +73,6 @@ family_entries = OrbitEntry.objects.filter(family_hash="...")
 ## Related References
 
 - [Dashboard Guide](dashboard.md)
+- [Evidence API](evidence-api.md)
 - [Stats Dashboard](stats.md)
 - [MCP Server](mcp.md)
