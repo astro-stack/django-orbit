@@ -406,3 +406,49 @@ def test_read_family_evidence_uses_storage_alias_and_disables_cache(evidence_fam
         "unsupported_entry_types": [],
         "next_actions": [],
     }
+
+
+def test_read_capture_health_is_metadata_only_and_sanitized(db):
+    from orbit.evidence import read_capture_health
+    from orbit.health import ModuleStatus, module_registry
+
+    module_registry.reset()
+    module_registry.register_module("safe", lambda: None, category="watcher")
+    module_registry.set_failed("safe", "secret failure", "/private/traceback")
+    data = read_capture_health()
+
+    assert data["resource"] == "capture_health"
+    assert data["status"] == "ok"
+    assert data["capture"]["modules"][0]["status"] == ModuleStatus.FAILED.value
+    assert "secret" not in str(data)
+    assert "traceback" not in str(data)
+    assert "do_not_conclude_absence" in str(data["evidence_quality"])
+
+
+def test_read_capture_health_reports_storage_unavailable(db):
+    from orbit.evidence import read_capture_health
+
+    with patch("orbit.evidence._table_exists", return_value=False):
+        data = read_capture_health()
+
+    assert data["status"] == "unavailable"
+    assert data["reason"] == "storage_unavailable"
+
+
+def test_capture_health_uses_effective_allowlisted_flags(settings, db):
+    from orbit.evidence import read_capture_health
+    settings.ORBIT_CONFIG = {"ENABLED": False, "RECORD_QUERIES": True, "RECORD_SECRET_FLAG": True}
+    data = read_capture_health()
+    flags = data["capture"]["configured_capture_flags"]
+    assert data["capture"]["orbit_enabled"] is False
+    assert flags["RECORD_QUERIES"] is False
+    assert "RECORD_SECRET_FLAG" not in flags
+
+
+def test_capture_health_marks_uninitialized_registry_partial(db):
+    from orbit.evidence import read_capture_health
+    from orbit.health import module_registry
+    module_registry.reset()
+    data = read_capture_health()
+    assert data["evidence_quality"]["status"] == "partial"
+    assert "capture_registry_uninitialized" in data["evidence_quality"]["warnings"]

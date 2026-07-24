@@ -57,6 +57,7 @@ __all__ = [
     "DEFAULT_FAMILY_LIMIT",
     "EVIDENCE_SCHEMA_VERSION",
     "MAX_FAMILY_LIMIT",
+    "read_capture_health",
     "read_family_evidence",
     "serialize_entry",
 ]
@@ -449,3 +450,65 @@ def read_family_evidence(
         truncated=truncated,
         limit=limit,
     )
+
+
+
+_CAPTURE_FLAG_KEYS = {
+    "RECORD_CACHE", "RECORD_COMMANDS", "RECORD_DUMPS", "RECORD_GATES",
+    "RECORD_HTTP_CLIENT", "RECORD_JOBS", "RECORD_LLM", "RECORD_LOGS",
+    "RECORD_MAIL", "RECORD_MODELS", "RECORD_QUERIES", "RECORD_REDIS",
+    "RECORD_SIGNALS", "RECORD_STORAGE", "RECORD_TRANSACTIONS",
+}
+
+
+def read_capture_health() -> dict[str, Any]:
+    """Return a versioned, metadata-only capture health envelope."""
+    from orbit.conf import get_config
+    from orbit.health import module_registry
+
+    unavailable = {
+        "schema_version": EVIDENCE_SCHEMA_VERSION,
+        "resource": "capture_health",
+        "status": "unavailable",
+        "reason": "storage_unavailable",
+        "capture": None,
+        "evidence_quality": _unavailable_quality("storage_unavailable"),
+    }
+    if not _table_exists():
+        return unavailable
+    try:
+        config = get_config()
+        initialized = module_registry.is_initialized()
+        modules, counts = [], {}
+        valid = {"pending", "healthy", "degraded", "failed", "disabled"}
+        for module in module_registry.get_all_status().values():
+            raw_status = getattr(getattr(module, "status", None), "value", "unknown")
+            status = raw_status if raw_status in valid else "unknown"
+            counts[status] = counts.get(status, 0) + 1
+            modules.append({
+                "name": _bounded_identifier(getattr(module, "name", None), "module.name", []),
+                "category": _bounded_string(getattr(module, "category", None), "module.category", []),
+                "status": status,
+                "configured": bool(config.get(module.config_key, True)) if getattr(module, "config_key", None) else None,
+            })
+        enabled = bool(config.get("ENABLED", True))
+        flags = {key: enabled and bool(config.get(key, False)) for key in sorted(_CAPTURE_FLAG_KEYS)}
+    except Exception:
+        logger.warning("Django Orbit capture health read failed.")
+        return {**unavailable, "reason": "read_failed", "evidence_quality": _unavailable_quality("read_failed")}
+
+    warnings = []
+    if not initialized: warnings.append("capture_registry_uninitialized")
+    if counts.get("failed") or counts.get("degraded"): warnings.append("capture_modules_unhealthy")
+    if counts.get("pending"): warnings.append("capture_modules_pending")
+    quality = {"status": "partial" if warnings else "complete", "warnings": warnings,
+        "missing_fields": [], "truncated_fields": [], "unsupported_entry_types": [],
+        "next_actions": [_action("do_not_conclude_absence")] if warnings else []}
+    return {"schema_version": EVIDENCE_SCHEMA_VERSION, "resource": "capture_health",
+        "status": "ok", "reason": None,
+        "capture": {"storage_available": True, "orbit_enabled": enabled,
+            "registry_initialized": initialized, "module_counts": counts,
+            "modules": sorted(modules, key=lambda item: item["name"] or ""),
+            "configured_capture_flags": flags,
+            "coverage_note": "Configuration and module status do not prove an event was captured."},
+        "evidence_quality": quality}

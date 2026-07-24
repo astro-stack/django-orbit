@@ -183,6 +183,12 @@ For `not_found`, `invalid`, and `unavailable`, the same quality object uses
 `status: "unavailable"` and returns the recovery actions listed above. Surface
 the reason to the developer; never translate it into "no problem found".
 
+## Capture Health Resource
+
+read_capture_health() returns the metadata-only capture_health resource in orbit.evidence.v1.
+It exposes storage availability, an allowlisted set of effective RECORD flags and sanitized module states.
+It never includes payloads, SQL, errors or tracebacks. Configuration and module readiness do not prove that an event was captured.
+
 ## Entry Schema
 
 Normalized attributes by entry type:
