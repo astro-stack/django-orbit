@@ -271,3 +271,12 @@ meaning within v1. A breaking change requires a new schema identifier such as
 Import the API from `orbit.evidence`; importing private helpers from
 `orbit.agentic`, `orbit.watchers`, or the model manager is not a stable
 integration contract.
+
+## Dashboard Navigation Extensions
+
+Optional local packages may register a dashboard link with
+`orbit.dashboard_extensions.register_dashboard_extension(key, label, url)`.
+URLs must be same-site local paths without queries or fragments. Orbit exposes
+the validated links in the protected dashboard context as
+`dashboard_extensions`; it does not import the optional package, mount its
+URLs, validate a license or change its authorization policy.

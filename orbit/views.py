@@ -32,6 +32,7 @@ __all__ = [
 ]
 
 from orbit import __version__ as ORBIT_VERSION
+from orbit.dashboard_extensions import list_dashboard_extensions
 from orbit.mixins import OrbitProtectedView
 from orbit.models import OrbitEntry
 from orbit.query_analysis import request_n_plus_one_count, valid_query_patterns
@@ -290,6 +291,7 @@ class OrbitDashboardView(OrbitProtectedView, TemplateView):
 
         # Grouped sidebar navigation + package version (single source of truth)
         context["nav_groups"] = build_nav_groups(context["counts"], entry_type)
+        context["dashboard_extensions"] = list_dashboard_extensions()
         context["orbit_version"] = ORBIT_VERSION
         from orbit.conf import get_config
 
