@@ -280,3 +280,8 @@ URLs must be same-site local paths without queries or fragments. Orbit exposes
 the validated links in the protected dashboard context as
 `dashboard_extensions`; it does not import the optional package, mount its
 URLs, validate a license or change its authorization policy.
+
+Extensions that mount their own Django view can use
+`orbit.extensions.is_dashboard_request_authorized(request)` to apply the exact
+`ORBIT_CONFIG["AUTH_CHECK"]` policy used by Orbit's own dashboard. The extension
+still owns its forbidden response and must not assume that registration grants access.
