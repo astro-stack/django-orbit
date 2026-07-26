@@ -21,7 +21,12 @@ DEFAULTS = {
     "N_PLUS_ONE_MIN_OCCURRENCES": 4,
     "N_PLUS_ONE_MAX_QUERIES": 1000,
     "IGNORE_PATHS": ["/orbit/", "/static/", "/admin/jsi18n/", "/favicon.ico"],
-    "HIDE_REQUEST_HEADERS": ["Authorization", "Cookie", "X-CSRFToken"],
+    "HIDE_REQUEST_HEADERS": [
+        "Authorization",
+        "Cookie",
+        "X-CSRFToken",
+        "X-Orbit-Verification",
+    ],
     "HIDE_REQUEST_BODY_KEYS": ["password", "token", "secret", "api_key"],
     # Sensitive-data masking (B5). Any payload key *containing* one of these terms
     # (case-insensitive) has its value redacted. Used to strengthen request masking and,
@@ -64,6 +69,10 @@ DEFAULTS = {
     "RECORD_QUERIES": True,
     "RECORD_LOGS": True,
     "RECORD_EXCEPTIONS": True,
+    # Opt-in verification correlation. Orbit stores only a validated opaque
+    # identifier, never the raw request header, so local release tools can find
+    # the request families deliberately generated for one verification run.
+    "RECORD_VERIFICATION_CONTEXT": False,
     # Phase 1 watchers
     "RECORD_COMMANDS": True,
     "RECORD_CACHE": True,

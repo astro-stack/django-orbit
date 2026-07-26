@@ -152,6 +152,7 @@ ORBIT_CONFIG = {
 | `RECORD_LOGS` | `True` | Python logging output |
 | `RECORD_EXCEPTIONS` | `True` | Unhandled exceptions |
 | `RECORD_DUMPS` | `True` | Debug dumps via `orbit.dump()` |
+| `RECORD_VERIFICATION_CONTEXT` | `False` | Store a validated, opaque `X-Orbit-Verification` ID on deliberately correlated request entries |
 
 #### Extended Watchers
 
@@ -249,7 +250,7 @@ ORBIT_CONFIG = {
 
 #### `HIDE_REQUEST_HEADERS`
 - **Type**: `list[str]`
-- **Default**: `['Authorization', 'Cookie', 'X-CSRFToken']`
+- **Default**: `['Authorization', 'Cookie', 'X-CSRFToken', 'X-Orbit-Verification']`
 - **Description**: Request headers to mask in logs
 
 Values are replaced with `***HIDDEN***`.

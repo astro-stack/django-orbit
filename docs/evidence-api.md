@@ -27,6 +27,35 @@ unrelated threads. Use `OrbitLogContext` when a background operation has an
 explicit family hash to associate with it. A matching hash shows correlation,
 not proof that every operation or downstream service was captured.
 
+### Explicit Verification Runs
+
+Release tooling can opt in to a deliberately bounded request correlation:
+
+```python
+ORBIT_CONFIG = {
+    "RECORD_VERIFICATION_CONTEXT": True,
+}
+```
+
+Requests carrying a valid `X-Orbit-Verification` value then retain that opaque
+identifier only as `verification_id` on the captured request. The raw header is
+masked from captured headers. A value must be 1-64 ASCII letters, digits,
+periods, underscores or hyphens and begin with a letter or digit; invalid values
+are ignored.
+
+Use the public adapter, never a direct `OrbitEntry` query, to retrieve the
+bounded request families for one deliberate run:
+
+```python
+from orbit.extensions import read_verification_families
+
+result = read_verification_families("run_checkout_2026")
+```
+
+The adapter returns `unavailable` while the feature is disabled, on storage
+failure, or before migrations exist. An empty `family_hashes` sequence means no
+matching request was captured; it is not proof that the scenario passed.
+
 ## Why Use It
 
 Direct ORM access exposes Orbit's complete payload schema and couples an

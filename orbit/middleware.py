@@ -30,6 +30,7 @@ from orbit.utils import (
     serialize_for_json,
 )
 from orbit.watchers import cachalot_disabled
+from orbit.verification import VERIFICATION_HEADER, is_valid_verification_id
 
 
 class OrbitMiddleware:
@@ -169,7 +170,7 @@ class OrbitMiddleware:
             body = sanitize_body(body, hide_body_keys)
 
         # Build request data
-        return {
+        request_data = {
             "method": request.method,
             "path": request.path,
             "full_path": request.get_full_path(),
@@ -193,6 +194,19 @@ class OrbitMiddleware:
             "is_ajax": request.headers.get("X-Requested-With") == "XMLHttpRequest",
             "content_type": request.content_type,
         }
+        verification_id = self._verification_id(request, config)
+        if verification_id is not None:
+            request_data["verification_id"] = verification_id
+        return request_data
+
+    def _verification_id(self, request: HttpRequest, config: dict) -> str | None:
+        """Return an opted-in, bounded verification correlation identifier."""
+        if not config.get("RECORD_VERIFICATION_CONTEXT", False):
+            return None
+        value = request.headers.get(VERIFICATION_HEADER)
+        if not is_valid_verification_id(value):
+            return None
+        return value
 
     def _save_request(
         self,
