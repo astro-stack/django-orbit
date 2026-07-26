@@ -79,6 +79,16 @@
                 </div>
             </div>
             {% endfor %}
+{% if dashboard_extensions %}
+            <div class="border-t border-orbit-border/60 !mt-3 pt-3 space-y-0.5">
+                {% for extension in dashboard_extensions %}
+                <a href="{{ extension.url }}" class="w-full flex items-center gap-3 pl-3 pr-2 py-2 rounded-r-lg text-sm text-orbit-text-secondary hover:text-orbit-accent-cyan hover:bg-orbit-bg-tertiary/50 border-l-2 border-transparent transition-all">
+                    <i data-lucide="puzzle" class="w-4 h-4 shrink-0"></i>
+                    <span class="flex-1 truncate">{{ extension.label }}</span>
+                </a>
+                {% endfor %}
+            </div>
+            {% endif %}
         </nav>
         
         <!-- Sidebar Footer -->
