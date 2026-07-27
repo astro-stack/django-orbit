@@ -802,20 +802,39 @@ def _bundle_to_prompt(bundle: dict[str, Any]) -> str:
         )
     if primary.get("fingerprint"):
         representative = primary.get("representative") or {}
+        affected_paths = primary.get("affected_paths") or []
         lines.extend(
             [
                 "",
                 "Exception group evidence:",
                 f"- fingerprint: {primary.get('fingerprint')}",
-                f"- count: {primary.get('count')}",
+                f"- occurrences: {primary.get('count')}",
+                f"- first seen: {primary.get('first_seen', 'not captured')}",
+                f"- last seen: {primary.get('last_seen', 'not captured')}",
                 f"- representative: {representative.get('summary', '?')}",
             ]
         )
+        if affected_paths:
+            paths = ", ".join(
+                f"{item.get('path', '?')} ({item.get('count', 0)})"
+                for item in affected_paths[:5]
+            )
+            lines.append(f"- affected endpoints: {paths}")
+        else:
+            lines.append("- affected endpoints: not captured")
 
     surfaces = bundle.get("likely_code_surfaces") or []
     if surfaces:
         lines.extend(["", "Likely code surfaces:"])
         lines.extend(f"- {surface}" for surface in surfaces)
+    elif primary.get("fingerprint"):
+        lines.extend(
+            [
+                "",
+                "Evidence limit:",
+                "- No application file or line was captured. Do not infer a code location from the exception message alone.",
+            ]
+        )
 
     sequence = handoff.get("next_tool_sequence") or []
     if sequence:

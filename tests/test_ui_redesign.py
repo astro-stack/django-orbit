@@ -138,6 +138,38 @@ def test_detail_panel_explains_a_failed_request_with_evidence(client):
 
 
 @pytest.mark.django_db
+def test_detail_panel_explains_exception_message_frequency_and_location(client):
+    entry = OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_EXCEPTION,
+        family_hash="fam-checkout-error",
+        fingerprint="fp-checkout-error",
+        payload={
+            "exception_type": "ValueError",
+            "message": "payment token rejected",
+            "traceback": [
+                {
+                    "filename": "/app/orders/views.py",
+                    "lineno": 45,
+                    "name": "checkout",
+                }
+            ],
+        },
+    )
+    OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_EXCEPTION,
+        fingerprint="fp-checkout-error",
+        payload={"exception_type": "ValueError"},
+    )
+
+    html = client.get(reverse("orbit:detail", args=[entry.id])).content.decode()
+
+    assert "ValueError: payment token rejected" in html
+    assert "Orbit recorded this fingerprint 2 times." in html
+    assert "views.py:45 (checkout)" in html
+    assert "linked to related request evidence" in html
+
+
+@pytest.mark.django_db
 def test_detail_panel_explains_a_slow_query_without_claiming_a_cause(client):
     entry = OrbitEntry.objects.create(
         type=OrbitEntry.TYPE_QUERY,

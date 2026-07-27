@@ -312,6 +312,20 @@ def test_incident_bundle_markdown_is_coding_agent_ready(request_entry, related_e
     assert "secret" not in markdown
 
 
+def test_exception_bundle_prompt_exposes_scope_and_evidence_limits(
+    request_entry, related_entries
+):
+    from orbit.agentic import create_incident_bundle
+
+    prompt = create_incident_bundle("fingerprint", "fp-checkout", format="prompt")
+
+    assert "Exception group evidence:" in prompt
+    assert "- occurrences: 1" in prompt
+    assert "- affected endpoints: /checkout/ (1)" in prompt
+    assert "Likely code surfaces:" in prompt
+    assert "orders/views.py" in prompt
+
+
 def test_propose_fix_hypotheses_from_exception_group(request_entry, related_entries):
     from orbit.agentic import propose_fix_hypotheses
 

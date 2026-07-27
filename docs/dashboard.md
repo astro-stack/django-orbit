@@ -92,7 +92,10 @@ further. The handoff puts the same masked evidence, ranked hypotheses, and
 regression-test suggestions on the clipboard for Codex, Claude, or Cursor.
 When clipboard permissions are unavailable, Orbit falls back to the browser's
 compatible local copy path; **Preview handoff** always opens the exact,
-masked text before it is shared with a coding agent.
+masked text before it is shared with a coding agent. For an exception group,
+the handoff leads with occurrence count, observed endpoints, timestamps and
+captured code surfaces. When Orbit did not capture a file or line, it says so
+instead of inferring one.
 
 Routine evidence is explicit too. A successful request is described as a
 potential baseline, a request without a response status is marked as

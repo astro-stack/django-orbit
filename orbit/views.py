@@ -87,7 +87,9 @@ NAV_GROUPS = [
 ALERT_TYPES = {OrbitEntry.TYPE_EXCEPTION}
 
 
-def build_entry_investigation_guidance(entry, n_plus_one_findings=None):
+def build_entry_investigation_guidance(
+    entry, n_plus_one_findings=None, exception_occurrence_count=None
+):
     """Return conservative, evidence-backed next steps for an entry detail panel."""
     payload = entry.payload or {}
     n_plus_one_findings = n_plus_one_findings or []
@@ -112,12 +114,35 @@ def build_entry_investigation_guidance(entry, n_plus_one_findings=None):
 
     if entry.type == OrbitEntry.TYPE_EXCEPTION:
         exception_type = payload.get("exception_type") or "application"
+        exception_message = _guidance_excerpt(payload.get("message"), "")
+        location = _exception_guidance_location(payload)
+        occurrence_count = exception_occurrence_count or 1
+        occurrence_context = (
+            f"Orbit recorded this fingerprint {occurrence_count} times."
+            if occurrence_count > 1
+            else "Orbit recorded one occurrence of this fingerprint."
+        )
+        correlation_context = (
+            " It is linked to related request evidence."
+            if entry.family_hash
+            else " No request family was captured, so this entry cannot identify an affected endpoint by itself."
+        )
+        location_context = (
+            f" Start with {location}, reproduce the failure, and inspect related entries before proposing a fix."
+            if location
+            else " Open the traceback to locate the first application frame before proposing a fix."
+        )
+        description = (
+            f"{exception_type}: {exception_message}"
+            if exception_message
+            else f"A {exception_type} exception was recorded."
+        )
         guidance.update(
             {
                 "tone": "critical",
-                "what_happened": f"A {exception_type} exception was recorded.",
-                "why_it_matters": "Orbit captured the exception evidence for this runtime event.",
-                "next_step": "Inspect the stack trace and related entries, then copy the agent prompt when you want a proposed fix path.",
+                "what_happened": description,
+                "why_it_matters": occurrence_context + correlation_context,
+                "next_step": location_context,
             }
         )
         return guidance
@@ -309,6 +334,27 @@ def _guidance_excerpt(value, fallback, maximum=160):
     if not normalized:
         return fallback
     return f"{normalized[:maximum - 3]}..." if len(normalized) > maximum else normalized
+
+
+def _exception_guidance_location(payload):
+    """Return the last recorded application frame without exposing its directory."""
+    traceback = payload.get("traceback")
+    if not isinstance(traceback, list):
+        return None
+
+    for frame in reversed(traceback):
+        if not isinstance(frame, dict):
+            continue
+        filename = frame.get("filename")
+        if not isinstance(filename, str) or not filename:
+            continue
+        basename = filename.replace("\\", "/").rsplit("/", 1)[-1]
+        line = frame.get("lineno")
+        function = frame.get("name") or frame.get("function")
+        location = f"{basename}:{line}" if line else basename
+        return f"{location} ({function})" if function else location
+
+    return None
 
 
 def build_nav_groups(counts, current_type="all"):
@@ -792,8 +838,16 @@ class OrbitDetailPartial(OrbitProtectedView, View):
                 in {"n_plus_one_candidate", "per_row_aggregate_candidate"}
             ]
 
+        exception_occurrence_count = None
+        if entry.type == OrbitEntry.TYPE_EXCEPTION and entry.fingerprint:
+            exception_occurrence_count = OrbitEntry.objects.filter(
+                type=OrbitEntry.TYPE_EXCEPTION, fingerprint=entry.fingerprint
+            ).count()
+
         investigation_guidance = build_entry_investigation_guidance(
-            entry, n_plus_one_findings=n_plus_one_findings
+            entry,
+            n_plus_one_findings=n_plus_one_findings,
+            exception_occurrence_count=exception_occurrence_count,
         )
 
         # Request waterfall (B4): position child query spans on the request timeline.

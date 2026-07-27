@@ -126,7 +126,7 @@ investigate_exception_group("<fingerprint>")
 investigate_request("<family_hash>")
 ```
 
-Incident bundles are generated on demand from current `OrbitEntry` data. They are not persisted. Each bundle includes primary evidence, a safety report, recommended next actions, likely code surfaces, a suggested coding-agent prompt and a next-tool sequence for deeper investigation. Use `create_incident_bundle(..., format="prompt")` when MCP is unavailable and you need a safe copy/paste prompt. Use `generate_pr_context` when you need a paste-ready PR section after the fix path is understood.
+Incident bundles are generated on demand from current `OrbitEntry` data. They are not persisted. Each bundle includes primary evidence, a safety report, recommended next actions, likely code surfaces, a suggested coding-agent prompt and a next-tool sequence for deeper investigation. Exception bundles additionally state the observed occurrence count, first/last timestamps, affected endpoints and any captured code surface. When that evidence was not captured, Orbit labels the gap rather than inferring a code location or root cause. Use `create_incident_bundle(..., format="prompt")` when MCP is unavailable and you need a safe copy/paste prompt. Use `generate_pr_context` when you need a paste-ready PR section after the fix path is understood.
 
 ## Request-to-Fix Handoff Model
 

@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   signals: successful and incomplete requests, informational logs, Django
   signals, cache misses, permission denials, failed jobs, and rolled-back
   transactions receive evidence-specific, bounded next steps.
+- Exception guides and agent handoffs now surface captured message, frequency,
+  endpoint scope, timestamps and code location, while explicitly marking
+  unavailable evidence instead of inferring it.
 
 - `get_request_detail` now applies `MCP_MAX_LIMIT` and caps it to the Evidence API contract limit before reading a request family.
 
