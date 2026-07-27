@@ -143,7 +143,7 @@ def test_detail_panel_explains_a_slow_query_without_claiming_a_cause(client):
 
 
 @pytest.mark.django_db
-def test_detail_panel_keeps_neutral_events_factual(client):
+def test_detail_panel_turns_an_informational_log_into_timeline_context(client):
     entry = OrbitEntry.objects.create(
         type=OrbitEntry.TYPE_LOG,
         payload={"level": "INFO", "message": "worker started"},
@@ -151,8 +151,74 @@ def test_detail_panel_keeps_neutral_events_factual(client):
 
     html = client.get(reverse("orbit:detail", args=[entry.id])).content.decode()
 
-    assert "A log event was recorded." in html
-    assert "No problem signal was inferred from this event." in html
+    assert "An info log was recorded: &quot;worker started&quot;." in html
+    assert "Informational logs are timeline context" in html
+    assert "No remediation is suggested from this log alone." in html
+
+
+@pytest.mark.django_db
+def test_detail_panel_explains_a_successful_request_as_a_baseline(client):
+    entry = OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_REQUEST,
+        duration_ms=34,
+        payload={"method": "GET", "path": "/health/", "status_code": 200},
+    )
+
+    html = client.get(reverse("orbit:detail", args=[entry.id])).content.decode()
+
+    assert "GET /health/ returned HTTP 200 in 34.0ms." in html
+    assert "no error, slow-query, or repeated-query signal" in html
+    assert "No remediation is indicated" in html
+
+
+@pytest.mark.django_db
+def test_detail_panel_explains_a_signal_as_framework_context(client):
+    entry = OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_SIGNAL,
+        payload={"signal": "django.core.signals.request_finished"},
+    )
+
+    html = client.get(reverse("orbit:detail", args=[entry.id])).content.decode()
+
+    assert "A Django signal was dispatched: django.core.signals.request_finished." in html
+    assert "Signals show framework activity, not a failure by themselves." in html
+    assert "Ignore it unless it aligns with an error or slow request." in html
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("entry_type", "payload", "expected"),
+    [
+        (
+            OrbitEntry.TYPE_CACHE,
+            {"operation": "get", "hit": False},
+            "A cache lookup missed.",
+        ),
+        (
+            OrbitEntry.TYPE_GATE,
+            {"result": "denied"},
+            "An authorization check denied access.",
+        ),
+        (
+            OrbitEntry.TYPE_JOB,
+            {"status": "failed"},
+            "A background job was recorded as failed.",
+        ),
+        (
+            OrbitEntry.TYPE_TRANSACTION,
+            {"status": "rolled_back"},
+            "A database transaction was rolled back.",
+        ),
+    ],
+)
+def test_detail_panel_highlights_operational_signal_without_claiming_root_cause(
+    client, entry_type, payload, expected
+):
+    entry = OrbitEntry.objects.create(type=entry_type, payload=payload)
+
+    html = client.get(reverse("orbit:detail", args=[entry.id])).content.decode()
+
+    assert expected in html
 
 
 @pytest.mark.django_db

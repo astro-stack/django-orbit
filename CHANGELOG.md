@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Investigation guides now distinguish routine timeline context from actionable
+  signals: successful and incomplete requests, informational logs, Django
+  signals, cache misses, permission denials, failed jobs, and rolled-back
+  transactions receive evidence-specific, bounded next steps.
+
 - `get_request_detail` now applies `MCP_MAX_LIMIT` and caps it to the Evidence API contract limit before reading a request family.
 
 - Request-family correlation now uses async-task-local context, preventing

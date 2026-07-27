@@ -99,9 +99,15 @@ def build_entry_investigation_guidance(entry, n_plus_one_findings=None):
     )
     guidance = {
         "tone": "neutral",
-        "what_happened": f"A {event_label} was recorded.",
-        "why_it_matters": "No problem signal was inferred from this event.",
-        "next_step": "Review the captured fields and related entries before deciding whether follow-up is needed.",
+        "what_happened": f"{event_label.capitalize()} context was recorded.",
+        "why_it_matters": (
+            "This entry is timeline context. Orbit did not record an error, "
+            "threshold breach, or repeated-query finding for it."
+        ),
+        "next_step": (
+            "No action is required from this entry alone. Use it to orient an "
+            "investigation, or filter to errors, slow queries, and request families."
+        ),
     }
 
     if entry.type == OrbitEntry.TYPE_EXCEPTION:
@@ -147,6 +153,43 @@ def build_entry_investigation_guidance(entry, n_plus_one_findings=None):
                     "next_step": "Inspect the N+1 evidence and query timeline, then compare the calling code before optimizing.",
                 }
             )
+        elif isinstance(status_code, int):
+            duration_text = (
+                f" in {float(entry.duration_ms):.1f}ms"
+                if entry.duration_ms is not None
+                else ""
+            )
+            guidance.update(
+                {
+                    "what_happened": (
+                        f"{method} {path} returned HTTP {status_code}{duration_text}."
+                    ),
+                    "why_it_matters": (
+                        "Orbit recorded a successful response and no error, slow-query, "
+                        "or repeated-query signal for this request."
+                    ),
+                    "next_step": (
+                        "No remediation is indicated. Keep this as a baseline, or inspect "
+                        "related entries only when verifying a change."
+                    ),
+                }
+            )
+        else:
+            guidance.update(
+                {
+                    "what_happened": (
+                        f"{method} {path} was captured without a response status."
+                    ),
+                    "why_it_matters": (
+                        "Orbit can link this request to its family, but it cannot classify "
+                        "the outcome without a status code."
+                    ),
+                    "next_step": (
+                        "Check whether capture ended early. Otherwise use the family only "
+                        "as context for a known issue."
+                    ),
+                }
+            )
         return guidance
 
     if entry.type == OrbitEntry.TYPE_QUERY:
@@ -171,22 +214,101 @@ def build_entry_investigation_guidance(entry, n_plus_one_findings=None):
             )
         return guidance
 
-    if entry.type == OrbitEntry.TYPE_LOG and str(payload.get("level", "")).upper() in {
-        "ERROR",
-        "CRITICAL",
-        "WARNING",
-    }:
+    if entry.type == OrbitEntry.TYPE_LOG:
         level = str(payload.get("level")).upper()
+        if level in {"ERROR", "CRITICAL", "WARNING"}:
+            guidance.update(
+                {
+                    "tone": "warning" if level == "WARNING" else "critical",
+                    "what_happened": f"A {level.lower()} log event was recorded.",
+                    "why_it_matters": "The application emitted a runtime signal that may be relevant to the surrounding request.",
+                    "next_step": "Read the message and related entries to establish whether this signal belongs to an active incident.",
+                }
+            )
+        else:
+            message = _guidance_excerpt(payload.get("message"), "no message text")
+            guidance.update(
+                {
+                    "what_happened": f'An {level.lower() or "informational"} log was recorded: "{message}".',
+                    "why_it_matters": (
+                        "Informational logs are timeline context; they become relevant only "
+                        "when they correlate with a request, exception, or performance signal."
+                    ),
+                    "next_step": (
+                        "No remediation is suggested from this log alone. Use it to sequence "
+                        "a known investigation."
+                    ),
+                }
+            )
+        return guidance
+
+    if entry.type == OrbitEntry.TYPE_SIGNAL:
+        signal_name = _guidance_excerpt(payload.get("signal"), "an unnamed signal")
         guidance.update(
             {
-                "tone": "warning" if level == "WARNING" else "critical",
-                "what_happened": f"A {level.lower()} log event was recorded.",
-                "why_it_matters": "The application emitted a runtime signal that may be relevant to the surrounding request.",
-                "next_step": "Read the message and related entries to establish whether this signal belongs to an active incident.",
+                "what_happened": f"A Django signal was dispatched: {signal_name}.",
+                "why_it_matters": "Signals show framework activity, not a failure by themselves.",
+                "next_step": (
+                    "Ignore it unless it aligns with an error or slow request. Filter to "
+                    "requests, queries, or exceptions when investigating an incident."
+                ),
+            }
+        )
+        return guidance
+
+    if entry.type == OrbitEntry.TYPE_CACHE and payload.get("hit") is False:
+        guidance.update(
+            {
+                "what_happened": "A cache lookup missed.",
+                "why_it_matters": "One miss can be expected; repeated misses can increase backend work.",
+                "next_step": "Compare cache activity across the related request before changing cache keys or policy.",
+            }
+        )
+        return guidance
+
+    if entry.type == OrbitEntry.TYPE_GATE and payload.get("result") == "denied":
+        guidance.update(
+            {
+                "tone": "warning",
+                "what_happened": "An authorization check denied access.",
+                "why_it_matters": "A denial can be expected policy behavior or an access regression.",
+                "next_step": "Confirm the actor and permission rule before treating this as a defect.",
+            }
+        )
+        return guidance
+
+    if entry.type == OrbitEntry.TYPE_JOB and payload.get("status") in {"failed", "failure"}:
+        guidance.update(
+            {
+                "tone": "critical",
+                "what_happened": "A background job was recorded as failed.",
+                "why_it_matters": "The job outcome can affect work outside the current request lifecycle.",
+                "next_step": "Inspect the job exception and retries, then trace the triggering request or command.",
+            }
+        )
+        return guidance
+
+    if entry.type == OrbitEntry.TYPE_TRANSACTION and payload.get("status") == "rolled_back":
+        guidance.update(
+            {
+                "tone": "warning",
+                "what_happened": "A database transaction was rolled back.",
+                "why_it_matters": "A rollback preserves consistency but may indicate a failed user action or data conflict.",
+                "next_step": "Inspect the related exception and request before changing transaction handling.",
             }
         )
 
     return guidance
+
+
+def _guidance_excerpt(value, fallback, maximum=160):
+    """Return a bounded payload value that is already safe for the detail panel."""
+    if not isinstance(value, str):
+        return fallback
+    normalized = " ".join(value.split())
+    if not normalized:
+        return fallback
+    return f"{normalized[:maximum - 3]}..." if len(normalized) > maximum else normalized
 
 
 def build_nav_groups(counts, current_type="all"):

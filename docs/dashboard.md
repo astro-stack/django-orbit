@@ -90,6 +90,13 @@ a warning/error log level. It does not claim a root cause. Use the related
 entries, **Explain Plan**, and the **Copy fix handoff** action to investigate
 further. The handoff puts the same masked evidence, ranked hypotheses, and
 regression-test suggestions on the clipboard for Codex, Claude, or Cursor.
+
+Routine evidence is explicit too. A successful request is described as a
+potential baseline, a request without a response status is marked as
+incomplete, and informational logs or Django signals are labeled as timeline
+context rather than incidents. Cache misses, denied authorization checks,
+failed jobs, and rolled-back transactions receive a bounded follow-up step;
+none of these outcomes alone is presented as a root cause.
 ### JSON Payload
 
 The core of every entry is its JSON payload. Orbit renders this with syntax highlighting, making it easy to explore complex data structures.
