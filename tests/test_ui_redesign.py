@@ -107,7 +107,18 @@ def test_detail_panel_exposes_copy_fix_handoff_button(client):
     html = client.get(reverse("orbit:detail", args=[entry.id])).content.decode()
 
     assert "Copy fix handoff" in html
+    assert "orbit-copy-remote-btn" in html
+    assert "Preview handoff" in html
     assert reverse("orbit:agent_handoff", args=[entry.id]) in html
+
+
+@pytest.mark.django_db
+def test_dashboard_owns_the_remote_handoff_copy_handler(client):
+    html = client.get(reverse("orbit:dashboard")).content.decode()
+
+    assert "function copyRemoteText(button)" in html
+    assert "function copyTextWithFallback(text)" in html
+    assert ".orbit-copy-remote-btn" in html
 
 
 @pytest.mark.django_db

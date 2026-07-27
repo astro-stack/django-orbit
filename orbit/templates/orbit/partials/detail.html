@@ -114,12 +114,19 @@
             <button
                 type="button"
                 data-agent-handoff-url="{% url 'orbit:agent_handoff' entry.id %}"
-                onclick="copyOrbitAgentHandoff(this)"
-                class="inline-flex items-center gap-2 rounded-lg border border-orbit-accent-cyan/35 bg-orbit-accent-cyan/10 px-3 py-2 text-sm font-medium text-orbit-accent-cyan transition-colors hover:bg-orbit-accent-cyan/20 active:translate-y-px"
+                class="orbit-copy-remote-btn inline-flex items-center gap-2 rounded-lg border border-orbit-accent-cyan/35 bg-orbit-accent-cyan/10 px-3 py-2 text-sm font-medium text-orbit-accent-cyan transition-colors hover:bg-orbit-accent-cyan/20 active:translate-y-px"
                 title="Copy evidence, hypotheses, and regression tests for a coding agent">
                 <i data-lucide="clipboard-check" class="w-4 h-4"></i>
                 <span>Copy fix handoff</span>
             </button>
+            <a
+                href="{% url 'orbit:agent_handoff' entry.id %}"
+                target="_blank"
+                rel="noopener"
+                class="text-xs font-medium text-orbit-text-secondary transition-colors hover:text-orbit-accent-cyan"
+                title="Open the exact handoff before copying it">
+                Preview handoff
+            </a>
             <p class="text-xs text-orbit-text-muted">Masked evidence, ranked hypotheses, and regression tests for Codex, Claude, or Cursor.</p>
         </div>
         {% endif %}
@@ -553,35 +560,3 @@
     {% endif %}
     
 </div>
-
-<script>
-    // Apply syntax highlighting to JSON
-    (function() {
-        const el = document.getElementById('json-payload');
-        if (el) {
-            el.innerHTML = syntaxHighlight(el.textContent);
-        }
-    })();
-    async function copyOrbitAgentHandoff(button) {
-        const url = button.getAttribute('data-agent-handoff-url');
-        const content = button.innerHTML;
-        try {
-            const response = await fetch(url, {headers: {'Accept': 'text/plain'}});
-            const text = await response.text();
-            if (!response.ok) {
-                throw new Error(text || 'Could not build handoff');
-            }
-            await navigator.clipboard.writeText(text);
-            button.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i><span>Fix handoff copied</span>';
-        } catch (error) {
-            button.innerHTML = '<i data-lucide="alert-triangle" class="w-4 h-4"></i><span>Could not copy handoff</span>';
-        } finally {
-            lucide.createIcons();
-            setTimeout(() => {
-                button.innerHTML = content;
-                lucide.createIcons();
-            }, 1800);
-        }
-    }
-
-</script>

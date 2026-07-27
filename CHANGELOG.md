@@ -30,6 +30,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `get_request_detail` now returns the versioned, metadata-only Evidence API
   envelope instead of the legacy payload-bearing entry serialization.
 
+### Fixed
+
+- Copy fix handoff now works from the dynamically loaded detail panel, includes
+  a compatible browser clipboard fallback, and offers a preview of the masked
+  handoff text.
+
 ## [0.13.0] - 2026-07-23
 
 ### Added

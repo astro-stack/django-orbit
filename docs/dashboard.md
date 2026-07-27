@@ -90,6 +90,9 @@ a warning/error log level. It does not claim a root cause. Use the related
 entries, **Explain Plan**, and the **Copy fix handoff** action to investigate
 further. The handoff puts the same masked evidence, ranked hypotheses, and
 regression-test suggestions on the clipboard for Codex, Claude, or Cursor.
+When clipboard permissions are unavailable, Orbit falls back to the browser's
+compatible local copy path; **Preview handoff** always opens the exact,
+masked text before it is shared with a coding agent.
 
 Routine evidence is explicit too. A successful request is described as a
 potential baseline, a request without a response status is marked as
