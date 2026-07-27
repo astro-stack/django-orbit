@@ -41,7 +41,7 @@ python manage.py runserver
 
 | Command | Description |
 |---------|-------------|
-| `python demo.py setup` | Create a balanced corpus for every event family, including AI/LLM and query patterns |
+| `python demo.py setup` | Create a balanced corpus for every event family, including AI/LLM and query patterns. The newest All Events rows are intentionally mixed so one watcher type does not dominate the first page. |
 | `python demo.py simulate` | Simulate live traffic (60 seconds) |
 | `python demo.py simulate -d 30` | Simulate for 30 seconds |
 | `python demo.py clear` | Clear all Orbit entries |

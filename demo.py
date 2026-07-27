@@ -624,6 +624,11 @@ def setup_demo():
     
     # Generate historical data for stats charts
     generate_historical_data()
+
+    # Keep the first All Events page useful after setup. Watchers can append a
+    # burst of one event type (commonly signals), which otherwise hides the
+    # breadth of Orbit in a timestamp-ordered feed.
+    create_recent_feed_highlights()
     
     print("\n" + "="*60)
     print("✅ Setup Complete!")
@@ -651,6 +656,32 @@ def setup_demo():
     print(f"\n🌐 Demo: http://localhost:8000/")
     print(f"🛰️  Orbit: http://localhost:8000/orbit/")
     print(f"\n💡 TIP: Run 'python demo.py fill' to generate live events!\n")
+
+
+def create_recent_feed_highlights():
+    """Append a balanced, metadata-only sample across Orbit event families."""
+    from orbit.models import OrbitEntry
+
+    highlights = (
+        ("signal", {"signal": "demo.checkout_verified", "sender": "demo.Checkout"}),
+        ("request", {"method": "GET", "path": "/books/", "status_code": 200}),
+        ("query", {"sql": "SELECT * FROM demo_book", "is_slow": False}),
+        ("exception", {"exception_type": "ValidationError", "request_path": "/checkout/"}),
+        ("log", {"level": "WARNING", "message": "Checkout validation retried"}),
+        ("cache", {"operation": "get", "key": "checkout:summary", "hit": True}),
+        ("model", {"model": "demo.Book", "action": "updated", "pk": "12"}),
+        ("http_client", {"method": "POST", "url": "https://api.example.test/payments", "status_code": 201}),
+        ("job", {"name": "send_receipt", "queue": "email", "status": "completed"}),
+        ("llm", {"provider": "openai", "model": "gpt-5-mini", "status": "success"}),
+        ("command", {"command": "collectstatic", "exit_code": 0}),
+        ("transaction", {"status": "committed", "using": "default"}),
+        ("storage", {"operation": "save", "path": "exports/checkout.csv"}),
+        ("redis", {"operation": "GET", "key": "checkout:lock"}),
+        ("gate", {"permission": "orders.change_order", "result": "granted"}),
+        ("mail", {"subject": "Receipt ready", "to": ["customer@example.com"]}),
+    )
+    for entry_type, payload in highlights:
+        OrbitEntry.objects.create(type=entry_type, payload=payload)
 
 
 
