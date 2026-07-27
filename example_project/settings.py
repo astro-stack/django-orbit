@@ -124,6 +124,9 @@ LOGGING = {
 # Django Orbit Configuration
 ORBIT_CONFIG = {
     'ENABLED': True,
+    'PROJECT_NAME': 'Django Orbit Demo',
+    'ENVIRONMENT': 'local',
+    'RELEASE': '0.13.0',
     'SLOW_QUERY_THRESHOLD_MS': 100,  # Lower threshold for demo
     'STORAGE_LIMIT': 500,
     'IGNORE_PATHS': [

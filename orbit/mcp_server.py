@@ -26,12 +26,14 @@ def _serialize_entry(entry) -> dict:
     """Convert an OrbitEntry to an agent-safe JSON-serializable dict."""
     from orbit.agentic import agent_safe_serialize_entry
 
-    return agent_safe_serialize_entry(entry)
+    return agent_safe_serialize_entry(entry, redact_paths=True)
 
 
 def _format_output(data: Any) -> str:
-    """Format data as pretty-printed JSON string for AI consumption."""
-    return json.dumps(data, indent=2, default=str)
+    """Format MCP output after applying the agent path-redaction boundary."""
+    from orbit.agentic import _sanitize_agent_payload_paths
+
+    return json.dumps(_sanitize_agent_payload_paths(data), indent=2, default=str)
 
 
 def _mcp_disabled_output() -> str:
@@ -154,8 +156,9 @@ def create_mcp_server():
         if not get_config().get("MCP_ENABLED", True):
             return _mcp_disabled_output()
 
-        from django.utils import timezone
         from datetime import timedelta
+
+        from django.utils import timezone
 
         limit = min(limit, 100)
         since = timezone.now() - timedelta(hours=hours)
@@ -176,11 +179,10 @@ def create_mcp_server():
     @mcp.tool()
     def get_n1_patterns(limit: int = 20) -> str:
         """
-        Find HTTP requests that triggered N+1 query patterns.
+        Find requests with classified N+1 candidates or duplicate-query evidence.
 
-        Returns requests where duplicate SQL queries were detected â€” a strong
-        signal of missing select_related() or prefetch_related() calls.
-        Each result includes the most-duplicated query and its repetition count.
+        Each result states whether Orbit found deterministic N+1 evidence
+        or only legacy duplicate SQL. Repetition alone is not treated as proof.
 
         Args:
             limit: Number of results to return (max 50, default 20)
@@ -188,17 +190,49 @@ def create_mcp_server():
         if not get_config().get("MCP_ENABLED", True):
             return _mcp_disabled_output()
 
+        from django.db.models import Q
+
         limit = min(limit, 50)
 
-        # Requests where Orbit detected duplicate queries
-        entries = (
-            OrbitEntry.objects.requests()
-            .filter(payload__duplicate_query_count__gt=0)
-            .order_by("-payload__duplicate_query_count")[:limit]
+        # Keep historical duplicate-only entries visible and rank legacy pattern
+        # payloads in Python when they predate the materialized counter.
+        entries = list(
+            OrbitEntry.objects.requests().filter(
+                Q(payload__n_plus_one_count__gt=0)
+                | Q(payload__duplicate_query_count__gt=0)
+                | Q(payload__query_patterns__isnull=False)
+            )
         )
 
+        def rank_entry(entry):
+            payload = entry.payload if isinstance(entry.payload, dict) else {}
+            try:
+                duplicate_count = max(0, int(payload.get("duplicate_query_count", 0)))
+            except (TypeError, ValueError):
+                duplicate_count = 0
+            return (
+                -int(agentic_tools.request_n_plus_one_count(payload) > 0),
+                -duplicate_count,
+                -(entry.duration_ms or 0),
+                str(entry.id),
+            )
+
+        entries.sort(key=rank_entry)
         results = []
-        for entry in entries:
+        for entry in entries[:limit]:
+            patterns = [
+                agentic_tools.agent_safe_serialize_query_finding(pattern)
+                for pattern in agentic_tools.valid_query_patterns(
+                    entry.payload.get("query_patterns")
+                )
+            ]
+            findings = [
+                pattern
+                for pattern in patterns
+                if pattern.get("kind")
+                in {"n_plus_one_candidate", "per_row_aggregate_candidate"}
+            ]
+            n_plus_one_count = agentic_tools.request_n_plus_one_count(entry.payload)
             results.append(
                 {
                     "id": str(entry.id),
@@ -208,6 +242,13 @@ def create_mcp_server():
                     "duplicate_query_count": entry.payload.get(
                         "duplicate_query_count", 0
                     ),
+                    "classification": (
+                        "n_plus_one_candidate"
+                        if n_plus_one_count > 0
+                        else "duplicate_only"
+                    ),
+                    "n_plus_one_count": n_plus_one_count,
+                    "n_plus_one_findings": findings,
                     "family_hash": entry.family_hash,
                     "created_at": entry.created_at.isoformat(),
                 }
@@ -263,40 +304,58 @@ def create_mcp_server():
     # -------------------------------------------------------------------------
     @mcp.tool()
     def get_request_detail(family_hash: str) -> str:
-        """
-        Get all events associated with a specific HTTP request.
-
-        Given a family_hash from any entry, returns the originating request
-        plus all SQL queries, logs, exceptions, and other events that occurred
-        during that request's lifecycle. Essential for root-cause analysis.
-
-        Args:
-            family_hash: The family_hash value from any OrbitEntry
-        """
+        """Get normalized, metadata-only evidence for one request family."""
         if not get_config().get("MCP_ENABLED", True):
             return _mcp_disabled_output()
 
-        entries = OrbitEntry.objects.for_family(family_hash)
-        if not entries.exists():
-            return _format_output(
-                {"error": f"No entries found for family_hash: {family_hash}"}
+        from orbit.evidence import MAX_FAMILY_LIMIT, read_family_evidence
+
+        try:
+            limit = min(
+                MAX_FAMILY_LIMIT,
+                max(1, int(get_config().get("MCP_MAX_LIMIT", 100))),
             )
+        except (TypeError, ValueError):
+            limit = 100
+        evidence = read_family_evidence(family_hash, limit=limit)
+        if evidence["status"] != "ok":
+            reason = evidence.get("reason") or "unavailable"
+            error = (
+                f"No entries found for family_hash: {family_hash}"
+                if reason == "family_not_found"
+                else f"Request detail is unavailable: {reason}"
+            )
+            return _format_output({"error": error, "evidence": evidence})
 
-        result = [_serialize_entry(e) for e in entries]
-
-        # Build a summary
-        by_type: dict = {}
-        for e in result:
-            by_type.setdefault(e["type"], []).append(e)
+        event_types: dict[str, int] = {}
+        for entry in evidence["entries"]:
+            event_type = entry["type"]
+            event_types[event_type] = event_types.get(event_type, 0) + 1
 
         return _format_output(
             {
-                "family_hash": family_hash,
-                "total_events": len(result),
-                "event_types": {k: len(v) for k, v in by_type.items()},
-                "events": result,
+                "schema_version": evidence["schema_version"],
+                "family_hash": evidence["family_hash"],
+                "total_events": evidence["count"],
+                "event_types": event_types,
+                "truncated": evidence["truncated"],
+                "evidence_quality": evidence["evidence_quality"],
+                "events": evidence["entries"],
             }
         )
+
+    # -------------------------------------------------------------------------
+    # Tool: get_capture_health
+    # -------------------------------------------------------------------------
+    @mcp.tool()
+    def get_capture_health() -> str:
+        """Read safe metadata about Orbit capture readiness and coverage."""
+        if not get_config().get("MCP_ENABLED", True):
+            return _mcp_disabled_output()
+
+        from orbit.evidence import read_capture_health
+
+        return _format_output(read_capture_health())
 
     # -------------------------------------------------------------------------
     # Tool: get_stats_summary
@@ -316,9 +375,10 @@ def create_mcp_server():
         if not get_config().get("MCP_ENABLED", True):
             return _mcp_disabled_output()
 
-        from django.utils import timezone
         from datetime import timedelta
+
         from django.db.models import Avg, Count
+        from django.utils import timezone
 
         since = timezone.now() - timedelta(hours=hours)
         base = OrbitEntry.objects.filter(created_at__gte=since)
@@ -542,16 +602,30 @@ def create_mcp_server():
     @mcp.tool()
     def find_n_plus_one_candidates(hours: int = 24, limit: int = None) -> str:
         """
-        Rank recent requests that show duplicate-query/N+1 evidence.
+        Rank requests with deterministic N+1 or duplicate-query evidence.
 
-        Returns endpoint, family_hash, duplicate signatures and suggested next
-        tools for each candidate.
+        Returns classification, confidence, reasons, endpoint, family_hash,
+        duplicate signatures and suggested next tools for each candidate.
         """
         if not get_config().get("MCP_ENABLED", True):
             return _mcp_disabled_output()
         return _format_output(
             agentic_tools.find_n_plus_one_candidates(hours=hours, limit=limit)
         )
+
+    @mcp.tool()
+    def explain_n_plus_one(family_hash: str) -> str:
+        """Explain classified N+1 evidence and limits for one request family."""
+        if not get_config().get("MCP_ENABLED", True):
+            return _mcp_disabled_output()
+        return _format_output(agentic_tools.explain_n_plus_one(family_hash))
+
+    @mcp.tool()
+    def investigate_slow_query(entry_id: str) -> str:
+        """Connect a captured slow query to request-family evidence and next steps."""
+        if not get_config().get("MCP_ENABLED", True):
+            return _mcp_disabled_output()
+        return _format_output(agentic_tools.investigate_slow_query(entry_id))
 
     @mcp.tool()
     def summarize_exception_groups(hours: int = 24, limit: int = None) -> str:

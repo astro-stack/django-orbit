@@ -53,16 +53,6 @@
             <h3 class="text-lg font-medium text-orbit-text-primary capitalize">{{ entry.type }}</h3>
             <p class="text-sm text-orbit-text-muted font-mono">{{ entry.id }}</p>
         </div>
-        {% if can_copy_agent_prompt %}
-        <button
-           type="button"
-           data-agent-prompt-url="{% url 'orbit:agent_prompt' entry.id %}"
-           onclick="copyOrbitAgentPrompt(this)"
-           class="p-2 hover:bg-orbit-bg-tertiary rounded-lg transition-colors text-orbit-text-secondary hover:text-orbit-text-primary group"
-           title="Copy agent prompt">
-            <i data-lucide="clipboard-copy" class="w-5 h-5 group-hover:text-orbit-accent-cyan"></i>
-        </button>
-        {% endif %}
         <a href="{% url 'orbit:export' entry.id %}" 
            class="p-2 hover:bg-orbit-bg-tertiary rounded-lg transition-colors text-orbit-text-secondary hover:text-orbit-text-primary group" 
            title="Export JSON">
@@ -98,6 +88,42 @@
         </div>
     </div>
 
+    <!-- Investigation guide: deterministic interpretation of recorded evidence. -->
+    <section aria-labelledby="investigation-guide-title" class="border-y border-orbit-border py-4">
+        <div class="flex items-center gap-2">
+            <i data-lucide="route" class="w-4 h-4 {% if investigation_guidance.tone == 'critical' %}text-rose-400{% elif investigation_guidance.tone == 'warning' %}text-amber-400{% else %}text-orbit-accent-cyan{% endif %}"></i>
+            <h4 id="investigation-guide-title" class="text-sm font-medium text-orbit-text-primary">Investigation guide</h4>
+            <span class="text-xs text-orbit-text-muted">Based on recorded evidence</span>
+        </div>
+        <div class="mt-3 space-y-3 divide-y divide-orbit-border/70">
+            <div class="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-3">
+                <span class="text-xs font-mono uppercase tracking-wide text-orbit-text-muted">What happened</span>
+                <p class="text-sm leading-6 text-orbit-text-primary">{{ investigation_guidance.what_happened }}</p>
+            </div>
+            <div class="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-3 pt-3">
+                <span class="text-xs font-mono uppercase tracking-wide text-orbit-text-muted">Why it matters</span>
+                <p class="text-sm leading-6 text-orbit-text-secondary">{{ investigation_guidance.why_it_matters }}</p>
+            </div>
+            <div class="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-3 pt-3">
+                <span class="text-xs font-mono uppercase tracking-wide text-orbit-text-muted">Next step</span>
+                <p class="text-sm leading-6 text-orbit-text-secondary">{{ investigation_guidance.next_step }}</p>
+            </div>
+        </div>
+        {% if can_copy_agent_handoff %}
+        <div class="mt-4 flex flex-wrap items-center gap-3">
+            <button
+                type="button"
+                data-agent-handoff-url="{% url 'orbit:agent_handoff' entry.id %}"
+                onclick="copyOrbitAgentHandoff(this)"
+                class="inline-flex items-center gap-2 rounded-lg border border-orbit-accent-cyan/35 bg-orbit-accent-cyan/10 px-3 py-2 text-sm font-medium text-orbit-accent-cyan transition-colors hover:bg-orbit-accent-cyan/20 active:translate-y-px"
+                title="Copy evidence, hypotheses, and regression tests for a coding agent">
+                <i data-lucide="clipboard-check" class="w-4 h-4"></i>
+                <span>Copy fix handoff</span>
+            </button>
+            <p class="text-xs text-orbit-text-muted">Masked evidence, ranked hypotheses, and regression tests for Codex, Claude, or Cursor.</p>
+        </div>
+        {% endif %}
+    </section>
     <!-- Tags (B1) — click to filter the feed by that tag -->
     {% if entry.tag_list %}
     <div class="flex flex-wrap items-center gap-2">
@@ -167,6 +193,29 @@
     </div>
     {% endif %}
     
+    {% if n_plus_one_findings %}
+    <div class="space-y-3 mt-2">
+        <div class="flex items-center gap-2">
+            <i data-lucide="scan-search" class="w-4 h-4 text-amber-400"></i>
+            <span class="text-sm font-medium text-amber-400">Probable N+1</span>
+        </div>
+        {% for finding in n_plus_one_findings %}
+        <div class="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
+            <div class="flex items-center justify-between gap-3">
+                <span class="text-xs font-mono text-orbit-text-primary">{{ finding.query_summary }}</span>
+                <span class="text-xs text-amber-400 whitespace-nowrap">{{ finding.confidence }} confidence</span>
+            </div>
+            <p class="mt-2 text-xs text-orbit-text-muted">
+                {{ finding.occurrences }} executions, {{ finding.unique_parameter_sets }} parameter sets, {{ finding.total_duration_ms }}ms total.
+            </p>
+            <p class="mt-1 text-xs text-orbit-text-muted">
+                Evidence: {{ finding.evidence|join:", " }}
+            </p>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <!-- Duplicate Query Stats for REQUEST entries -->
     {% if duplicate_query_stats and duplicate_query_stats.total_duplicates > 0 %}
     <div class="space-y-1 mt-2">
@@ -473,16 +522,16 @@
     </div>
     {% endif %}
     
-    <!-- Duplicate Queries (N+1 Debug) -->
+    <!-- Duplicate query evidence -->
     {% if duplicate_entries %}
     <div class="mt-6">
         <div class="flex items-center gap-2 mb-3">
             <i data-lucide="copy" class="w-4 h-4 text-amber-400"></i>
-            <h4 class="text-sm font-medium text-amber-400">Duplicate Queries (N+1 Detected)</h4>
+            <h4 class="text-sm font-medium text-amber-400">Duplicate Query Evidence</h4>
             <span class="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full">{{ duplicate_entries|length }} similar</span>
         </div>
         <p class="text-xs text-orbit-text-muted mb-3">
-            These queries have the same SQL. Consider using <code class="text-amber-300">select_related()</code> or <code class="text-amber-300">prefetch_related()</code> to optimize.
+            These queries repeat the same SQL in this request. Repetition alone does not prove N+1; inspect parameters and the calling code before choosing an optimization.
         </p>
         <div class="space-y-1 max-h-40 overflow-y-auto bg-orbit-bg-tertiary/30 rounded-lg p-2">
             {% for dup in duplicate_entries %}
@@ -513,25 +562,26 @@
             el.innerHTML = syntaxHighlight(el.textContent);
         }
     })();
-    async function copyOrbitAgentPrompt(button) {
-        const url = button.getAttribute('data-agent-prompt-url');
-        const icon = button.innerHTML;
+    async function copyOrbitAgentHandoff(button) {
+        const url = button.getAttribute('data-agent-handoff-url');
+        const content = button.innerHTML;
         try {
             const response = await fetch(url, {headers: {'Accept': 'text/plain'}});
             const text = await response.text();
             if (!response.ok) {
-                throw new Error(text || 'Could not build prompt');
+                throw new Error(text || 'Could not build handoff');
             }
             await navigator.clipboard.writeText(text);
-            button.innerHTML = '<i data-lucide="check" class="w-5 h-5 text-emerald-400"></i>';
+            button.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i><span>Fix handoff copied</span>';
         } catch (error) {
-            button.innerHTML = '<i data-lucide="alert-triangle" class="w-5 h-5 text-rose-400"></i>';
+            button.innerHTML = '<i data-lucide="alert-triangle" class="w-4 h-4"></i><span>Could not copy handoff</span>';
         } finally {
             lucide.createIcons();
             setTimeout(() => {
-                button.innerHTML = icon;
+                button.innerHTML = content;
                 lucide.createIcons();
-            }, 1400);
+            }, 1800);
         }
     }
+
 </script>

@@ -4,14 +4,22 @@ Django Orbit Configuration
 Provides default configuration and allows user overrides via Django settings.
 """
 
+from collections.abc import Mapping
+
 from django.conf import settings
 
 # Default configuration
 DEFAULTS = {
     "ENABLED": True,
+    "PROJECT_NAME": "",
+    "ENVIRONMENT": "",
+    "RELEASE": "",
     # Authentication check (callable or path to function)
     "AUTH_CHECK": None,
     "SLOW_QUERY_THRESHOLD_MS": 500,
+    "N_PLUS_ONE_ENABLED": True,
+    "N_PLUS_ONE_MIN_OCCURRENCES": 4,
+    "N_PLUS_ONE_MAX_QUERIES": 1000,
     "IGNORE_PATHS": ["/orbit/", "/static/", "/admin/jsi18n/", "/favicon.ico"],
     "HIDE_REQUEST_HEADERS": ["Authorization", "Cookie", "X-CSRFToken"],
     "HIDE_REQUEST_BODY_KEYS": ["password", "token", "secret", "api_key"],
@@ -104,6 +112,51 @@ DEFAULTS = {
 }
 
 
+def get_config_diagnostics():
+    """Return the effective configuration and explain which alias supplied it."""
+    orbit_defined = hasattr(settings, "ORBIT")
+    orbit_config_defined = hasattr(settings, "ORBIT_CONFIG")
+    raw_orbit = getattr(settings, "ORBIT", None)
+    raw_orbit_config = getattr(settings, "ORBIT_CONFIG", None)
+    orbit_value = dict(raw_orbit) if isinstance(raw_orbit, Mapping) else {}
+    orbit_config_value = (
+        dict(raw_orbit_config) if isinstance(raw_orbit_config, Mapping) else {}
+    )
+    invalid_sources = [
+        name
+        for name, defined, value in (
+            ("ORBIT", orbit_defined, raw_orbit),
+            ("ORBIT_CONFIG", orbit_config_defined, raw_orbit_config),
+        )
+        if defined and value is not None and not isinstance(value, Mapping)
+    ]
+
+    if orbit_config_defined:
+        source = "ORBIT_CONFIG"
+    elif orbit_defined:
+        source = "ORBIT"
+    else:
+        source = "defaults"
+
+    effective = DEFAULTS.copy()
+    effective.update(orbit_value)
+    effective.update(orbit_config_value)
+    shared_keys = set(orbit_value) & set(orbit_config_value)
+    conflicting_keys = sorted(
+        key
+        for key in shared_keys
+        if orbit_value.get(key) != orbit_config_value.get(key)
+    )
+
+    return {
+        "source": source,
+        "effective": effective,
+        "both_defined": orbit_defined and orbit_config_defined,
+        "conflicting_keys": conflicting_keys,
+        "invalid_sources": invalid_sources,
+    }
+
+
 def get_config():
     """
     Get the Orbit configuration, merging defaults with user settings.
@@ -111,12 +164,7 @@ def get_config():
     Returns:
         dict: Complete configuration dictionary
     """
-    user_config = getattr(settings, "ORBIT", {}) or getattr(
-        settings, "ORBIT_CONFIG", {}
-    )
-    config = DEFAULTS.copy()
-    config.update(user_config)
-    return config
+    return get_config_diagnostics()["effective"]
 
 
 def is_enabled():

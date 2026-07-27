@@ -13,6 +13,7 @@ from django.http import HttpRequest, HttpResponse
 
 from orbit.conf import get_config, should_ignore_path
 from orbit.handlers import set_current_family_hash
+from orbit.query_analysis import analyze_query_patterns, n_plus_one_findings
 from orbit.recorders import (
     OrbitQueryWrapper,
     clear_current_context,
@@ -117,6 +118,17 @@ class OrbitMiddleware:
                     for count in query_wrapper.query_hashes.values()
                     if count > 1
                 )
+                query_patterns = []
+                if config.get("N_PLUS_ONE_ENABLED", True):
+                    try:
+                        query_patterns = analyze_query_patterns(
+                            query_wrapper.queries,
+                            min_occurrences=config.get("N_PLUS_ONE_MIN_OCCURRENCES", 4),
+                            max_queries=config.get("N_PLUS_ONE_MAX_QUERIES", 1000),
+                        )
+                    except Exception:
+                        query_patterns = []
+                detected_n_plus_one = n_plus_one_findings(query_patterns)
 
                 self._save_request(
                     request_data=request_data,
@@ -125,6 +137,8 @@ class OrbitMiddleware:
                     duration_ms=duration_ms,
                     query_count=len(query_wrapper.queries),
                     duplicate_query_count=duplicate_query_count,
+                    query_patterns=query_patterns,
+                    n_plus_one_count=len(detected_n_plus_one),
                     exception_info=exception_info,
                 )
 
@@ -188,6 +202,8 @@ class OrbitMiddleware:
         duration_ms: float,
         query_count: int,
         duplicate_query_count: int = 0,
+        query_patterns: Optional[list] = None,
+        n_plus_one_count: int = 0,
         exception_info: Optional[dict] = None,
     ) -> None:
         """
@@ -201,6 +217,8 @@ class OrbitMiddleware:
             "duration_ms": round(duration_ms, 3),
             "query_count": query_count,
             "duplicate_query_count": duplicate_query_count,
+            "query_patterns": query_patterns or [],
+            "n_plus_one_count": n_plus_one_count,
         }
 
         # Add response data if available
@@ -232,6 +250,10 @@ class OrbitMiddleware:
             payload["had_exception"] = False
 
         # Create entry
+        from orbit.watchers import _table_exists
+
+        if not _table_exists():
+            return
         try:
             with cachalot_disabled():
                 OrbitEntry.objects.create(
@@ -260,6 +282,10 @@ class OrbitMiddleware:
             entries.append(entry)
 
         if entries:
+            from orbit.watchers import _table_exists
+
+            if not _table_exists():
+                return
             try:
                 batch_size = get_config().get("BULK_CREATE_BATCH_SIZE")
                 with cachalot_disabled():
@@ -289,6 +315,10 @@ class OrbitMiddleware:
             "request_host": request_data.get("host"),
         }
 
+        from orbit.watchers import _table_exists
+
+        if not _table_exists():
+            return
         try:
             with cachalot_disabled():
                 OrbitEntry.objects.create(

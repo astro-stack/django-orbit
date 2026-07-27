@@ -9,14 +9,21 @@ consistent across human and AI workflows.
 from __future__ import annotations
 
 import json
+import re
 from collections import Counter
 from typing import Any, Iterable
 
-from django.db.models import Avg, Count, Max, Min, Q
+from django.core.exceptions import ValidationError
+from django.db.models import Avg, Case, Count, IntegerField, Max, Min, Q, Value, When
 from django.utils import timezone
 
 from orbit.conf import get_config
 from orbit.models import OrbitEntry
+from orbit.query_analysis import (
+    N_PLUS_ONE_KINDS,
+    request_n_plus_one_count,
+    valid_query_patterns,
+)
 from orbit.utils import mask_sensitive_data, parse_tags, serialize_for_json
 
 HIGH_LEVEL_TOOLS = [
@@ -41,6 +48,64 @@ HIGH_LEVEL_TOOLS = [
 
 DEFAULT_MAX_PAYLOAD_CHARS = 12000
 DEFAULT_MAX_EVENTS = 100
+_TRACEBACK_FILE_RE = re.compile(r"(File\s+[\"'])([^\"']+)([\"'])")
+
+
+def _agent_safe_filename(value: Any) -> str:
+    """Keep only a basename so agent-facing telemetry never leaks host paths."""
+    normalized = str(value or "").replace("\\", "/").rstrip("/")
+    return normalized.rsplit("/", 1)[-1] or "<application>"
+
+
+def _agent_safe_caller_key(value: Any) -> str:
+    """Keep a caller signature useful without exposing its directory path."""
+    try:
+        filename, lineno, function = str(value or "").rsplit(":", 2)
+    except ValueError:
+        return "<application>"
+    return "{}:{}:{}".format(_agent_safe_filename(filename), lineno, function)
+
+
+def _sanitize_traceback_text(value: str) -> str:
+    """Remove directories from Python traceback file locations."""
+    return _TRACEBACK_FILE_RE.sub(
+        lambda match: "{}{}{}".format(
+            match.group(1), _agent_safe_filename(match.group(2)), match.group(3)
+        ),
+        value,
+    )
+
+
+def _sanitize_agent_payload_paths(value: Any) -> Any:
+    """Recursively redact filesystem directories from known telemetry fields."""
+    if isinstance(value, dict):
+        return {
+            key: (
+                _agent_safe_filename(item)
+                if key == "filename" and isinstance(item, str)
+                else _agent_safe_caller_key(item)
+                if key == "caller_key" and isinstance(item, str)
+                else _sanitize_traceback_text(item)
+                if key in {"traceback", "traceback_string"} and isinstance(item, str)
+                else _sanitize_agent_payload_paths(item)
+            )
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_sanitize_agent_payload_paths(item) for item in value]
+    if isinstance(value, tuple):
+        return [_sanitize_agent_payload_paths(item) for item in value]
+    return value
+
+
+def agent_safe_serialize_query_finding(
+    finding: dict[str, Any],
+) -> dict[str, Any]:
+    """Project a query finding without exposing an absolute caller path."""
+    safe = dict(finding)
+    if safe.get("caller_key"):
+        safe["caller_key"] = _agent_safe_caller_key(safe["caller_key"])
+    return serialize_for_json(mask_sensitive_data(safe))
 
 
 COMMON_AGENT_SAFE_FIELDS = [
@@ -99,9 +164,17 @@ def _json_size(value: Any) -> int:
     return len(json.dumps(value, default=str, separators=(",", ":")))
 
 
-def _truncate_payload(payload: Any, max_payload_chars: int) -> tuple[Any, bool, int]:
+def _truncate_payload(
+    payload: Any,
+    max_payload_chars: int,
+    *,
+    redact_paths: bool = False,
+) -> tuple[Any, bool, int]:
     """Return a JSON-safe payload bounded by a deterministic character budget."""
-    safe_payload = serialize_for_json(mask_sensitive_data(payload or {}))
+    safe_payload = mask_sensitive_data(payload or {})
+    if redact_paths:
+        safe_payload = _sanitize_agent_payload_paths(safe_payload)
+    safe_payload = serialize_for_json(safe_payload)
     size = _json_size(safe_payload)
     if size <= max_payload_chars:
         return safe_payload, False, size
@@ -128,11 +201,20 @@ def _safe_limit(limit: int | None, default: int = 20) -> int:
     return max(1, min(limit, configured_max))
 
 
+def _safe_entry_flag(entry: OrbitEntry, attribute: str) -> bool:
+    """Read derived model flags without letting corrupt historical JSON escape."""
+    try:
+        return bool(getattr(entry, attribute))
+    except (AttributeError, TypeError, ValueError):
+        return False
+
+
 def agent_safe_serialize_entry(
     entry: OrbitEntry,
     *,
     include_payload: bool | None = None,
     max_payload_chars: int | None = None,
+    redact_paths: bool = False,
 ) -> dict[str, Any]:
     """
     Serialize an OrbitEntry for agent consumption.
@@ -156,8 +238,8 @@ def agent_safe_serialize_entry(
         "fingerprint": entry.fingerprint,
         "tags": parse_tags(entry.tags),
         "created_at": entry.created_at.isoformat(),
-        "is_error": entry.is_error,
-        "is_warning": entry.is_warning,
+        "is_error": _safe_entry_flag(entry, "is_error"),
+        "is_warning": _safe_entry_flag(entry, "is_warning"),
         "payload_masked": True,
     }
 
@@ -166,7 +248,9 @@ def agent_safe_serialize_entry(
         return data
 
     payload, truncated, original_size = _truncate_payload(
-        entry.payload, max_payload_chars
+        entry.payload,
+        max_payload_chars,
+        redact_paths=redact_paths,
     )
     data.update(
         {
@@ -254,13 +338,19 @@ def _diagnose(entries: list[OrbitEntry]) -> dict[str, Any]:
 
 def _query_analysis(entries: list[OrbitEntry]) -> dict[str, Any]:
     queries = [entry for entry in entries if entry.type == OrbitEntry.TYPE_QUERY]
-    slow = [entry for entry in queries if entry.payload.get("is_slow")]
-    duplicate = [entry for entry in queries if entry.payload.get("is_duplicate")]
+    payloads = {
+        str(entry.id): entry.payload if isinstance(entry.payload, dict) else {}
+        for entry in queries
+    }
+    slow = [entry for entry in queries if payloads[str(entry.id)].get("is_slow")]
+    duplicate = [
+        entry for entry in queries if payloads[str(entry.id)].get("is_duplicate")
+    ]
     top_slow = sorted(queries, key=lambda entry: entry.duration_ms or 0, reverse=True)[
         :5
     ]
     duplicate_signatures = Counter(
-        (entry.payload.get("sql") or "")[:180] for entry in duplicate
+        (payloads[str(entry.id)].get("sql") or "")[:180] for entry in duplicate
     )
     return {
         "total": len(queries),
@@ -1210,22 +1300,49 @@ def compare_endpoint_windows(
 def find_n_plus_one_candidates(
     hours: int = 24, limit: int | None = None
 ) -> dict[str, Any]:
-    """Rank recent requests with duplicate-query evidence for ORM review."""
+    """Rank N+1 candidates while preserving legacy duplicate-query evidence."""
     safe_limit = _safe_limit(limit, 10)
     since = _window_start(hours)
     requests = list(
         OrbitEntry.objects.requests()
-        .filter(created_at__gte=since, payload__duplicate_query_count__gt=0)
-        .order_by("-payload__duplicate_query_count", "-duration_ms")[:safe_limit]
+        .filter(created_at__gte=since)
+        .filter(
+            Q(payload__n_plus_one_count__gt=0)
+            | Q(payload__duplicate_query_count__gt=0)
+            | Q(payload__query_patterns__isnull=False)
+        )
     )
+
+    def rank_request(request):
+        payload = request.payload if isinstance(request.payload, dict) else {}
+        try:
+            duplicate_count = max(0, int(payload.get("duplicate_query_count", 0)))
+        except (TypeError, ValueError):
+            duplicate_count = 0
+        return (
+            -int(request_n_plus_one_count(payload) > 0),
+            -duplicate_count,
+            -(request.duration_ms or 0),
+            str(request.id),
+        )
+
+    requests.sort(key=rank_request)
     candidates = []
-    for request in requests:
+    for request in requests[:safe_limit]:
         related = list(
             OrbitEntry.objects.filter(family_hash=request.family_hash).order_by(
                 "created_at"
             )
         )
         query_analysis = _query_analysis(related)
+        patterns = [
+            agent_safe_serialize_query_finding(pattern)
+            for pattern in valid_query_patterns(request.payload.get("query_patterns"))
+        ]
+        detected = [
+            pattern for pattern in patterns if pattern.get("kind") in N_PLUS_ONE_KINDS
+        ]
+        n_plus_one_count = request_n_plus_one_count(request.payload)
         candidates.append(
             {
                 "entry_id": str(request.id),
@@ -1237,6 +1354,14 @@ def find_n_plus_one_candidates(
                     "duplicate_query_count", 0
                 ),
                 "query_count": request.payload.get("query_count"),
+                "classification": (
+                    "n_plus_one_candidate"
+                    if n_plus_one_count > 0
+                    else "duplicate_only"
+                ),
+                "n_plus_one_count": n_plus_one_count,
+                "n_plus_one_findings": detected,
+                "query_patterns": patterns,
                 "duplicate_signatures": query_analysis["duplicate_signatures"],
                 "request": agent_safe_serialize_entry(request, include_payload=False),
                 "suggested_tools": [
@@ -1253,6 +1378,149 @@ def find_n_plus_one_candidates(
             }
         )
     return {"hours": hours, "count": len(candidates), "candidates": candidates}
+
+
+def _query_entry_signature(entry: OrbitEntry) -> str:
+    payload = entry.payload if isinstance(entry.payload, dict) else {}
+    return str(payload.get("query_signature") or "")
+
+
+def _related_query_entries(
+    entries: list[OrbitEntry], query: OrbitEntry
+) -> list[OrbitEntry]:
+    """Return same-family executions sharing safe captured query evidence."""
+    query_payload = query.payload if isinstance(query.payload, dict) else {}
+    signature = _query_entry_signature(query)
+    sql = query_payload.get("sql")
+    related = []
+    for entry in entries:
+        if entry.type != OrbitEntry.TYPE_QUERY:
+            continue
+        payload = entry.payload if isinstance(entry.payload, dict) else {}
+        if signature and _query_entry_signature(entry) == signature:
+            related.append(entry)
+        elif sql and payload.get("sql") == sql:
+            related.append(entry)
+    return related
+
+
+def explain_n_plus_one(family_hash: str) -> dict[str, Any]:
+    """Explain existing deterministic N+1 evidence for one request family."""
+    entries = list(OrbitEntry.objects.for_family(family_hash).order_by("created_at"))
+    if not entries:
+        return {"error": f"No entries found for family_hash: {family_hash}"}
+
+    request = next(
+        (entry for entry in entries if entry.type == OrbitEntry.TYPE_REQUEST),
+        None,
+    )
+    payload = request.payload if request and isinstance(request.payload, dict) else {}
+    patterns = valid_query_patterns(payload.get("query_patterns"))
+    findings = [
+        agent_safe_serialize_query_finding(pattern)
+        for pattern in patterns
+        if pattern.get("kind") in N_PLUS_ONE_KINDS
+    ]
+    query_analysis = _query_analysis(entries)
+    n_plus_one_count = request_n_plus_one_count(payload)
+    status = "candidate_detected" if n_plus_one_count > 0 else "no_classified_candidate"
+    evidence_state = "structured_findings" if findings else "materialized_count_only"
+    actions = []
+    if findings:
+        actions = [
+            "Inspect the captured callsite and ORM relation before changing query loading.",
+            "Add a regression test that asserts the request query count or repeated-query shape.",
+            "Evaluate select_related() for single-valued relations and prefetch_related() for collections.",
+        ]
+    else:
+        actions = [
+            "No deterministic N+1 candidate was captured for this family; inspect duplicate SQL as supporting evidence only.",
+            "Capture another representative request if the symptom is intermittent or exceeds the analysis limit.",
+        ]
+    return {
+        "family_hash": family_hash,
+        "status": status,
+        "evidence_state": evidence_state,
+        "request": (
+            agent_safe_serialize_entry(request, include_payload=False)
+            if request
+            else None
+        ),
+        "n_plus_one_count": n_plus_one_count,
+        "findings": findings,
+        "query_analysis": query_analysis,
+        "capture_limits": sorted(
+            {
+                limit
+                for finding in findings
+                for limit in finding.get("capture_limits", [])
+                if isinstance(limit, str)
+            }
+        ),
+        "recommended_next_actions": actions,
+        "suggested_tools": [
+            {"tool": "investigate_request", "family_hash": family_hash},
+            {
+                "tool": "create_incident_bundle",
+                "source_type": "family_hash",
+                "source_value": family_hash,
+            },
+        ],
+    }
+
+
+def investigate_slow_query(entry_id: str) -> dict[str, Any]:
+    """Connect one captured slow query to same-family evidence and next actions."""
+    try:
+        query = OrbitEntry.objects.filter(
+            id=entry_id, type=OrbitEntry.TYPE_QUERY
+        ).first()
+    except (TypeError, ValueError, ValidationError):
+        query = None
+    if query is None:
+        return {"error": f"No query entry found for id: {entry_id}"}
+
+    entries = list(
+        OrbitEntry.objects.for_family(query.family_hash).order_by("created_at")
+        if query.family_hash
+        else [query]
+    )
+    related_queries = _related_query_entries(entries, query)
+    payload = query.payload if isinstance(query.payload, dict) else {}
+    request = next(
+        (entry for entry in entries if entry.type == OrbitEntry.TYPE_REQUEST),
+        None,
+    )
+    is_slow = bool(payload.get("is_slow"))
+    actions = [
+        "Run EXPLAIN outside Orbit for this query shape before proposing an index.",
+        "Review the query filter, join shape and callsite with production-like parameters.",
+    ]
+    if len(related_queries) > 1:
+        actions.insert(
+            0,
+            "Repeated executions in this family warrant checking ORM eager-loading before index work.",
+        )
+    return {
+        "entry_id": str(query.id),
+        "status": "slow_query" if is_slow else "query_not_marked_slow",
+        "query": agent_safe_serialize_entry(query, redact_paths=True),
+        "request": (
+            agent_safe_serialize_entry(request, include_payload=False)
+            if request
+            else None
+        ),
+        "family_hash": query.family_hash,
+        "same_signature_executions": len(related_queries),
+        "related_queries": _serialize_entries(related_queries, limit=10),
+        "query_analysis": _query_analysis(entries),
+        "recommended_next_actions": actions,
+        "suggested_tools": (
+            [{"tool": "explain_n_plus_one", "family_hash": query.family_hash}]
+            if query.family_hash
+            else []
+        ),
+    }
 
 
 def summarize_exception_groups(
@@ -1405,9 +1673,9 @@ def daily_health_brief(hours: int = 24, limit: int | None = None) -> dict[str, A
             "slow_queries": base.filter(
                 type=OrbitEntry.TYPE_QUERY, payload__is_slow=True
             ).count(),
-            "n_plus_one_candidates": requests.filter(
-                payload__duplicate_query_count__gt=0
-            ).count(),
+            "n_plus_one_candidates": sum(
+                request_n_plus_one_count(request.payload) > 0 for request in requests
+            ),
             "failed_jobs": _failed_jobs_since(since).count(),
             "warning_logs": base.filter(
                 type=OrbitEntry.TYPE_LOG, payload__level="WARNING"
