@@ -511,6 +511,35 @@ def create_mcp_server():
         )
 
     @mcp.tool()
+    def summarize_request_family(family_hash: str, limit: int = None) -> str:
+        """
+        Return compact, agent-ready context for one request family.
+
+        Use this before a full investigation when an agent needs the request,
+        diagnosis, event counts, query evidence and next actions without the
+        full event list.
+        """
+        if not get_config().get("MCP_ENABLED", True):
+            return _mcp_disabled_output()
+        return _format_output(
+            agentic_tools.summarize_request_family(family_hash, limit=limit)
+        )
+
+    @mcp.tool()
+    def get_request_timeline(family_hash: str, limit: int = None) -> str:
+        """
+        Return a masked, ordered event timeline for one request family.
+
+        Event payloads are omitted. Use investigate_request when diagnosis and
+        query analysis are also needed.
+        """
+        if not get_config().get("MCP_ENABLED", True):
+            return _mcp_disabled_output()
+        return _format_output(
+            agentic_tools.get_request_timeline(family_hash, limit=limit)
+        )
+
+    @mcp.tool()
     def investigate_exception_group(fingerprint: str, limit: int = None) -> str:
         """
         Summarize one exception fingerprint with blast-radius context.

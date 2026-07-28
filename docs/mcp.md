@@ -86,6 +86,8 @@ The MCP server exposes raw telemetry tools plus higher-level agentic investigati
 | `find_sensitive_payload_risks` | Recent entries whose payload keys look sensitive, without raw values |
 | `list_agent_safe_fields` | Allowlisted common fields and payload policy for one entry type |
 | `investigate_request` | Diagnosis for one `family_hash`: timeline, signals, queries, hypotheses and next actions |
+| `summarize_request_family` | Compact, agent-ready request context without the full event list |
+| `get_request_timeline` | Masked ordered request timeline; event payloads are omitted |
 | `investigate_exception_group` | Blast-radius summary for one exception fingerprint |
 | `create_incident_bundle` | On-demand JSON, Markdown or prompt handoff bundle from a request, fingerprint or ticket text |
 | `build_debug_brief` | Match natural-language ticket/error text to recent Orbit evidence |
@@ -133,7 +135,7 @@ Incident bundles are generated on demand from current `OrbitEntry` data. They ar
 Use the MCP tools as investigation primitives, not as an autopilot. A practical workflow is:
 
 1. Start from the symptom: ticket text, endpoint, exception fingerprint, or request `family_hash`.
-2. Build a short evidence brief with `build_debug_brief(...)` or `investigate_request(...)`.
+2. Use `summarize_request_family(...)` for a compact request brief, or `investigate_request(...)` for the complete diagnosis.
 3. Generate a portable handoff with `create_incident_bundle(..., format="markdown")` for tickets, PRs, or coding-agent context.
 4. Ask for likely causes with `propose_fix_hypotheses(...)`.
 5. Ask for validation steps with `propose_test_plan(...)` before editing code.

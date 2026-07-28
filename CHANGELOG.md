@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a manual GitHub **Release Check** workflow that runs the existing full
   preflight without publishing artifacts or requiring credentials.
 
+- Added compact `summarize_request_family` and payload-free
+  `get_request_timeline` MCP tools for coding-agent investigation workflows.
+
 - Added the metadata-only `capture_health` Evidence API resource for safe
   inspection of storage availability, effective capture flags, and sanitized
   watcher readiness.

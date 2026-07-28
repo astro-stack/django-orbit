@@ -489,6 +489,21 @@ def test_get_request_detail_returns_versioned_metadata_only_evidence(
     assert "SELECT * FROM products" not in json.dumps(data)
 
 
+@pytest.mark.django_db
+def test_request_summary_tools_return_compact_masked_evidence(
+    mcp_server, sample_request, sample_slow_query, sample_exception
+):
+    summary = _call_tool(mcp_server, "summarize_request_family", family_hash="abc123")
+    timeline = _call_tool(mcp_server, "get_request_timeline", family_hash="abc123")
+
+    assert summary["family_hash"] == "abc123"
+    assert "events" not in summary
+    assert summary["recommended_next_actions"]
+    assert timeline["count"] == 3
+    assert timeline["safety_report"]["payloads_included"] is False
+    assert all("payload" not in event for event in timeline["timeline"])
+
+
 # Tool: get_capture_health
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db

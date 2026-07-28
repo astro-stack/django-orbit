@@ -215,6 +215,8 @@ The server launches on demand over stdio. It is read-only: it queries `OrbitEntr
 | `find_sensitive_payload_risks` | Find recent entries whose payload keys look like secrets, tokens or credentials |
 | `list_agent_safe_fields` | Document the allowlisted fields and payload policy per entry type |
 | `investigate_request` | Diagnose one request family: timeline, signals, queries, hypotheses and next actions |
+| `summarize_request_family` | Compact request-family context for a coding agent before deeper investigation |
+| `get_request_timeline` | Masked ordered timeline with no event payloads |
 | `investigate_exception_group` | Summarize an exception fingerprint and affected paths |
 | `create_incident_bundle` | Create JSON, Markdown or prompt handoff from request, fingerprint or ticket text |
 | `build_debug_brief` | Match natural-language ticket text to recent evidence |

@@ -127,6 +127,50 @@ def test_investigate_request_builds_diagnosis(request_entry, related_entries):
     assert data["event_counts"] == {"request": 1, "query": 1, "log": 1, "exception": 1}
 
 
+def test_summarize_request_family_returns_compact_safe_context(
+    request_entry, related_entries
+):
+    from orbit.agentic import summarize_request_family
+
+    data = summarize_request_family("fam-agentic")
+
+    assert data["family_hash"] == "fam-agentic"
+    assert data["request"]["id"] == str(request_entry.id)
+    assert data["diagnosis"]["severity"] == "error"
+    assert data["event_counts"]["exception"] == 1
+    assert data["timeline"]
+    assert "events" not in data
+    assert "secret" not in json.dumps(data)
+
+
+def test_get_request_timeline_returns_safe_ordered_events(
+    request_entry, related_entries
+):
+    from orbit.agentic import get_request_timeline
+
+    data = get_request_timeline("fam-agentic")
+
+    assert data["family_hash"] == "fam-agentic"
+    assert data["count"] == 4
+    assert len(data["timeline"]) == 4
+    assert {event["type"] for event in data["timeline"]} == {
+        "request",
+        "query",
+        "log",
+        "exception",
+    }
+    assert "secret" not in json.dumps(data)
+
+
+def test_request_summary_tools_report_missing_family():
+    from orbit.agentic import get_request_timeline, summarize_request_family
+
+    expected = {"error": "No entries found for family_hash: missing"}
+
+    assert summarize_request_family("missing") == expected
+    assert get_request_timeline("missing") == expected
+
+
 def test_investigate_exception_group_summarizes_blast_radius(
     request_entry, related_entries
 ):

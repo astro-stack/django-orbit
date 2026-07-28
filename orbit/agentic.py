@@ -538,13 +538,20 @@ def find_sensitive_payload_risks(limit: int = 20) -> dict[str, Any]:
     }
 
 
-def investigate_request(family_hash: str, limit: int | None = None) -> dict[str, Any]:
-    """Build a bounded diagnosis for one request family."""
-    entries = list(
+def _request_family_entries(
+    family_hash: str, limit: int | None = None
+) -> list[OrbitEntry]:
+    """Read one request family within the MCP event cap."""
+    return list(
         OrbitEntry.objects.for_family(family_hash)[
             : _safe_limit(limit, DEFAULT_MAX_EVENTS)
         ]
     )
+
+
+def investigate_request(family_hash: str, limit: int | None = None) -> dict[str, Any]:
+    """Build a bounded diagnosis for one request family."""
+    entries = _request_family_entries(family_hash, limit=limit)
     if not entries:
         return {"error": f"No entries found for family_hash: {family_hash}"}
 
@@ -562,6 +569,42 @@ def investigate_request(family_hash: str, limit: int | None = None) -> dict[str,
         "timeline": _timeline(entries),
         "events": _serialize_entries(entries, limit=limit),
         "recommended_next_actions": _recommended_next_actions(diagnosis),
+    }
+
+
+def summarize_request_family(
+    family_hash: str, limit: int | None = None
+) -> dict[str, Any]:
+    """Return the compact, agent-ready part of a request investigation."""
+    investigation = investigate_request(family_hash, limit=limit)
+    if "error" in investigation:
+        return investigation
+
+    return {
+        "family_hash": investigation["family_hash"],
+        "request": investigation["request"],
+        "diagnosis": investigation["diagnosis"],
+        "event_counts": investigation["event_counts"],
+        "query_analysis": investigation["query_analysis"],
+        "timeline": investigation["timeline"],
+        "recommended_next_actions": investigation["recommended_next_actions"],
+    }
+
+
+def get_request_timeline(family_hash: str, limit: int | None = None) -> dict[str, Any]:
+    """Return a masked, ordered request timeline without raw event payloads."""
+    entries = _request_family_entries(family_hash, limit=limit)
+    if not entries:
+        return {"error": f"No entries found for family_hash: {family_hash}"}
+
+    return {
+        "family_hash": family_hash,
+        "count": len(entries),
+        "timeline": _timeline(entries),
+        "safety_report": {
+            "payloads_included": False,
+            "event_limit": _safe_limit(limit, DEFAULT_MAX_EVENTS),
+        },
     }
 
 
