@@ -42,6 +42,7 @@ python manage.py runserver
 | Command | Description |
 |---------|-------------|
 | `python demo.py setup` | Create a balanced corpus for every event family, including AI/LLM and query patterns. The newest All Events rows are intentionally mixed so one watcher type does not dominate the first page. |
+| `python demo.py reset` | Clear the local demo data and recreate the curated corpus before a new walkthrough or recording. |
 | `python demo.py simulate` | Simulate live traffic (60 seconds) |
 | `python demo.py simulate -d 30` | Simulate for 30 seconds |
 | `python demo.py clear` | Clear all Orbit entries |
@@ -77,6 +78,11 @@ produce the same classifications from actual SQL execution.
 The setup corpus includes successful and failed AI/LLM events, multiple
 providers, token usage and tool-call metadata. Prompt and response content
 remain absent, matching Orbit's safe defaults.
+
+Signal capture is disabled in the demo configuration because raw Django
+lifecycle dispatches are noisy and do not explain an incident on their own.
+The curated corpus still includes one representative application signal. Enable
+`RECORD_SIGNALS` only when a project has named signals worth investigating.
 
 ## PowerShell Note
 

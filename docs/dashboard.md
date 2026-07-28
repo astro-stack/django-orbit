@@ -68,10 +68,15 @@ analytics, use the **Full analytics** link or the **Stats** button to open the
 
 Open any entry and use the **download** link in the detail panel header to export it as
 JSON — handy for sharing a specific request or exception.
-Entries with a `family_hash` or exception fingerprint also show a **copy agent prompt**
+Entries with a `family_hash` or exception fingerprint also show a **Copy fix handoff**
 action. It generates a safe prompt from `create_incident_bundle(..., format="prompt")`
 so you can paste the current runtime context into Codex, Claude, Cursor or another
 coding agent even when MCP is not connected.
+
+Signals are opt-in because Django framework lifecycle dispatches can otherwise
+overwhelm an investigation feed. Orbit records named signals when
+`RECORD_SIGNALS` is enabled; anonymous dispatches remain off unless
+`RECORD_ANONYMOUS_SIGNALS` is explicitly enabled.
 
 ## Detailed Views
 

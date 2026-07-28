@@ -7,6 +7,7 @@ Unified script for setting up and running demos.
 
 Usage:
     python demo.py setup     - Create sample data: books, reviews + ALL Orbit entry types
+    python demo.py reset     - Reset the demo to the curated sample data
     python demo.py fill      - Test live watchers by making requests (requires running server)
     python demo.py simulate  - Simulate continuous traffic for testing
     python demo.py clear     - Clear all Orbit entries
@@ -935,6 +936,7 @@ def main():
         epilog="""
 Examples:
   python demo.py setup              Create sample data (books, reviews, logs, jobs)
+  python demo.py reset              Reset to the curated sample data
   python demo.py fill               Fill dashboard with all event types (requires server)
   python demo.py simulate           Simulate live activity for 60 seconds
   python demo.py simulate -d 30     Simulate for 30 seconds
@@ -947,6 +949,7 @@ Examples:
     
     # Setup command
     subparsers.add_parser('setup', help='Create sample data (books, reviews, logs, jobs)')
+    subparsers.add_parser('reset', help='Reset to the curated sample data')
     
     # Fill command
     subparsers.add_parser('fill', help='Fill dashboard with all event types (requires running server)')
@@ -965,6 +968,8 @@ Examples:
     args = parser.parse_args()
     
     if args.command == 'setup':
+        setup_demo()
+    elif args.command == 'reset':
         setup_demo()
     elif args.command == 'fill':
         fill_dashboard()

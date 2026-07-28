@@ -137,4 +137,7 @@ ORBIT_CONFIG = {
     # v0.6.0 watchers
     'RECORD_TRANSACTIONS': True,
     'RECORD_STORAGE': True,
+    # Signal dispatch is opt-in because Django framework lifecycle signals can
+    # overwhelm a local dashboard. The demo adds representative signal entries.
+    'RECORD_SIGNALS': False,
 }

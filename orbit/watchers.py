@@ -945,28 +945,33 @@ def record_signal(signal, sender, **kwargs):
     if not config.get("RECORD_SIGNALS", True):
         return
 
-    # Get signal name from registry or try to extract a better name
+    # Get a stable signal name. Raw ``Signal`` instances do not carry a useful
+    # name, but an application sender class does.
     signal_name = _signal_registry.get(id(signal))
     if signal_name is None:
-        # Try to get a cleaner name from the signal object
         signal_str = str(signal)
         if "Signal" in signal_str and "object at" in signal_str:
-            # It's a raw signal object like <django.dispatch.dispatcher.Signal object at 0x...>
-            # Try to extract module path
-            if hasattr(signal, '__module__'):
-                module = getattr(signal, '__module__', '')
-                if module:
-                    signal_name = f"{module}.signal"
-                else:
-                    signal_name = "django.signal"
+            sender_module = getattr(sender, "__module__", "")
+            sender_name = getattr(sender, "__name__", "")
+            if sender_module and sender_name and not sender_module.startswith(
+                ("django.", "orbit.")
+            ):
+                signal_name = f"{sender_module}.{sender_name}.signal"
             else:
-                signal_name = "django.signal"
+                signal_name = "django.dispatch.dispatcher.signal"
         else:
             signal_name = signal_str[:60]
 
     # Check if signal should be ignored
     ignore_signals = config.get("IGNORE_SIGNALS", [])
     if signal_name in ignore_signals:
+        return
+
+    anonymous_signal_names = {"django.signal", "django.dispatch.dispatcher.signal"}
+    if (
+        signal_name in anonymous_signal_names
+        and not config.get("RECORD_ANONYMOUS_SIGNALS", False)
+    ):
         return
 
     if not _table_exists():

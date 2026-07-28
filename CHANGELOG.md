@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Django signal capture is now opt-in. Anonymous framework dispatches and ORM
+  lifecycle signals stay out of the default feed, while the demo retains a
+  curated signal example and can be reset with `python demo.py reset`.
 - Investigation guides now distinguish routine timeline context from actionable
   signals: successful and incomplete requests, informational logs, Django
   signals, cache misses, permission denials, failed jobs, and rolled-back

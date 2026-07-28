@@ -146,6 +146,9 @@ python demo.py setup
 python manage.py runserver
 ```
 
+Run `python demo.py reset` at any time to return the local database to the
+curated demo corpus before recording a new scenario.
+
 | URL | Purpose |
 |---|---|
 | `http://localhost:8000/` | Demo app |
