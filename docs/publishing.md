@@ -24,6 +24,11 @@ python scripts/verify_release.py
 
 This checks release metadata, runs the test suite, builds docs in strict mode, rebuilds package artifacts and runs Twine checks.
 
+The repository also provides **Actions → Release Check → Run workflow**. It
+runs this same preflight for a selected branch without publishing to PyPI,
+creating a GitHub release, or using any publishing credentials. Use it to
+validate a release PR from GitHub when a local environment is unavailable.
+
 If you only need the lightweight metadata check used by CI:
 
 ```bash

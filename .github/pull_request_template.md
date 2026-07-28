@@ -20,6 +20,7 @@ python scripts/verify_release.py
 - [ ] `python -m mkdocs build --strict`
 - [ ] `python -m build`
 - [ ] `python -m twine check dist/*`
+- [ ] Any skipped local check is explained in the PR description.
 
 ## UX / Contributor Experience
 
