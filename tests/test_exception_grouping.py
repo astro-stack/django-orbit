@@ -68,8 +68,10 @@ def test_latest_for_groups_returns_representative():
     e2 = _make_exception("ValueError", "app/views.py", "checkout", "second")
     latest = OrbitEntry.objects.latest_for_groups([e1.fingerprint])
     assert e1.fingerprint in latest
-    # Most recent occurrence is the representative
-    assert latest[e1.fingerprint].id == e2.id
+    # Most recent occurrence is the representative. UUIDs do not encode
+    # insertion order, so the production tie-breaker is part of the contract.
+    expected = max((e1, e2), key=lambda entry: (entry.created_at, str(entry.id)))
+    assert latest[e1.fingerprint].id == expected.id
 
 
 @pytest.mark.django_db

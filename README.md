@@ -15,6 +15,8 @@ Unlike Django Debug Toolbar, Orbit does not inject HTML into your app. It lives 
 [![License](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](LICENSE)
 [![Code Style](https://img.shields.io/badge/Code%20Style-Black-black?style=flat-square)](https://github.com/psf/black)
 
+Current maintenance release: **v0.12.1**.
+
 - [Documentation](https://astro-stack.github.io/django-orbit)
 - [Try the demo](#try-the-demo)
 - [MCP / AI assistant setup](#mcp-ai-assistant-setup)

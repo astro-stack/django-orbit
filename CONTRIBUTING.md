@@ -184,11 +184,13 @@ Documentation is maintained in the Markdown files under `docs/` and published wi
 
 ## Release Process
 
-1. Update version in `pyproject.toml`
-2. Update `CHANGELOG.md`
-3. Create a git tag: `git tag v0.1.0`
-4. Push tags: `git push --tags`
-5. Build and publish to PyPI
+1. Update `pyproject.toml`, `orbit/__init__.py`, `CHANGELOG.md`, README and docs.
+2. Run `python scripts/verify_release.py` locally.
+3. Merge the release PR into `main` after all required checks pass.
+4. Create an annotated tag matching the project version: `git tag -a vX.Y.Z -m "Release vX.Y.Z"`.
+5. Push only that tag: `git push origin vX.Y.Z`.
+6. GitHub Actions validates the tag and creates the GitHub release.
+7. The published release triggers the protected PyPI workflow using OIDC.
 
 ## Getting Help
 

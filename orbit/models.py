@@ -77,7 +77,7 @@ class OrbitEntryManager(models.Manager):
             group_key=self._exception_group_key()
         )
         for key in group_keys:
-            entry = base.filter(group_key=key).order_by("-created_at").first()
+            entry = base.filter(group_key=key).order_by("-created_at", "-id").first()
             if entry is not None:
                 latest[key] = entry
         return latest

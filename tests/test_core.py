@@ -53,14 +53,17 @@ def test_pagination_htmx_logic(client):
     assert response.status_code == 200
     content = response.content.decode()
     
-    # Page 2 should contain the OLDEST entries if we order by -created_at?
-    # No, typically:
-    # Page 1 = Newest 25
-    # Page 2 = Remaining 5 (Oldest)
-    # created_at increases. 
-    # Test 0 (Oldest) -> Test 29 (Newest)
-    # Page 1: Test 29 down to Test 5 (25 items)
-    # Page 2: Test 4 down to Test 0 (5 items)
-    
-    assert "PaginationTest 4" in content
-    assert "PaginationTest 29" not in content
+    # The view uses a deterministic created_at/id ordering for timestamp ties.
+    expected_page = list(
+        OrbitEntry.objects.filter(type=OrbitEntry.TYPE_LOG)
+        .order_by("-created_at", "-id")[25:30]
+    )
+    first_page = list(
+        OrbitEntry.objects.filter(type=OrbitEntry.TYPE_LOG)
+        .order_by("-created_at", "-id")[:25]
+    )
+
+    for entry in expected_page:
+        assert entry.summary in content
+    for entry in first_page:
+        assert entry.summary not in content

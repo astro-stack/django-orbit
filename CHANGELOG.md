@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-08-19
+
+### Fixed
+
+- Constrained the MCP extra to the supported 1.x API so the MCP server remains
+  compatible with `mcp.server.fastmcp`.
+- Made feed pagination and grouped exception representatives deterministic when
+  multiple entries share a timestamp.
+
 ## [0.12.0] - 2026-07-02
 
 ### Added

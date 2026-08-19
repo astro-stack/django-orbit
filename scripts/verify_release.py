@@ -38,7 +38,7 @@ def package_version() -> str:
     return match.group(1)
 
 
-def check_release_metadata() -> str:
+def check_release_metadata(tag: str | None = None) -> str:
     version = project_version()
     package = package_version()
     errors: list[str] = []
@@ -46,6 +46,11 @@ def check_release_metadata() -> str:
     if package != version:
         errors.append(
             f"Version mismatch: pyproject={version}, orbit.__version__={package}"
+        )
+
+    if tag is not None and tag != f"v{version}":
+        errors.append(
+            f"Release tag {tag} does not match project version {version}"
         )
 
     changelog = read_text("CHANGELOG.md")
@@ -108,8 +113,8 @@ def verify_artifacts(version: str) -> None:
         )
 
 
-def full_preflight() -> None:
-    version = check_release_metadata()
+def full_preflight(tag: str | None = None) -> None:
+    version = check_release_metadata(tag)
     run([sys.executable, "-m", "pytest", "--tb=short", "-q"])
     run([sys.executable, "-m", "mkdocs", "build", "--strict"])
     clean_build_artifacts()
@@ -129,15 +134,19 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Only check version/changelog/README/docs metadata alignment",
     )
+    parser.add_argument(
+        "--tag",
+        help="Require a release tag matching the project version, such as v0.12.1",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
     if args.metadata_only:
-        check_release_metadata()
+        check_release_metadata(args.tag)
     else:
-        full_preflight()
+        full_preflight(args.tag)
 
 
 if __name__ == "__main__":
