@@ -15,11 +15,14 @@ This is the release checklist for publishing Django Orbit to GitHub, PyPI and th
    ```
 
 5. GitHub Actions verifies the tag is annotated, points at `main`, and matches
-   every version surface before creating the GitHub release.
-6. The published GitHub release triggers the PyPI workflow. The `pypi`
-   environment approval and PyPI trusted publishing (OIDC) gate the upload.
-7. The documentation workflow deploys the merged `main` documentation.
-8. Verify PyPI, GitHub release, docs and a fresh install.
+   every version surface.
+6. The same workflow publishes to PyPI before creating the GitHub release. The
+   `pypi` environment approval and PyPI trusted publishing (OIDC) gate the
+   upload.
+7. If a release needs a safe retry, run `Publish to PyPI` manually with the
+   exact annotated tag; it repeats the tag, `main` ancestry and metadata checks.
+8. The documentation workflow deploys the merged `main` documentation.
+9. Verify PyPI, GitHub release, docs and a fresh install.
 
 ## Preflight
 
@@ -87,10 +90,10 @@ python -m twine upload dist/django_orbit-X.Y.Z* -u __token__ -p pypi-...
 
 ## GitHub Release
 
-The `Create GitHub Release` workflow creates the release automatically after
-the tag checks and package preflight pass. GitHub generates the initial notes;
-the matching `CHANGELOG.md` section remains the source of truth for the
-release contents.
+The `Create GitHub Release` workflow publishes the package first, then creates
+the release automatically after the tag checks and package preflight pass.
+GitHub generates the initial notes; the matching `CHANGELOG.md` section
+remains the source of truth for the release contents.
 
 ## Deploy Documentation
 

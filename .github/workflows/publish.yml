@@ -4,6 +4,12 @@ on:
   release:
     types:
       - published
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Annotated release tag to publish, for example v0.12.1"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -21,7 +27,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ inputs.tag || github.event.release.tag_name }}
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -30,7 +37,7 @@ jobs:
 
       - name: Confirm annotated tag is on main
         env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
         run: |
           test "$(git cat-file -t "$RELEASE_TAG")" = "tag"
           git fetch origin main
@@ -43,7 +50,7 @@ jobs:
           python -m pip install --upgrade build twine
 
       - name: Verify release metadata
-        run: python scripts/verify_release.py --metadata-only --tag "${{ github.event.release.tag_name }}"
+        run: python scripts/verify_release.py --metadata-only --tag "${{ inputs.tag || github.event.release.tag_name }}"
 
       - name: Build distributions
         run: python -m build
