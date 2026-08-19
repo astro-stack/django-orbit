@@ -6,13 +6,20 @@ This is the release checklist for publishing Django Orbit to GitHub, PyPI and th
 
 1. Merge the release PR into `main`.
 2. Pull the final `main` locally and confirm the version.
-3. Run the full test suite.
-4. Build the package from a clean `dist/`.
-5. Verify the built wheel and sdist.
-6. Publish to PyPI.
-7. Create the GitHub release and tag.
-8. Deploy the documentation site.
-9. Verify PyPI, GitHub release, docs and a fresh install.
+3. Run the full test suite and release preflight.
+4. Create and push an annotated tag matching the package version:
+
+   ```bash
+   git tag -a vX.Y.Z -m "Release vX.Y.Z"
+   git push origin vX.Y.Z
+   ```
+
+5. GitHub Actions verifies the tag is annotated, points at `main`, and matches
+   every version surface before creating the GitHub release.
+6. The published GitHub release triggers the PyPI workflow. The `pypi`
+   environment approval and PyPI trusted publishing (OIDC) gate the upload.
+7. The documentation workflow deploys the merged `main` documentation.
+8. Verify PyPI, GitHub release, docs and a fresh install.
 
 ## Preflight
 
@@ -80,18 +87,10 @@ python -m twine upload dist/django_orbit-X.Y.Z* -u __token__ -p pypi-...
 
 ## GitHub Release
 
-Create a GitHub release from the same version and changelog section:
-
-```bash
-gh release create vX.Y.Z --target main --title "vX.Y.Z" --notes-file RELEASE_NOTES.md
-```
-
-The release notes should summarize:
-
-- highlights for users;
-- compatibility or migration notes;
-- security/safety changes;
-- test plan used for the release.
+The `Create GitHub Release` workflow creates the release automatically after
+the tag checks and package preflight pass. GitHub generates the initial notes;
+the matching `CHANGELOG.md` section remains the source of truth for the
+release contents.
 
 ## Deploy Documentation
 
