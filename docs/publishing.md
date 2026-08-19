@@ -24,6 +24,18 @@ This is the release checklist for publishing Django Orbit to GitHub, PyPI and th
 8. The documentation workflow deploys the merged `main` documentation.
 9. Verify PyPI, GitHub release, docs and a fresh install.
 
+## Post-Merge Release Guard
+
+Every push to `main` and every merged pull request targeting `main` is checked
+by the `Release follow-up guard` workflow. If `pyproject.toml` changes to a
+new version and the matching GitHub release is missing, the workflow opens one
+deduplicated issue with the exact tag and preflight commands.
+
+The guard intentionally does not tag, upload to PyPI or create a release by
+itself. Those actions remain behind the annotated-tag, metadata, build and
+PyPI trusted-publishing checks in `Create GitHub Release`. Close the follow-up
+issue only after the public package, release and docs have been verified.
+
 ## Preflight
 
 For release PRs and final publishing, run the local guard before pushing or uploading:

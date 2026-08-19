@@ -8,6 +8,7 @@
 - [ ] `CHANGELOG.md` has the release/user-visible entry.
 - [ ] README/PyPI copy is updated for user-visible changes.
 - [ ] MkDocs docs are updated for user-visible changes.
+- [ ] If this PR changes the project version, I will complete the tag/PyPI/GitHub release follow-up after merge (the guard will open an issue if it is missing).
 - [ ] Local preflight was run before push when preparing a release:
 
 ```bash
