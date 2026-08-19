@@ -2,6 +2,8 @@ import pytest
 
 from scripts.release_guard import changed_version, extract_version, git_file
 
+pytestmark = pytest.mark.django_db
+
 
 def test_extract_version_accepts_project_version():
     assert extract_version('[project]\nversion = "0.13.0rc1"\n') == "0.13.0rc1"
