@@ -1,5 +1,7 @@
 # Django Orbit Documentation
 
+Current maintenance release: **v0.12.1**.
+
 Welcome to the Django Orbit documentation. This guide covers installation, configuration, usage, and customization.
 
 [![Star on GitHub](https://img.shields.io/github/stars/astro-stack/django-orbit?style=social)](https://github.com/astro-stack/django-orbit)
