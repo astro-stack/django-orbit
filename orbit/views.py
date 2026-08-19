@@ -349,7 +349,7 @@ class OrbitFeedPartial(OrbitProtectedView, View):
         offset = (page - 1) * per_page
         entries = queryset.only(
             'id', 'type', 'payload', 'duration_ms', 'created_at'
-        ).order_by("-created_at")[offset : offset + per_page]
+            ).order_by("-created_at", "-id")[offset : offset + per_page]
 
         # Render partial
         return TemplateResponse(
