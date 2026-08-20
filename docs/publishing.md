@@ -23,6 +23,32 @@ version change still follows the release PR, full preflight, merge, annotated
 tag, PyPI publication, GitHub release and post-publish verification sequence
 below.
 
+## Pull Request Description
+
+Keep release and maintenance PR descriptions as real multiline Markdown. When
+creating or correcting a description with GitHub CLI, write the body to a file
+and pass it with `--body-file`:
+
+```powershell
+@'
+## Summary
+
+- Describe the change and why it is needed.
+
+## Verification
+
+- `python -m pytest --tb=short -q`
+'@ | Set-Content -Encoding utf8 .release-pr-body.md
+
+gh pr create --title "..." --body-file .release-pr-body.md
+# or, for an existing PR:
+gh pr edit 123 --body-file .release-pr-body.md
+```
+
+Do not put literal `\n` sequences in a `--body` string. GitHub renders those
+characters instead of treating them as line breaks. CI rejects a non-empty PR
+body containing that malformed pattern.
+
 ## Release Order
 
 1. Merge the release PR into `main`.

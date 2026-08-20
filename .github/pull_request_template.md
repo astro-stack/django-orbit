@@ -1,6 +1,8 @@
 ## Summary
 
 <!-- What changed and why? -->
+<!-- Keep this as real multiline Markdown. If using gh, pass a file with
+     --body-file; do not encode line breaks as literal \n characters. -->
 
 ## Release / PR Safeguards
 
