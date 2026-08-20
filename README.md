@@ -20,6 +20,7 @@ Current maintenance release: **v0.12.1**.
 - [Documentation](https://astro-stack.github.io/django-orbit)
 - [Try the demo](#try-the-demo)
 - [MCP / AI assistant setup](#mcp-ai-assistant-setup)
+- [Orbit Pro founder waitlist](https://labs.wearehik.com/django-orbit/pro/)
 
 ## Why Orbit
 
@@ -43,12 +44,24 @@ Django teams increasingly debug with AI coding agents, but most local observabil
 
 Inspired by Laravel Telescope, Spatie Ray and Django Debug Toolbar.
 
+## Orbit Pro
+
+Django Orbit remains MIT-licensed and fully useful on its own: the local dashboard,
+watchers, MCP tools, masking, incident bundles and safety controls stay in the open
+source package.
+
+[Orbit Pro](https://labs.wearehik.com/django-orbit/pro/) is the planned self-hosted
+verification layer for teams using coding agents. It will build on the open core
+with release comparison, saved investigations and verification of agent-assisted
+changes against new runtime evidence. Join the founder waitlist to help define the
+first paid release.
+
 ## What Orbit Tracks
 
 | Category | Events |
 |---|---|
 | HTTP | Requests, responses, headers, body, status codes |
-| Database | SQL queries, slow queries, duplicate query / N+1 signals |
+| Database | SQL queries, slow queries, duplicate evidence and classified N+1 candidates |
 | Logging | Python `logging` output, any level |
 | Exceptions | Exception type, message, traceback and request context |
 | Cache | GET hits/misses, SET, DELETE |
@@ -65,6 +78,16 @@ Inspired by Laravel Telescope, Spatie Ray and Django Debug Toolbar.
 | AI/LLM | Provider/model/token metadata, latency, errors and tool-call names |
 
 All events can be linked by `family_hash`, which lets you inspect every query, log and exception associated with one request or operation.
+
+## What's New in v0.13.0
+
+Orbit v0.13.0 starts the maturity and query-intelligence track:
+
+- versioned, privacy-safe query signatures and bounded pattern analysis;
+- deterministic N+1 candidates with confidence, evidence and limitations;
+- duplicate SQL remains visible without being mislabeled as proven N+1;
+- MCP tools distinguish classified findings from historical duplicate evidence;
+- request, exception and bulk-query writes verify Orbit storage availability.
 
 ## What's New in v0.12.0
 
@@ -177,7 +200,8 @@ The server launches on demand over stdio. It is read-only: it queries `OrbitEntr
 | `get_slow_queries` | SQL queries above the configured threshold |
 | `get_exceptions` | Exceptions within a time window |
 | `get_n1_patterns` | Requests with duplicate-query evidence |
-| `get_request_detail` | All events for one `family_hash` |
+| `get_request_detail` | Versioned, metadata-only evidence for one `family_hash` |
+| `get_capture_health` | Metadata-only capture readiness, safe flags and watcher state |
 | `search_entries` | Keyword search across entries |
 | `get_stats_summary` | Error rate, average response time and cache stats |
 
@@ -195,7 +219,7 @@ The server launches on demand over stdio. It is read-only: it queries `OrbitEntr
 | `build_debug_brief` | Match natural-language ticket text to recent evidence |
 | `investigate_endpoint` | Summarize endpoint health, errors, slow requests and related exceptions |
 | `compare_endpoint_windows` | Compare recent endpoint behavior against a baseline window to spot regressions |
-| `find_n_plus_one_candidates` | Rank recent duplicate-query/N+1 candidates with suggested next tools |
+| `find_n_plus_one_candidates` | Rank classified N+1 candidates and legacy duplicate evidence |
 | `summarize_exception_groups` | Group recent exceptions by fingerprint with affected paths and representatives |
 | `daily_health_brief` | Produce local daily triage from recent runtime signals |
 | `generate_release_risk_brief` | Flag blocker/caution signals before a release |
@@ -256,7 +280,7 @@ ORBIT_CONFIG = {
 
 ## Configuration
 
-All settings go in `ORBIT_CONFIG` or `ORBIT` in `settings.py`. Most projects can start with defaults.
+`ORBIT_CONFIG` is the canonical settings dictionary. The legacy `ORBIT` alias remains supported; when both are present, their keys are merged and `ORBIT_CONFIG` overrides matching keys. Most projects can start with defaults.
 
 ```python
 ORBIT_CONFIG = {

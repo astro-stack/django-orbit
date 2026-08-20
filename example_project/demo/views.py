@@ -257,8 +257,18 @@ def home(request):
             </div>
             
             <div class="endpoint">
+                <h3><a href="/query-patterns/exact-duplicate/">Exact duplicate queries</a><span class="badge badge-get">GET</span></h3>
+                <p>Same SQL and same parameters repeated</p>
+            </div>
+
+            <div class="endpoint">
+                <h3><a href="/query-patterns/per-row-aggregate/">Per-row aggregates</a><span class="badge badge-get">GET</span></h3>
+                <p>One aggregate query for every parent row</p>
+            </div>
+
+            <div class="endpoint">
                 <h3><a href="/duplicate-queries/">🔄 /duplicate-queries/</a><span class="badge badge-get">GET</span></h3>
-                <p>N+1 problem — duplicate detection</p>
+                <p>Relational N+1 — with varying parameters</p>
             </div>
         </div>
         
@@ -357,23 +367,64 @@ def error_endpoint(request):
     return JsonResponse({'user_id': int(user_id)})
 
 
-def duplicate_queries(request):
-    """Demonstrate N+1 query problem."""
-    books = Book.objects.all()[:10]
-    
-    # This is intentionally inefficient to demonstrate duplicate detection
+def _demo_metadata(expected_pattern, minimum_occurrences):
+    return {
+        "expected_pattern": expected_pattern,
+        "minimum_occurrences": minimum_occurrences,
+        "deterministic": True,
+    }
+
+
+def n_plus_one_queries(request):
+    """Generate varying relation lookups from one stable call site."""
+    books = list(Book.objects.all()[:10])
     data = []
     for book in books:
-        # Each iteration causes a new query (N+1 problem)
         reviews = list(book.reviews.all())
-        data.append({
-            'title': book.title,
-            'review_count': len(reviews),
-        })
-    
-    logger.warning("This endpoint has an N+1 query problem!")
-    
-    return JsonResponse({'books': data})
+        data.append({"title": book.title, "review_count": len(reviews)})
+
+    logger.warning("Demo generated a relational N+1 candidate")
+    return JsonResponse(
+        {
+            "books": data,
+            "orbit_demo": _demo_metadata("n_plus_one_candidate", len(books)),
+        }
+    )
+
+
+def duplicate_queries(request):
+    """Backward-compatible alias for the relational N+1 scenario."""
+    return n_plus_one_queries(request)
+
+
+def exact_duplicate_queries(request):
+    """Generate exact repeats with the same SQL and parameter values."""
+    first_book_id = Book.objects.values_list("id", flat=True).first()
+    repetitions = 6
+    titles = [
+        Book.objects.filter(pk=first_book_id).values_list("title", flat=True).first()
+        for _ in range(repetitions)
+    ]
+    return JsonResponse(
+        {
+            "titles": titles,
+            "orbit_demo": _demo_metadata("exact_duplicate", repetitions),
+        }
+    )
+
+
+def per_row_aggregate_queries(request):
+    """Generate one COUNT query per book from one stable call site."""
+    books = list(Book.objects.all()[:10])
+    counts = [
+        {"book_id": book.pk, "review_count": book.reviews.count()} for book in books
+    ]
+    return JsonResponse(
+        {
+            "counts": counts,
+            "orbit_demo": _demo_metadata("per_row_aggregate_candidate", len(books)),
+        }
+    )
 
 
 @method_decorator(csrf_exempt, name='dispatch')

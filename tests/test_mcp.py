@@ -153,6 +153,7 @@ def test_mcp_enabled_false_blocks_all_tools(db):
         ("get_n1_patterns", {}),
         ("search_entries", {"query": "private"}),
         ("get_request_detail", {"family_hash": "blocked"}),
+        ("get_capture_health", {}),
         ("get_stats_summary", {}),
         ("audit_mcp_exposure", {}),
         ("preview_masked_entry", {"entry_id": "00000000-0000-0000-0000-000000000000"}),
@@ -388,6 +389,38 @@ def test_get_n1_patterns_finds_duplicates(mcp_server, sample_n1_request):
 
 
 @pytest.mark.django_db
+def test_get_n1_patterns_prioritizes_classified_requests_over_historical_rows(
+    mcp_server,
+):
+    OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_REQUEST,
+        family_hash="historical-duplicates",
+        payload={"path": "/historical/", "duplicate_query_count": 100},
+    )
+    OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_REQUEST,
+        family_hash="classified-n1",
+        payload={
+            "path": "/classified/",
+            "duplicate_query_count": 3,
+            "n_plus_one_count": 1,
+            "query_patterns": [
+                {
+                    "kind": "n_plus_one_candidate",
+                    "confidence": "high",
+                    "query_summary": "SELECT reviews",
+                }
+            ],
+        },
+    )
+
+    data = _call_tool(mcp_server, "get_n1_patterns", limit=1)
+
+    assert data["n1_patterns"][0]["family_hash"] == "classified-n1"
+    assert data["n1_patterns"][0]["classification"] == "n_plus_one_candidate"
+
+
+@pytest.mark.django_db
 def test_get_n1_patterns_excludes_clean_requests(mcp_server, sample_request):
     # sample_request has duplicate_query_count=0 â€” should not appear
     data = _call_tool(mcp_server, "get_n1_patterns")
@@ -443,6 +476,32 @@ def test_get_request_detail_returns_all_events(
 
 
 # ---------------------------------------------------------------------------
+@pytest.mark.django_db
+def test_get_request_detail_returns_versioned_metadata_only_evidence(
+    mcp_server, sample_request, sample_slow_query
+):
+    data = _call_tool(mcp_server, "get_request_detail", family_hash="abc123")
+
+    assert data["schema_version"] == "orbit.evidence.v1"
+    assert data["evidence_quality"]["status"] in {"complete", "partial"}
+    query_event = next(event for event in data["events"] if event["type"] == "query")
+    assert "payload" not in query_event
+    assert "SELECT * FROM products" not in json.dumps(data)
+
+
+# Tool: get_capture_health
+# ---------------------------------------------------------------------------
+@pytest.mark.django_db
+def test_get_capture_health_returns_evidence_envelope(mcp_server):
+    data = _call_tool(mcp_server, "get_capture_health")
+
+    assert data["schema_version"] == "orbit.evidence.v1"
+    assert data["resource"] == "capture_health"
+    assert data["status"] == "ok"
+    assert data["capture"]["storage_available"] is True
+
+
+# ---------------------------------------------------------------------------
 # Tool: get_stats_summary
 # ---------------------------------------------------------------------------
 
@@ -463,3 +522,34 @@ def test_get_stats_summary_with_data(
     assert data["requests"]["total"] == 1
     assert data["queries"]["slow"] == 1
     assert data["exceptions"]["total"] == 1
+
+
+@pytest.mark.django_db
+def test_get_request_detail_honors_mcp_max_limit(settings, mcp_server):
+    settings.ORBIT_CONFIG = {"MCP_MAX_LIMIT": 1}
+    OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_REQUEST,
+        family_hash="limited",
+        payload={"path": "/limited/"},
+    )
+    OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_LOG, family_hash="limited", payload={"message": "second"}
+    )
+    data = _call_tool(mcp_server, "get_request_detail", family_hash="limited")
+    assert data["total_events"] == 1
+    assert data["truncated"] is True
+
+
+@pytest.mark.django_db
+def test_get_request_detail_caps_mcp_limit_to_evidence_contract(settings, mcp_server):
+    settings.ORBIT_CONFIG = {"MCP_MAX_LIMIT": 999999}
+    OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_REQUEST,
+        family_hash="evidence-cap",
+        payload={"path": "/evidence-cap/"},
+    )
+
+    data = _call_tool(mcp_server, "get_request_detail", family_hash="evidence-cap")
+
+    assert data["total_events"] == 1
+    assert data["truncated"] is False
