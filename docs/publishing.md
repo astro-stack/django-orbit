@@ -2,6 +2,27 @@
 
 This is the release checklist for publishing Django Orbit to GitHub, PyPI and the public MkDocs site.
 
+## Versioning Policy
+
+Use [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with an
+explicit pre-1.0 project policy:
+
+- `v0.12.PATCH` is for fixes, security corrections, dependency updates and
+  release-process repairs that should not add a new product capability. For
+  example, the next hotfix after `v0.12.1` is `v0.12.2`.
+- `v0.MINOR.0` is for a new capability line or substantial user-visible
+  behavior. The current agentic/evidence work is therefore the pending
+  `v0.13.0` release, not a patch on `v0.12`.
+- `v1.0.0` is reserved for the moment we explicitly commit to a stable public
+  API, compatibility guarantees and a migration policy. A release being
+  large does not automatically make it `v1.0.0`.
+
+Do not skip a viable pending feature line. Only use `v0.14.0` if the
+`v0.13.0` line is explicitly abandoned or re-scoped before release. Every
+version change still follows the release PR, full preflight, merge, annotated
+tag, PyPI publication, GitHub release and post-publish verification sequence
+below.
+
 ## Release Order
 
 1. Merge the release PR into `main`.

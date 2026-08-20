@@ -8,6 +8,7 @@
 - [ ] `CHANGELOG.md` has the release/user-visible entry.
 - [ ] README/PyPI copy is updated for user-visible changes.
 - [ ] MkDocs docs are updated for user-visible changes.
+- [ ] The version bump follows the policy in [`docs/publishing.md`](../blob/main/docs/publishing.md): patch for fixes, minor for new capability lines, and `v1.0.0` only for an explicit stable-API commitment.
 - [ ] If this PR changes the project version, I will complete the tag/PyPI/GitHub release follow-up after merge (the guard will open an issue if it is missing).
 - [ ] Local preflight was run before push when preparing a release:
 
