@@ -1,0 +1,146 @@
+{% extends "orbit/base.html" %}
+
+{% block title %}Configuration - Django Orbit{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-orbit-bg-primary">
+    <header class="h-14 border-b border-orbit-border bg-orbit-bg-secondary/50 sticky top-0 z-20 flex items-center justify-between px-6">
+        <div class="flex items-center gap-4">
+            <a href="{{ dashboard_url }}" title="Back to dashboard"
+               class="p-2 rounded-lg text-orbit-text-muted hover:text-orbit-text-primary hover:bg-orbit-bg-tertiary transition-colors">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            </a>
+            <div>
+                <h1 class="text-base font-semibold text-orbit-text-primary">Configuration</h1>
+                <p class="text-xs text-orbit-text-muted">Django Orbit v{{ orbit_version }}</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 text-xs">
+            <span class="text-orbit-text-muted">Effective source</span>
+            <span class="px-2 py-1 rounded bg-cyan-500/10 text-cyan-400 font-mono">{{ diagnostics.source }}</span>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto p-6">
+        {% if diagnostics.invalid_sources %}
+        <section class="mb-6 border border-rose-500/30 bg-rose-500/5 p-4 rounded-lg flex gap-3">
+            <i data-lucide="circle-x" class="w-5 h-5 text-rose-400 shrink-0"></i>
+            <div>
+                <h2 class="text-sm font-medium text-rose-300">Invalid configuration ignored</h2>
+                <p class="text-xs text-orbit-text-secondary mt-1">
+                    These settings must be dictionaries: {{ diagnostics.invalid_sources|join:", " }}.
+                </p>
+            </div>
+        </section>
+        {% endif %}
+
+        {% if diagnostics.both_defined %}
+        <section class="mb-6 border border-amber-500/30 bg-amber-500/5 p-4 rounded-lg flex gap-3">
+            <i data-lucide="triangle-alert" class="w-5 h-5 text-amber-400 shrink-0"></i>
+            <div>
+                <h2 class="text-sm font-medium text-amber-300">Two configuration names detected</h2>
+                <p class="text-xs text-orbit-text-secondary mt-1">
+                    <code>ORBIT_CONFIG</code> is the canonical name and overrides matching keys.
+                    <code>ORBIT</code> remains a compatibility alias for other keys.
+                </p>
+                {% if diagnostics.conflicting_keys %}
+                <p class="text-xs text-amber-300 mt-2">
+                    Conflicts: {{ diagnostics.conflicting_keys|join:", " }}
+                </p>
+                {% endif %}
+            </div>
+        </section>
+        {% endif %}
+
+        <form method="post" class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.75fr)] gap-6">
+            {% csrf_token %}
+            <div class="space-y-6">
+                <section class="border-b border-orbit-border pb-6">
+                    <h2 class="text-sm font-medium text-orbit-text-primary mb-4">Project identity</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <label class="block">
+                            <span class="text-xs text-orbit-text-muted">Project name</span>
+                            <input name="PROJECT_NAME" value="{{ builder_values.PROJECT_NAME }}"
+                                   class="mt-1 w-full bg-orbit-bg-secondary border border-orbit-border rounded-md px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none">
+                        </label>
+                        <label class="block">
+                            <span class="text-xs text-orbit-text-muted">Environment</span>
+                            <input name="ENVIRONMENT" value="{{ builder_values.ENVIRONMENT }}"
+                                   placeholder="local, staging, production"
+                                   class="mt-1 w-full bg-orbit-bg-secondary border border-orbit-border rounded-md px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none">
+                        </label>
+                        <label class="block">
+                            <span class="text-xs text-orbit-text-muted">Release</span>
+                            <input name="RELEASE" value="{{ builder_values.RELEASE }}"
+                                   placeholder="2026.07.23"
+                                   class="mt-1 w-full bg-orbit-bg-secondary border border-orbit-border rounded-md px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none">
+                        </label>
+                    </div>
+                </section>
+
+                <section class="border-b border-orbit-border pb-6">
+                    <h2 class="text-sm font-medium text-orbit-text-primary mb-4">Telemetry</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+                        {% for key, enabled in capture_flags %}
+                        <label class="flex items-center justify-between gap-4 py-2 border-b border-orbit-border/40">
+                            <span class="font-mono text-xs text-orbit-text-secondary">{{ key }}</span>
+                            <input type="checkbox" name="{{ key }}" {% if enabled %}checked{% endif %}
+                                   class="w-4 h-4 accent-cyan-500">
+                        </label>
+                        {% endfor %}
+                    </div>
+                </section>
+
+                <section>
+                    <h2 class="text-sm font-medium text-orbit-text-primary mb-4">Detection and AI safety</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+                        {% for key, enabled in safety_flags %}
+                        <label class="flex items-center justify-between gap-4 py-2 border-b border-orbit-border/40">
+                            <span class="font-mono text-xs text-orbit-text-secondary">{{ key }}</span>
+                            <input type="checkbox" name="{{ key }}" {% if enabled %}checked{% endif %}
+                                   class="w-4 h-4 accent-cyan-500">
+                        </label>
+                        {% endfor %}
+                        <label class="block py-2">
+                            <span class="font-mono text-xs text-orbit-text-secondary">N_PLUS_ONE_MIN_OCCURRENCES</span>
+                            <input type="number" min="2" max="100" name="N_PLUS_ONE_MIN_OCCURRENCES"
+                                   value="{{ builder_values.N_PLUS_ONE_MIN_OCCURRENCES }}"
+                                   class="mt-2 w-28 bg-orbit-bg-secondary border {% if errors.N_PLUS_ONE_MIN_OCCURRENCES %}border-rose-500{% else %}border-orbit-border{% endif %} rounded-md px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none">
+                            {% if errors.N_PLUS_ONE_MIN_OCCURRENCES %}
+                            <span class="block text-xs text-rose-400 mt-1">{{ errors.N_PLUS_ONE_MIN_OCCURRENCES }}</span>
+                            {% endif %}
+                        </label>
+                    </div>
+                </section>
+            </div>
+
+            <aside class="lg:border-l lg:border-orbit-border lg:pl-6">
+                <div class="sticky top-20">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="text-sm font-medium text-orbit-text-primary">Configuration preview</h2>
+                        {% if generated_snippet %}
+                        <button type="button" data-copy-target="#configuration-snippet" title="Copy configuration"
+                                class="p-2 rounded-md text-orbit-text-secondary hover:text-cyan-400 hover:bg-cyan-500/10">
+                            <i data-lucide="copy" class="w-4 h-4"></i>
+                        </button>
+                        {% endif %}
+                    </div>
+                    {% if generated_snippet %}
+                    <pre id="configuration-snippet" class="min-h-64 max-h-[60vh] overflow-auto bg-orbit-bg-secondary border border-orbit-border rounded-md p-4 text-xs text-cyan-100 whitespace-pre-wrap">{{ generated_snippet }}</pre>
+                    <p class="text-xs text-amber-300 mt-3">This preview is not active.</p>
+                    {% else %}
+                    <div class="min-h-64 bg-orbit-bg-secondary border border-orbit-border rounded-md p-4 flex items-center justify-center">
+                        <p class="text-xs text-orbit-text-muted text-center">Generate a validated settings block from the selected options.</p>
+                    </div>
+                    {% endif %}
+                    <button type="submit"
+                            class="mt-4 w-full flex items-center justify-center gap-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-md px-4 py-2.5 text-sm font-medium transition-colors">
+                        <i data-lucide="code-2" class="w-4 h-4"></i>
+                        Generate configuration
+                    </button>
+                </div>
+            </aside>
+        </form>
+    </main>
+</div>
+{% endblock %}

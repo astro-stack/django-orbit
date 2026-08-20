@@ -9,12 +9,31 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  pull-request-description:
+    name: Pull request description
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Fetch description
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER" --jq '.body // ""' > "$RUNNER_TEMP/pr-body.md"
+
+      - name: Validate description format
+        run: python scripts/check_pr_description.py --file "$RUNNER_TEMP/pr-body.md"
+
   tests:
     name: Tests / Python ${{ matrix.python-version }} / ${{ matrix.django-label }} / ${{ matrix.scope }}
     runs-on: ubuntu-latest

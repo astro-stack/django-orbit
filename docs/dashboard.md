@@ -17,7 +17,7 @@ turns red when non-zero.
 | Type | Description |
 |------|-------------|
 | **Requests** | HTTP requests (method, path, status, duration) |
-| **Queries** | SQL queries with N+1 detection |
+| **Queries** | SQL queries with duplicate evidence and N+1 classification |
 | **Exceptions** | Unhandled exceptions with tracebacks |
 | **Logs** | Python logging messages |
 
@@ -77,6 +77,19 @@ coding agent even when MCP is not connected.
 
 Click on any row in the feed to open the **Detail Panel**.
 
+### Investigation Guide
+
+Every detail panel starts with an **Investigation guide** that separates the
+captured fact, its operational relevance, and a bounded next step. It supports
+quick reading without hiding the underlying payload, trace, query, or related
+entry evidence.
+
+The guide is deterministic: it only uses signals Orbit already captured, such
+as an HTTP status, an exception, a slow-query flag, a repeated-query finding or
+a warning/error log level. It does not claim a root cause. Use the related
+entries, **Explain Plan**, and the **Copy fix handoff** action to investigate
+further. The handoff puts the same masked evidence, ranked hypotheses, and
+regression-test suggestions on the clipboard for Codex, Claude, or Cursor.
 ### JSON Payload
 
 The core of every entry is its JSON payload. Orbit renders this with syntax highlighting, making it easy to explore complex data structures.
@@ -101,12 +114,15 @@ Plain-text-only emails (sent via `EmailMessage`) display the body directly with 
 !!! note
     HTML bodies are capped at **100 KB** during capture. Templates larger than this will be truncated.
 
-### Duplicate Queries (N+1 Detection)
+### Duplicate Queries and N+1 Candidates
 
-When viewing a query marked as duplicate, a special section appears showing all queries with the same SQL. This helps debug N+1 query issues:
+When viewing a query marked as duplicate, a special section shows matching
+queries from the same request family. Duplicate SQL is evidence, not proof of
+N+1.
 
-- Click any duplicate to view its details
-- Tips for optimization (`select_related()`, `prefetch_related()`) are shown
+For newly captured requests, Orbit also analyzes query shape, parameter
+variation, operation and callsite. Probable N+1 and per-row aggregate patterns
+carry a confidence level, supporting evidence and capture limitations.
 
 ## Actions
 

@@ -36,11 +36,11 @@ Rendered inside a collapsible bar in dashboard.html. Full analytics live at /orb
         <span class="font-semibold {% if slow_query_count > 0 %}text-amber-400{% else %}text-orbit-text-primary{% endif %}">{{ slow_query_count }}</span>
         <span class="text-xs text-orbit-text-muted">slow</span>
     </div>
-    <!-- Duplicate / N+1 -->
-    <div class="flex items-center gap-2" title="Duplicate (N+1) queries">
+    <!-- Duplicate query evidence -->
+    <div class="flex items-center gap-2" title="Repeated SQL query executions">
         <i data-lucide="copy" class="w-4 h-4 {% if stats.duplicate_queries > 0 %}text-violet-400{% else %}text-orbit-text-muted{% endif %}"></i>
         <span class="font-semibold {% if stats.duplicate_queries > 0 %}text-violet-400{% else %}text-orbit-text-primary{% endif %}">{{ stats.duplicate_queries }}</span>
-        <span class="text-xs text-orbit-text-muted">N+1</span>
+        <span class="text-xs text-orbit-text-muted">duplicates</span>
     </div>
 
     <a href="{% url 'orbit:stats' %}"

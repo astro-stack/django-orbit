@@ -5,24 +5,29 @@ Custom Python logging handler that captures logs to OrbitEntry.
 """
 
 import logging
-import threading
+from contextvars import ContextVar, Token
 from typing import Optional
 
 from orbit.conf import get_config
 from orbit.watchers import cachalot_disabled
 
-# Thread-local storage for current family hash
-_local = threading.local()
+# Context variables preserve request correlation across concurrent async tasks.
+_family_hash: ContextVar[Optional[str]] = ContextVar("orbit_family_hash", default=None)
 
 
 def get_current_family_hash() -> Optional[str]:
     """Get the family hash for the current request context."""
-    return getattr(_local, "family_hash", None)
+    return _family_hash.get()
 
 
-def set_current_family_hash(family_hash: Optional[str]) -> None:
-    """Set the family hash for the current request context."""
-    _local.family_hash = family_hash
+def set_current_family_hash(family_hash: Optional[str]) -> Token:
+    """Set the family hash for the current request or async task context."""
+    return _family_hash.set(family_hash)
+
+
+def reset_current_family_hash(token: Token) -> None:
+    """Restore the family hash associated with a previous context token."""
+    _family_hash.reset(token)
 
 
 class OrbitLogHandler(logging.Handler):
@@ -166,13 +171,13 @@ class OrbitLogContext:
 
     def __init__(self, family_hash: str):
         self.family_hash = family_hash
-        self.previous_hash = None
+        self._token = None
 
     def __enter__(self):
-        self.previous_hash = get_current_family_hash()
-        set_current_family_hash(self.family_hash)
+        self._token = set_current_family_hash(self.family_hash)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        set_current_family_hash(self.previous_hash)
+        if self._token is not None:
+            reset_current_family_hash(self._token)
         return False

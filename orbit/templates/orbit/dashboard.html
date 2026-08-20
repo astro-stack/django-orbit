@@ -15,14 +15,22 @@
                 </div>
                 <div>
                     <h1 class="text-lg font-semibold text-gradient">Django Orbit</h1>
-                    <p class="text-xs text-orbit-text-muted">
-                        Observability and Debugging
-                    </p>
+                    {% if project_name %}
+                    <p class="text-sm text-orbit-text-primary truncate max-w-40">{{ project_name }}</p>
+                    {% else %}
+                    <p class="text-xs text-orbit-text-muted">Observability and Debugging</p>
+                    {% endif %}
                 </div>
             </div>
             <!-- Version and Contact -->
             <div class="mt-3 flex items-center gap-2 text-xs text-orbit-text-muted">
                 <span class="text-orbit-accent-cyan font-medium">v{{ orbit_version }}</span>
+                {% if environment %}
+                <span class="px-1.5 py-0.5 rounded bg-orbit-bg-tertiary text-orbit-text-secondary">{{ environment }}</span>
+                {% endif %}
+                {% if project_release %}
+                <span class="font-mono text-orbit-text-secondary">{{ project_release }}</span>
+                {% endif %}
                 <span class="text-orbit-text-muted/50">•</span>
                 <a href="mailto:unsapucaienbits@gmail.com" 
                    class="hover:text-orbit-accent-cyan transition-colors flex items-center gap-1">
@@ -151,6 +159,13 @@
                    class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-orbit-text-secondary hover:text-emerald-400 hover:bg-emerald-500/10 transition-all">
                     <i data-lucide="heart-pulse" class="w-4 h-4"></i>
                     <span>Health</span>
+                </a>
+
+                <!-- Configuration Center -->
+                <a href="{% url 'orbit:configuration' %}"
+                   title="Configuration"
+                   class="p-1.5 rounded-lg text-orbit-text-secondary hover:text-orbit-accent-cyan hover:bg-orbit-accent-cyan/10 transition-all">
+                    <i data-lucide="settings-2" class="w-4 h-4"></i>
                 </a>
 
                 <!-- Help / re-open onboarding -->
