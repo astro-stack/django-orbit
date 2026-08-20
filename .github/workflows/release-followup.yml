@@ -1,0 +1,91 @@
+name: Release follow-up guard
+
+on:
+  pull_request:
+    types: [closed]
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: release-followup-${{ github.event.pull_request.merge_commit_sha || github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Check merged version release
+    if: >-
+      (github.event_name == 'pull_request' &&
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.base.ref == 'main') ||
+      (github.event_name == 'push' &&
+      github.event.before != '0000000000000000000000000000000000000000')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout merged main
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Detect version change
+        id: version
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+        run: |
+          set -euo pipefail
+          VERSION="$(python scripts/release_guard.py --base-ref "$BASE_SHA" --merge-ref "$MERGE_SHA")"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [ -n "$VERSION" ]; then
+            echo "Detected project version v$VERSION."
+          else
+            echo "No project version change detected."
+          fi
+
+      - name: Check whether the GitHub release exists
+        id: release
+        if: steps.version.outputs.version != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: v${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "GitHub release $RELEASE_TAG already exists."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "GitHub release $RELEASE_TAG is still missing."
+          fi
+
+      - name: Open release follow-up issue
+        if: steps.version.outputs.version != '' && steps.release.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: v${{ steps.version.outputs.version }}
+          MERGED_PR_URL: ${{ github.event.pull_request.html_url || format('{0}/commit/{1}', github.server_url, github.sha) }}
+        run: |
+          set -euo pipefail
+          TITLE="Release follow-up: $RELEASE_TAG"
+          EXISTING_ISSUE="$(gh issue list \
+            --repo "$GITHUB_REPOSITORY" \
+            --state open \
+            --search "\"$TITLE\" in:title" \
+            --json number \
+            --jq '.[0].number')"
+
+          if [ -n "$EXISTING_ISSUE" ]; then
+            echo "Open follow-up issue #$EXISTING_ISSUE already exists."
+            exit 0
+          fi
+
+          gh issue create \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$TITLE" \
+            --body "A merge changed the project version to $RELEASE_TAG, but no GitHub release exists yet. Complete the release checklist from docs/publishing.md, run the full preflight, then push the annotated tag: git tag -a $RELEASE_TAG -m \"Release $RELEASE_TAG\" && git push origin $RELEASE_TAG. Originating change: $MERGED_PR_URL"
