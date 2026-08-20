@@ -1,0 +1,32 @@
+:root {
+  --md-primary-fg-color: #22d3ee;
+  --md-accent-fg-color: #a78bfa;
+}
+
+/* Hero section for landing */
+.md-typeset h1 {
+  font-weight: 700;
+}
+
+/* Code blocks with space theme */
+.highlight {
+  background: #0f172a !important;
+}
+
+/* Custom admonition for orbit */
+.md-typeset .admonition.orbit,
+.md-typeset details.orbit {
+  border-color: #22d3ee;
+}
+
+.md-typeset .orbit > .admonition-title,
+.md-typeset .orbit > summary {
+  background-color: rgba(34, 211, 238, 0.1);
+}
+
+.md-typeset .orbit > .admonition-title::before,
+.md-typeset .orbit > summary::before {
+  background-color: #22d3ee;
+  -webkit-mask-image: var(--md-admonition-icon--orbit);
+  mask-image: var(--md-admonition-icon--orbit);
+}
