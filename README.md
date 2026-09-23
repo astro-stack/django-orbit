@@ -2,7 +2,7 @@
 
 **AI agent-native observability and debugging for Django.**
 
-Current release: **v0.12.2**.
+Current release: **v0.12.3**.
 
 Django Orbit is a reusable Django app that records what your application is doing and exposes it through a dashboard and MCP tools. It captures requests, SQL queries, logs, exceptions, cache operations, jobs, storage, mail, permissions and more, then links related events by `family_hash` so humans and AI agents can debug from one coherent timeline.
 
@@ -17,7 +17,7 @@ Unlike Django Debug Toolbar, Orbit does not inject HTML into your app. It lives 
 [![License](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](LICENSE)
 [![Code Style](https://img.shields.io/badge/Code%20Style-Black-black?style=flat-square)](https://github.com/psf/black)
 
-Current maintenance release: **v0.12.1**.
+Current maintenance release: **v0.12.3**.
 
 - [Documentation](https://astro-stack.github.io/django-orbit)
 - [Try the demo](#try-the-demo)
@@ -67,6 +67,11 @@ Inspired by Laravel Telescope, Spatie Ray and Django Debug Toolbar.
 | AI/LLM | Provider/model/token metadata, latency, errors and tool-call names |
 
 All events can be linked by `family_hash`, which lets you inspect every query, log and exception associated with one request or operation.
+
+## What's New in v0.12.3
+
+- Fixed the release automation split so tagged releases use the verified PyPI trusted-publishing workflow.
+- Aligned the README release markers and package-facing release notes.
 
 ## What's New in v0.12.0
 

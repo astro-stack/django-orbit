@@ -123,8 +123,8 @@ python -m twine upload dist/django_orbit-X.Y.Z* -u __token__ -p pypi-...
 
 ## GitHub Release
 
-The `Create GitHub Release` workflow publishes the package first, then creates
-the release automatically after the tag checks and package preflight pass.
+The `Create GitHub Release` workflow verifies the package first, then creates
+the release automatically after the tag checks and package preflight pass. The published release then triggers `Publish to PyPI`, which is the workflow registered as the PyPI trusted publisher.
 GitHub generates the initial notes; the matching `CHANGELOG.md` section
 remains the source of truth for the release contents.
 
