@@ -36,15 +36,13 @@ below.
    ```
 
 5. GitHub Actions verifies the tag is annotated, points at `main`, and matches
-   every version surface.
-6. The same workflow publishes to PyPI before creating the GitHub release. The
-   `pypi` environment approval and PyPI trusted publishing (OIDC) gate the
-   upload.
-7. If a release needs a safe retry, run `Publish to PyPI` manually with the
-   exact annotated tag; it repeats the tag, `main` ancestry and metadata checks.
-8. The documentation workflow deploys the merged `main` documentation.
-9. Verify PyPI, GitHub release, docs and a fresh install.
-
+   every version surface. It then creates the GitHub release.
+6. Run `Publish to PyPI` manually with the exact annotated tag. The current
+   PyPI trusted publisher is registered to `.github/workflows/publish.yml` and
+   the workflow repeats the tag, `main` ancestry, metadata, build and Twine
+   checks before uploading.
+7. The documentation workflow deploys the merged `main` documentation.
+8. Verify PyPI, GitHub release, docs and a fresh install.
 ## Post-Merge Release Guard
 
 Every push to `main` and every merged pull request targeting `main` is checked
@@ -54,8 +52,8 @@ deduplicated issue with the exact tag and preflight commands.
 
 The guard intentionally does not tag, upload to PyPI or create a release by
 itself. Those actions remain behind the annotated-tag, metadata, build and
-PyPI trusted-publishing checks in `Create GitHub Release`. Close the follow-up
-issue only after the public package, release and docs have been verified.
+PyPI trusted-publishing checks. Close the follow-up issue only after the
+public package, release and docs have been verified.
 
 ## Preflight
 
@@ -124,7 +122,13 @@ python -m twine upload dist/django_orbit-X.Y.Z* -u __token__ -p pypi-...
 ## GitHub Release
 
 The `Create GitHub Release` workflow verifies the package first, then creates
-the release automatically after the tag checks and package preflight pass. The published release then triggers `Publish to PyPI`, which is the workflow registered as the PyPI trusted publisher.
+the release automatically after the tag checks and package preflight pass.
+Run `Publish to PyPI` manually with the exact tag after that release. This is
+intentional: the current PyPI trusted publisher is registered to
+`.github/workflows/publish.yml`, while the tag workflow is
+`.github/workflows/release.yml`. To make the final upload fully automatic,
+register the release workflow in PyPI Trusted Publishers and add its publish
+job back only after that setting is verified.
 GitHub generates the initial notes; the matching `CHANGELOG.md` section
 remains the source of truth for the release contents.
 
