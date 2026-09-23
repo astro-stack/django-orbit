@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Made the tag workflow verify and create the GitHub release while the trusted
   Publish to PyPI workflow handles the PyPI upload.
 - Aligned the public release references and corrected the
-  ctions/setup-python@v7 release note.
+  ctions/setup-python@v7 release note.
 
 
 ## [0.12.2] - 2026-09-23
