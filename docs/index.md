@@ -1,6 +1,6 @@
 # Django Orbit Documentation
 
-Current maintenance release: **v0.12.2**.
+Current maintenance release: **v0.12.3**.
 
 Welcome to the Django Orbit documentation. This guide covers installation, configuration, usage, and customization.
 
@@ -48,9 +48,14 @@ Django Orbit is an AI agent-native observability and debugging tool for Django a
 | Agent-native MCP tools | No | Yes |
 | Ticket-to-fix handoff bundles | No | Yes |
 
+### What's New in v0.12.3
+
+- Fixed the release automation split so tagged releases use the verified PyPI trusted-publishing workflow.
+- Aligned the public release references and corrected the setup-python release note.
+
 ### What's New in v0.12.2
 
-- Updated the release workflow to use ctions/setup-python@v7 while keeping the existing release verification and trusted PyPI publishing sequence.
+- Updated the release workflow to use actions/setup-python@v7 while keeping the existing release verification and trusted PyPI publishing sequence.
 
 ## What's New in v0.12.0
 
