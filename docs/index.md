@@ -1,6 +1,6 @@
 # Django Orbit Documentation
 
-Current maintenance release: **v0.12.1**.
+Current maintenance release: **v0.12.2**.
 
 Welcome to the Django Orbit documentation. This guide covers installation, configuration, usage, and customization.
 
@@ -48,7 +48,11 @@ Django Orbit is an AI agent-native observability and debugging tool for Django a
 | Agent-native MCP tools | No | Yes |
 | Ticket-to-fix handoff bundles | No | Yes |
 
-### What's New in v0.12.0
+### What's New in v0.12.2
+
+- Updated the release workflow to use ctions/setup-python@v7 while keeping the existing release verification and trusted PyPI publishing sequence.
+
+## What's New in v0.12.0
 
 - **AI/LLM watcher**: Orbit records provider, model, operation, latency, status, token usage and tool-call names for supported OpenAI and Anthropic SDK calls.
 - **Metadata-first defaults**: prompts, completions and tool-call arguments are not captured unless explicitly enabled.

@@ -2,6 +2,8 @@
 
 **AI agent-native observability and debugging for Django.**
 
+Current release: **v0.12.2**.
+
 Django Orbit is a reusable Django app that records what your application is doing and exposes it through a dashboard and MCP tools. It captures requests, SQL queries, logs, exceptions, cache operations, jobs, storage, mail, permissions and more, then links related events by `family_hash` so humans and AI agents can debug from one coherent timeline.
 
 Unlike Django Debug Toolbar, Orbit does not inject HTML into your app. It lives at its own isolated `/orbit/` URL and is designed to observe from a distance without interfering with the host project.
