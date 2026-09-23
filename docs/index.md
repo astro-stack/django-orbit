@@ -50,7 +50,7 @@ Django Orbit is an AI agent-native observability and debugging tool for Django a
 
 ### What's New in v0.12.2
 
-- Updated the release workflow to use ctions/setup-python@v7 while keeping the existing release verification and trusted PyPI publishing sequence.
+- Updated the release workflow to use ctions/setup-python@v7 while keeping the existing release verification and trusted PyPI publishing sequence.
 
 ## What's New in v0.12.0
 
