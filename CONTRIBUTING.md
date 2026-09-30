@@ -94,8 +94,28 @@ Types:
 3. Add or update tests as needed
 4. Ensure all tests pass
 5. Update documentation if necessary
-6. Open a pull request with a clear description
+6. Open a pull request with a clear description. Complete the repository PR template and keep the change focused.
 
+## Repository Governance
+
+The `.github/CODEOWNERS` file identifies the default maintainer for review. The `main` branch is maintained through pull requests. Maintainers should keep these checks required in GitHub branch protection:
+
+- `Release metadata`
+- `Tests / Python 3.9 / Django 4.2 / core`
+- `Tests / Python 3.10 / Django 4.2 / full+mcp`
+- `Tests / Python 3.12 / Django 5.0 / full+mcp`
+- `Documentation`
+- `Package build`
+
+Direct pushes and force pushes to `main` should remain disabled. Automated or agent-generated changes must arrive as reviewable pull requests and must not merge or publish releases without maintainer approval.
+
+Install the lightweight local checks with:
+
+```bash
+python -m pip install pre-commit
+pre-commit install
+pre-commit run --all-files
+```
 ## Testing
 
 ### Running Tests
@@ -190,7 +210,7 @@ Documentation is maintained in the Markdown files under `docs/` and published wi
 4. Create an annotated tag matching the project version: `git tag -a vX.Y.Z -m "Release vX.Y.Z"`.
 5. Push only that tag: `git push origin vX.Y.Z`.
 6. GitHub Actions validates the tag and creates the GitHub release.
-7. The published release triggers the protected PyPI workflow using OIDC.
+7. Run `Publish to PyPI` with the exact annotated tag. The protected workflow verifies the tag, metadata, build and Twine output before uploading with OIDC.
 
 ## Getting Help
 
