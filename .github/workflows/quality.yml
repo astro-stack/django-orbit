@@ -1,0 +1,63 @@
+name: Quality
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Quality / static checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]" pip-audit
+
+      - name: Check dependency consistency
+        run: python -m pip check
+
+      - name: Compile Python sources
+        run: python -m compileall -q orbit tests
+
+      - name: Run tests with coverage report
+        run: python -m pytest --cov=orbit --cov-report=term-missing --cov-report=xml -q
+
+      - name: Audit installed dependencies
+        run: python -m pip_audit
+
+      - name: Check changed Python files
+        shell: bash
+        run: |
+          mapfile -t files < <(git diff --name-only --diff-filter=ACMR \
+            "${{ github.event.pull_request.base.sha || 'HEAD^' }}...${{ github.sha }}" \
+            -- '*.py')
+
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No Python files changed; format and lint checks skipped."
+            exit 0
+          fi
+
+          python -m black --check "${files[@]}"
+          python -m isort --check-only "${files[@]}"
+          python -m flake8 --max-line-length=88 --extend-ignore=E203,W503 "${files[@]}"
