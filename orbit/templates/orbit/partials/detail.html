@@ -53,16 +53,6 @@
             <h3 class="text-lg font-medium text-orbit-text-primary capitalize">{{ entry.type }}</h3>
             <p class="text-sm text-orbit-text-muted font-mono">{{ entry.id }}</p>
         </div>
-        {% if can_copy_agent_prompt %}
-        <button
-           type="button"
-           data-agent-prompt-url="{% url 'orbit:agent_prompt' entry.id %}"
-           onclick="copyOrbitAgentPrompt(this)"
-           class="p-2 hover:bg-orbit-bg-tertiary rounded-lg transition-colors text-orbit-text-secondary hover:text-orbit-text-primary group"
-           title="Copy agent prompt">
-            <i data-lucide="clipboard-copy" class="w-5 h-5 group-hover:text-orbit-accent-cyan"></i>
-        </button>
-        {% endif %}
         <a href="{% url 'orbit:export' entry.id %}" 
            class="p-2 hover:bg-orbit-bg-tertiary rounded-lg transition-colors text-orbit-text-secondary hover:text-orbit-text-primary group" 
            title="Export JSON">
@@ -95,6 +85,20 @@
                 <span class="text-sm text-orbit-text-secondary">{{ investigation_guidance.next_step }}</span>
             </div>
         </div>
+        {% if can_copy_agent_handoff %}
+        <div class="mt-3 flex flex-wrap items-center gap-3">
+            <button
+                type="button"
+                data-agent-handoff-url="{% url 'orbit:agent_handoff' entry.id %}"
+                onclick="copyOrbitAgentHandoff(this)"
+                class="inline-flex items-center gap-2 rounded-lg border border-orbit-accent-cyan/50 px-3 py-2 text-sm font-medium text-orbit-accent-cyan transition-colors hover:bg-orbit-accent-cyan/10"
+                title="Copy fix handoff">
+                <i data-lucide="clipboard-check" class="w-4 h-4"></i>
+                Copy fix handoff
+            </button>
+            <span class="text-xs text-orbit-text-muted">Masked evidence, ranked hypotheses, and regression tests for Codex, Claude, or Cursor.</span>
+        </div>
+        {% endif %}
     </section>
     {% endif %}
 
@@ -541,25 +545,25 @@
             el.innerHTML = syntaxHighlight(el.textContent);
         }
     })();
-    async function copyOrbitAgentPrompt(button) {
-        const url = button.getAttribute('data-agent-prompt-url');
-        const icon = button.innerHTML;
+    async function copyOrbitAgentHandoff(button) {
+        const url = button.getAttribute('data-agent-handoff-url');
+        const label = button.innerHTML;
         try {
             const response = await fetch(url, {headers: {'Accept': 'text/plain'}});
             const text = await response.text();
             if (!response.ok) {
-                throw new Error(text || 'Could not build prompt');
+                throw new Error(text || 'Could not build handoff');
             }
             await navigator.clipboard.writeText(text);
-            button.innerHTML = '<i data-lucide="check" class="w-5 h-5 text-emerald-400"></i>';
+            button.innerHTML = '<i data-lucide="check" class="w-4 h-4 text-emerald-400"></i> Fix handoff copied';
         } catch (error) {
-            button.innerHTML = '<i data-lucide="alert-triangle" class="w-5 h-5 text-rose-400"></i>';
+            button.innerHTML = '<i data-lucide="alert-triangle" class="w-4 h-4 text-rose-400"></i> Could not copy handoff';
         } finally {
             lucide.createIcons();
             setTimeout(() => {
-                button.innerHTML = icon;
+                button.innerHTML = label;
                 lucide.createIcons();
-            }, 1400);
+            }, 1800);
         }
     }
 </script>

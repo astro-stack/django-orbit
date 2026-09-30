@@ -73,10 +73,11 @@ recorded fields to explain a next step. It identifies the request method/path/st
 query signal, or log level without claiming a root cause. Use the related entries,
 query timeline, and Stats views to verify the signal before changing code.
 
-Entries with a `family_hash` or exception fingerprint also show a **copy agent prompt**
-action. It generates a safe prompt from `create_incident_bundle(..., format="prompt")`
-so you can paste the current runtime context into Codex, Claude, Cursor or another
-coding agent even when MCP is not connected.
+Entries with a `family_hash` or exception fingerprint also show a **Copy fix handoff**
+action. It combines the safe incident prompt with ranked fix hypotheses and a
+regression-test plan, so you can paste a useful starting point into Codex, Claude,
+Cursor or another coding agent even when MCP is not connected. It does not edit code
+or claim a root cause; verify the evidence against the repository first.
 
 ## Detailed Views
 

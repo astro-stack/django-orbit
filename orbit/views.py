@@ -24,6 +24,7 @@ __all__ = [
     "OrbitExplainView",
     "OrbitExportView",
     "OrbitAgentPromptView",
+    "OrbitAgentHandoffView",
     "OrbitHealthView",
 ]
 
@@ -764,7 +765,7 @@ class OrbitDetailPartial(OrbitProtectedView, View):
                 "duplicate_query_stats": duplicate_query_stats,
                 "waterfall": waterfall,
                 "investigation_guidance": investigation_guidance,
-                "can_copy_agent_prompt": bool(
+                "can_copy_agent_handoff": bool(
                     entry.family_hash
                     or (entry.type == OrbitEntry.TYPE_EXCEPTION and entry.fingerprint)
                 ),
@@ -813,20 +814,64 @@ class OrbitDetailPartial(OrbitProtectedView, View):
         return {"total_ms": round(total, 1), "spans": spans, "count": len(spans)}
 
 
+def _agent_source_for_entry(entry):
+    if entry.family_hash:
+        return "family_hash", entry.family_hash
+    if entry.type == OrbitEntry.TYPE_EXCEPTION and entry.fingerprint:
+        return "fingerprint", entry.fingerprint
+    return None
+
+
+def _build_agent_fix_handoff(source_type, source_value):
+    from orbit.agentic import (
+        create_incident_bundle,
+        propose_fix_hypotheses,
+        propose_test_plan,
+    )
+
+    bundle = create_incident_bundle(source_type, source_value, format="prompt")
+    if isinstance(bundle, dict) and bundle.get("error"):
+        return bundle
+
+    hypotheses = propose_fix_hypotheses(source_type, source_value)
+    if hypotheses.get("error"):
+        return hypotheses
+    test_plan = propose_test_plan(source_type, source_value)
+    if test_plan.get("error"):
+        return test_plan
+
+    lines = [bundle.rstrip(), "", "## Fix hypotheses"]
+    for item in hypotheses.get("hypotheses", []):
+        lines.append(f"- [{item.get('confidence', 'unknown')}] {item.get('title')}")
+        lines.append(f"  Evidence: {item.get('evidence')}")
+        lines.append(f"  Next: {item.get('recommended_action')}")
+
+    lines.extend(["", "## Regression test plan"])
+    for item in test_plan.get("recommended_tests", []):
+        lines.append(
+            f"- [{item.get('type', 'test')}] {item.get('target')}: "
+            f"{item.get('purpose')}"
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Handoff safety",
+            "- Evidence is masked and bounded by Orbit's agent-safe serializers.",
+            "- Hypotheses and tests are suggestions; verify them against the "
+            "codebase before editing.",
+        ]
+    )
+    return "\n".join(lines) + "\n"
+
+
 class OrbitAgentPromptView(OrbitProtectedView, View):
-    """
-    Return a copy/paste coding-agent prompt for an entry's incident context.
-    """
+    """Return the original incident prompt for compatibility."""
 
     def get(self, request: HttpRequest, entry_id: str) -> HttpResponse:
         entry = get_object_or_404(OrbitEntry, id=entry_id)
-        if entry.family_hash:
-            source_type = "family_hash"
-            source_value = entry.family_hash
-        elif entry.type == OrbitEntry.TYPE_EXCEPTION and entry.fingerprint:
-            source_type = "fingerprint"
-            source_value = entry.fingerprint
-        else:
+        source = _agent_source_for_entry(entry)
+        if source is None:
             return HttpResponse(
                 "This entry does not have a family_hash or exception fingerprint "
                 "for an agent prompt.",
@@ -836,12 +881,34 @@ class OrbitAgentPromptView(OrbitProtectedView, View):
 
         from orbit.agentic import create_incident_bundle
 
-        prompt = create_incident_bundle(source_type, source_value, format="prompt")
+        prompt = create_incident_bundle(*source, format="prompt")
         if isinstance(prompt, dict) and prompt.get("error"):
             return HttpResponse(
                 prompt["error"], status=404, content_type="text/plain; charset=utf-8"
             )
         return HttpResponse(prompt, content_type="text/plain; charset=utf-8")
+
+
+class OrbitAgentHandoffView(OrbitProtectedView, View):
+    """Return masked evidence plus hypotheses and a regression-test plan."""
+
+    def get(self, request: HttpRequest, entry_id: str) -> HttpResponse:
+        entry = get_object_or_404(OrbitEntry, id=entry_id)
+        source = _agent_source_for_entry(entry)
+        if source is None:
+            return HttpResponse(
+                "This entry does not have a family_hash or exception fingerprint "
+                "for an agent handoff.",
+                status=400,
+                content_type="text/plain; charset=utf-8",
+            )
+
+        handoff = _build_agent_fix_handoff(*source)
+        if isinstance(handoff, dict) and handoff.get("error"):
+            return HttpResponse(
+                handoff["error"], status=404, content_type="text/plain; charset=utf-8"
+            )
+        return HttpResponse(handoff, content_type="text/plain; charset=utf-8")
 
 
 class OrbitClearView(OrbitProtectedView, View):
