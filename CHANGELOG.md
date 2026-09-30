@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [0.13.0] - 2026-09-30
+
 ### Added
 
 - Added a versioned, metadata-first Evidence API and neutral runtime adapter contract for safe integrations.
@@ -16,10 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `get_request_detail` now returns the versioned, metadata-only Evidence API envelope and applies `MCP_MAX_LIMIT` before reading a request family.
-
-### Changed
-
 - Request-family correlation now uses task-local context and restores the parent context after each request and nested log scope.
+
 ## [0.12.3] - 2026-09-23
 
 ### Fixed
