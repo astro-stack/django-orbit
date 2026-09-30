@@ -23,6 +23,32 @@ version change still follows the release PR, full preflight, merge, annotated
 tag, PyPI publication, GitHub release and post-publish verification sequence
 below.
 
+## Maintainer Checklist
+
+### Before Merge
+
+- [ ] Decide whether the change is a package release or documentation/CI-only.
+- [ ] Choose the next SemVer version; use a patch only for fixes and release-process changes.
+- [ ] Update `pyproject.toml`, `orbit/__init__.py`, `CHANGELOG.md`, `README.md` and `docs/` when applicable.
+- [ ] Run `python scripts/verify_release.py --metadata-only`.
+- [ ] Confirm all required PR checks are green, including `Quality / static checks`.
+
+### Publish
+
+- [ ] Merge the release PR into `main`.
+- [ ] Pull the final `main` and confirm the version is unchanged.
+- [ ] Run `python scripts/verify_release.py` from the final commit.
+- [ ] Create and push the annotated tag `vX.Y.Z`.
+- [ ] Confirm the GitHub Release was created from that tag.
+- [ ] Run the `Publish to PyPI` workflow manually with the exact tag.
+- [ ] Confirm PyPI, GitHub Release and documentation URLs show the same version.
+
+### After Publish
+
+- [ ] Install the exact version in a clean environment, including `[mcp]` when relevant.
+- [ ] Exercise the documented quick start and MCP setup.
+- [ ] Confirm the scheduled maintenance workflow is healthy.
+- [ ] Close any release follow-up issue only after public verification.
 ## Release Order
 
 1. Merge the release PR into `main`.
@@ -104,6 +130,7 @@ Release PRs must have these GitHub checks green before merge:
 - `Tests / Python 3.12 / Django 5.0 / full+mcp`
 - `Documentation`
 - `Package build`
+- `Quality / static checks`
 
 In GitHub repository settings, configure branch protection for `main` to require those checks before merge and require branches to be up to date before merging.
 
