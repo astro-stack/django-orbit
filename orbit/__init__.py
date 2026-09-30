@@ -12,10 +12,10 @@ __author__ = "Django Orbit Contributors"
 default_app_config = "orbit.apps.OrbitConfig"
 
 # User-facing helpers
-from orbit.helpers import dump, log
+from orbit.helpers import dump, log  # noqa: E402
 
 # Watcher status functions (plug-and-play diagnostics)
-from orbit.watchers import (
+from orbit.watchers import (  # noqa: E402
     get_failed_watchers,
     get_installed_watchers,
     get_watcher_status,
