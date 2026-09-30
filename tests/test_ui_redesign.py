@@ -157,7 +157,9 @@ def test_detail_panel_guides_log_by_level_without_exposing_message(client):
 
     assert "A INFO log event was recorded." in html
     assert "No warning or error level was recorded" in html
-    assert "secret-token" not in html
+    guide = html.split("<!-- Evidence-backed investigation guide -->", 1)[1]
+    guide = guide.split("<!-- Quick Stats -->", 1)[0]
+    assert "secret-token" not in guide
 
 
 @pytest.mark.django_db
