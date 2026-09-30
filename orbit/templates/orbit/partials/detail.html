@@ -70,6 +70,34 @@
         </a>
     </div>
     
+    {% if investigation_guidance %}
+    <!-- Evidence-backed investigation guide -->
+    <section class="border-t border-orbit-border pt-4" aria-label="Investigation guide">
+        <div class="flex items-center gap-2 mb-3">
+            <i data-lucide="route" class="w-4 h-4
+                {% if investigation_guidance.tone == 'critical' %}text-rose-400
+                {% elif investigation_guidance.tone == 'warning' %}text-amber-400
+                {% else %}text-orbit-accent-cyan{% endif %}"></i>
+            <h4 class="text-sm font-medium text-orbit-text-primary">Investigation guide</h4>
+            <span class="text-xs text-orbit-text-muted">Based on recorded evidence</span>
+        </div>
+        <div class="divide-y divide-orbit-border rounded-lg border border-orbit-border bg-orbit-bg-tertiary/30">
+            <div class="grid grid-cols-[96px_1fr] gap-3 p-3">
+                <span class="text-[10px] font-mono uppercase tracking-wider text-orbit-text-muted">What happened</span>
+                <span class="text-sm text-orbit-text-primary">{{ investigation_guidance.what_happened }}</span>
+            </div>
+            <div class="grid grid-cols-[96px_1fr] gap-3 p-3">
+                <span class="text-[10px] font-mono uppercase tracking-wider text-orbit-text-muted">Why it matters</span>
+                <span class="text-sm text-orbit-text-secondary">{{ investigation_guidance.why_it_matters }}</span>
+            </div>
+            <div class="grid grid-cols-[96px_1fr] gap-3 p-3">
+                <span class="text-[10px] font-mono uppercase tracking-wider text-orbit-text-muted">Next step</span>
+                <span class="text-sm text-orbit-text-secondary">{{ investigation_guidance.next_step }}</span>
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
     <!-- Quick Stats -->
     <div class="grid grid-cols-3 gap-3">
         <div class="bg-orbit-bg-tertiary/50 rounded-lg p-3 text-center">

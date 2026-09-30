@@ -3,9 +3,10 @@ Smoke tests for the v0.9.0 UX overhaul: grouped navigation, lazy Stats sections,
 version sourcing, and the Export-button removal.
 """
 
-import pytest
 from django.test import override_settings
 from django.urls import reverse
+
+import pytest
 
 from orbit import __version__ as ORBIT_VERSION
 from orbit.models import OrbitEntry
@@ -111,6 +112,55 @@ def test_detail_panel_exposes_copy_agent_prompt_button(client):
 
 
 @pytest.mark.django_db
+def test_detail_panel_guides_successful_request_from_recorded_fields(client):
+    entry = OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_REQUEST,
+        duration_ms=7.5,
+        payload={
+            "method": "GET",
+            "full_path": "/books/",
+            "status_code": 200,
+        },
+    )
+
+    html = client.get(reverse("orbit:detail", args=[entry.id])).content.decode()
+
+    assert "GET /books/ returned HTTP 200 in 7.5 ms." in html
+    assert "without recording an error signal" in html
+    assert "Open related entries or Stats" in html
+    assert "A http request was recorded." not in html
+
+
+@pytest.mark.django_db
+def test_detail_panel_guides_slow_query_with_actionable_next_step(client):
+    entry = OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_QUERY,
+        duration_ms=1250.0,
+        payload={"sql": "SELECT 1", "is_slow": True},
+    )
+
+    html = client.get(reverse("orbit:detail", args=[entry.id])).content.decode()
+
+    assert "A SQL query took 1250.0 ms." in html
+    assert "Explain Plan" in html
+    assert "No problem signal was inferred" not in html
+
+
+@pytest.mark.django_db
+def test_detail_panel_guides_log_by_level_without_exposing_message(client):
+    entry = OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_LOG,
+        payload={"level": "INFO", "message": "secret-token"},
+    )
+
+    html = client.get(reverse("orbit:detail", args=[entry.id])).content.decode()
+
+    assert "A INFO log event was recorded." in html
+    assert "No warning or error level was recorded" in html
+    assert "secret-token" not in html
+
+
+@pytest.mark.django_db
 def test_agent_prompt_endpoint_returns_prompt_for_family(client):
     entry = OrbitEntry.objects.create(
         type=OrbitEntry.TYPE_REQUEST,
@@ -135,7 +185,9 @@ def test_agent_prompt_endpoint_returns_prompt_for_family(client):
 
 @pytest.mark.django_db
 def test_agent_prompt_endpoint_rejects_unlinked_entries(client):
-    entry = OrbitEntry.objects.create(type=OrbitEntry.TYPE_LOG, payload={"message": "orphan"})
+    entry = OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_LOG, payload={"message": "orphan"}
+    )
 
     response = client.get(reverse("orbit:agent_prompt", args=[entry.id]))
 
