@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `get_request_detail` now returns the versioned, metadata-only Evidence API envelope and applies `MCP_MAX_LIMIT` before reading a request family.
+
+### Changed
+
 - Request-family correlation now uses task-local context and restores the parent context after each request and nested log scope.
 ## [0.12.3] - 2026-09-23
 
