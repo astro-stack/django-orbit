@@ -819,7 +819,8 @@ class OrbitAgentPromptView(OrbitProtectedView, View):
             source_value = entry.fingerprint
         else:
             return HttpResponse(
-                "This entry does not have a family_hash or exception fingerprint for an agent prompt.",
+                "This entry does not have a family_hash or exception fingerprint "
+                "for an agent prompt.",
                 status=400,
                 content_type="text/plain; charset=utf-8",
             )
