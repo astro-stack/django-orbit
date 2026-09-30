@@ -33,6 +33,7 @@ theme:
 
 nav:
   - Home: index.md
+  - Product Site: https://labs.wearehik.com/django-orbit/
   - Getting Started:
     - Installation: installation.md
     - Quick Start: quickstart.md
@@ -49,13 +50,18 @@ nav:
     - Running Demo: running-demo.md
   - Reference:
     - API: api.md
+    - Evidence API: evidence-api.md
     - Customization: customization.md
   - Development:
     - Contributing: contributing.md
     - Quality Gates: quality-gates.md
+    - Scheduled Maintenance: maintenance.md
     - Publishing: publishing.md
     - Security: security.md
     - Troubleshooting: troubleshooting.md
+  - Product:
+    - Django Orbit Site: https://labs.wearehik.com/django-orbit/
+    - Orbit Pro: https://labs.wearehik.com/django-orbit/pro/
 
 markdown_extensions:
   - pymdownx.highlight:
@@ -82,6 +88,9 @@ plugins:
 
 extra:
   social:
+    - icon: material/web
+      link: https://labs.wearehik.com/django-orbit/
+      name: Django Orbit product site
     - icon: fontawesome/brands/github
       link: https://github.com/astro-stack/django-orbit
     - icon: fontawesome/brands/python
