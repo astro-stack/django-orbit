@@ -72,9 +72,10 @@ def create_mcp_server():
         "Django Orbit",
         instructions=(
             "Django Orbit captures telemetry from a Django application: HTTP requests, "
-            "SQL queries, exceptions, logs, cache operations, model events, background jobs, "
-            "and more. Use these tools to debug performance issues, find errors, detect N+1 "
-            "query patterns, and understand what your application is doing."
+            "SQL queries, exceptions, logs, cache operations, model events, "
+            "background jobs, and more. Use these tools to debug performance issues, "
+            "find errors, detect N+1 query patterns, and understand what your "
+            "application is doing."
         ),
     )
 
@@ -113,7 +114,8 @@ def create_mcp_server():
         SQL, execution time, and the family_hash of the request that triggered it.
 
         Args:
-            threshold_ms: Minimum duration to consider slow (default: SLOW_QUERY_THRESHOLD_MS from config)
+            threshold_ms: Minimum duration to consider slow (default: "
+                "SLOW_QUERY_THRESHOLD_MS from config)"
             limit: Number of results to return (max 100, default 20)
         """
         if not get_config().get("MCP_ENABLED", True):
