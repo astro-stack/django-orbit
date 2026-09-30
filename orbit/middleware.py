@@ -12,7 +12,7 @@ from django.db import connection
 from django.http import HttpRequest, HttpResponse
 
 from orbit.conf import get_config, should_ignore_path
-from orbit.handlers import set_current_family_hash
+from orbit.handlers import reset_current_family_hash, set_current_family_hash
 from orbit.recorders import (
     OrbitQueryWrapper,
     clear_current_context,
@@ -70,7 +70,7 @@ class OrbitMiddleware:
         clear_current_context()
 
         # Set up logging context
-        set_current_family_hash(family_hash)
+        family_token = set_current_family_hash(family_hash)
 
         # Record start time
         start_time = time.perf_counter()
@@ -132,7 +132,7 @@ class OrbitMiddleware:
             self._cleanup_if_needed(config)
 
             # Clear context
-            set_current_family_hash(None)
+            reset_current_family_hash(family_token)
             clear_current_context()
 
         return response
