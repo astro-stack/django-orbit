@@ -53,6 +53,7 @@ nav:
   - Development:
     - Contributing: contributing.md
     - Quality Gates: quality-gates.md
+    - Scheduled Maintenance: maintenance.md
     - Publishing: publishing.md
     - Security: security.md
     - Troubleshooting: troubleshooting.md
