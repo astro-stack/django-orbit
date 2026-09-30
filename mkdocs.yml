@@ -52,6 +52,7 @@ nav:
     - Customization: customization.md
   - Development:
     - Contributing: contributing.md
+    - Quality Gates: quality-gates.md
     - Publishing: publishing.md
     - Security: security.md
     - Troubleshooting: troubleshooting.md
