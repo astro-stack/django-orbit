@@ -572,7 +572,9 @@ def read_capture_health() -> dict[str, Any]:
             "module_counts": counts,
             "modules": sorted(modules, key=lambda item: item["name"] or ""),
             "configured_capture_flags": flags,
-            "coverage_note": "Configuration and module status do not prove an event was captured.",
+            "coverage_note": (
+                "Configuration and module status do not prove an event was captured."
+            ),
         },
         "evidence_quality": quality,
     }
