@@ -32,7 +32,8 @@ from orbit.mixins import OrbitProtectedView
 from orbit.models import OrbitEntry
 
 # Sidebar navigation, grouped for progressive disclosure (see DESIGN.md › Layout).
-# Each item: (type_key, label). Icons/colors come from OrbitEntry.TYPE_ICONS/TYPE_COLORS.
+# Each item: (type_key, label). Icons/colors come from OrbitEntry.TYPE_ICONS/
+# TYPE_COLORS.
 # "all" is a pseudo-type that matches every entry.
 NAV_GROUPS = [
     {
@@ -199,7 +200,8 @@ def build_entry_investigation_guidance(entry, n_plus_one_findings=None):
                 "tone": "warning",
                 "what_happened": "A repeated SQL query was recorded.",
                 "why_it_matters": (
-                    "Orbit marked this query as duplicate activity in its request family."
+                    "Orbit marked this query as duplicate activity in its request "
+                    "family."
                 ),
                 "next_step": (
                     "Review the related query entries and check select_related() or "
@@ -228,7 +230,8 @@ def build_entry_investigation_guidance(entry, n_plus_one_findings=None):
                     "Orbit captured an error-level signal from the application logger."
                 ),
                 "next_step": (
-                    "Review the message and related request entries before changing code."
+                    "Review the message and related request entries before changing "
+                    "code."
                 ),
             }
         if level in {"WARNING", "WARN"}:
@@ -496,7 +499,8 @@ class OrbitFeedPartial(OrbitProtectedView, View):
 
         query = request.GET.get("q")
 
-        # Tag filter (B1): explicit ?tag=foo, or a "tag:foo" prefix typed in the search box.
+        # Tag filter (B1): explicit ?tag=foo, or a "tag:foo" prefix typed in the
+        # search box.
         tag = request.GET.get("tag")
         if not tag and query and query.lower().startswith("tag:"):
             tag = query[4:].strip()
@@ -527,7 +531,8 @@ class OrbitFeedPartial(OrbitProtectedView, View):
                 # Text search on payload using generic "contains"
                 # For SQLite/Postgres JSONField, we can use __icontains
                 # Ideally we cast to text for better compatibility if needed,
-                # but let's try direct first as it handles some string casting implicitly in Django 4.2+
+                # but let's try direct first as it handles some string casting
+                # implicitly in Django 4.2+
                 from django.db.models import TextField
                 from django.db.models.functions import Cast
 
@@ -661,7 +666,8 @@ class OrbitDetailPartial(OrbitProtectedView, View):
         if entry.type == OrbitEntry.TYPE_REQUEST and entry.family_hash:
             precomputed_total = entry.payload.get("duplicate_query_count")
 
-            # Optimization: If we already know there are zero duplicates, skip expensive processing
+            # Optimization: If we already know there are zero duplicates, skip
+            # expensive processing.
             if precomputed_total == 0:
                 duplicate_query_stats = {
                     "total_duplicates": 0,
@@ -693,7 +699,8 @@ class OrbitDetailPartial(OrbitProtectedView, View):
 
                     # Track unique duplicated queries (those executed more than once)
                     if duplicate_count > 1:
-                        # Keep track of the highest execution count and a representative ID
+                        # Keep track of the highest execution count and a
+                        # representative ID.
                         if (
                             sql not in query_groups
                             or duplicate_count > query_groups[sql]
@@ -701,7 +708,8 @@ class OrbitDetailPartial(OrbitProtectedView, View):
                             query_groups[sql] = duplicate_count
                             query_ids[sql] = query.id
 
-                # Use precomputed total if available (fallback to calculated for old data)
+                # Use precomputed total if available (fallback to calculated for
+                # old data).
                 final_total = (
                     precomputed_total
                     if precomputed_total is not None
@@ -768,9 +776,10 @@ class OrbitDetailPartial(OrbitProtectedView, View):
         """
         Build span bars (left%/width%) for a request's child queries.
 
-        Uses each query's recorded start_offset_ms (accurate, captured at execution) over
-        the request's total duration. Pure arithmetic on already-fetched rows — no extra
-        queries. Returns None when there's nothing meaningful to show.
+        Uses each query's recorded start_offset_ms (accurate, captured at
+        execution) over the request's total duration. Pure arithmetic on
+        already-fetched rows — no extra queries. Returns None when there's
+        nothing meaningful to show.
         """
         if entry.type != OrbitEntry.TYPE_REQUEST or not entry.duration_ms:
             return None
