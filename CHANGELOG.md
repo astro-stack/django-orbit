@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added a versioned, metadata-first Evidence API and neutral runtime adapter contract for safe integrations.
+- Added an evidence-backed Investigation guide to the detail panel with recorded request, query, and log context.
 
 ### Changed
 

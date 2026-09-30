@@ -68,6 +68,11 @@ analytics, use the **Full analytics** link or the **Stats** button to open the
 
 Open any entry and use the **download** link in the detail panel header to export it as
 JSON — handy for sharing a specific request or exception.
+The detail panel includes an **Investigation guide** when the entry has enough
+recorded fields to explain a next step. It identifies the request method/path/status,
+query signal, or log level without claiming a root cause. Use the related entries,
+query timeline, and Stats views to verify the signal before changing code.
+
 Entries with a `family_hash` or exception fingerprint also show a **copy agent prompt**
 action. It generates a safe prompt from `create_incident_bundle(..., format="prompt")`
 so you can paste the current runtime context into Codex, Claude, Cursor or another
