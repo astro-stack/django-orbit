@@ -16,9 +16,9 @@ from orbit.helpers import dump, log
 
 # Watcher status functions (plug-and-play diagnostics)
 from orbit.watchers import (
-    get_watcher_status,
-    get_installed_watchers,
     get_failed_watchers,
+    get_installed_watchers,
+    get_watcher_status,
 )
 
 __all__ = [
