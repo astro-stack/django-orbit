@@ -1,6 +1,6 @@
 # Django Orbit Documentation
 
-Current maintenance release: **v0.12.3**.
+Current maintenance release: **v0.13.0**.
 
 Welcome to the Django Orbit documentation. This guide covers installation, configuration, usage, and customization.
 
@@ -47,6 +47,14 @@ Django Orbit is an AI agent-native observability and debugging tool for Django a
 | Modern UI | Basic | Focused dashboard |
 | Agent-native MCP tools | No | Yes |
 | Ticket-to-fix handoff bundles | No | Yes |
+
+## What's New in v0.13.0
+
+- **Versioned Evidence API**: stable metadata-first evidence envelopes for integrations and agent consumers.
+- **Task-local correlation**: request families remain isolated across async tasks and nested log scopes.
+- **Safer MCP detail**: request-family detail uses the Evidence API and honors `MCP_MAX_LIMIT`.
+- **Investigation guide**: detail panels explain captured request, query, exception and log signals without claiming a root cause.
+- **Copy fix handoff**: generate masked evidence, ranked hypotheses and regression-test targets for Codex, Claude and Cursor.
 
 ### What's New in v0.12.3
 
