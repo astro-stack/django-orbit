@@ -106,6 +106,7 @@ The `.github/CODEOWNERS` file identifies the default maintainer for review. The 
 - `Tests / Python 3.12 / Django 5.0 / full+mcp`
 - `Documentation`
 - `Package build`
+- `Quality / static checks`
 
 Direct pushes and force pushes to `main` should remain disabled. Automated or agent-generated changes must arrive as reviewable pull requests and must not merge or publish releases without maintainer approval.
 
