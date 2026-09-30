@@ -2,7 +2,6 @@
 
 import pytest
 
-
 pytestmark = pytest.mark.django_db
 
 
@@ -23,11 +22,14 @@ def test_family_resource_delegates_to_versioned_evidence(monkeypatch):
     from orbit.extensions import read_runtime_evidence
 
     expected = {"schema_version": "orbit.evidence.v1", "status": "ok"}
-    monkeypatch.setattr("orbit.evidence.read_family_evidence", lambda value, limit: expected)
+    monkeypatch.setattr(
+        "orbit.evidence.read_family_evidence", lambda value, limit: expected
+    )
 
-    assert read_runtime_evidence(
-        "family_evidence", {"family_hash": "family-1"}, limit=7
-    ) == expected
+    assert (
+        read_runtime_evidence("family_evidence", {"family_hash": "family-1"}, limit=7)
+        == expected
+    )
 
 
 def test_capture_health_resource_delegates_without_reference(monkeypatch):
@@ -66,6 +68,10 @@ def test_adapter_preserves_partial_evidence_without_reclassifying(monkeypatch):
         "status": "ok",
         "evidence_quality": {"status": "partial", "warnings": ["family_truncated"]},
     }
-    monkeypatch.setattr("orbit.evidence.read_family_evidence", lambda value, limit: partial)
+    monkeypatch.setattr(
+        "orbit.evidence.read_family_evidence", lambda value, limit: partial
+    )
 
-    assert read_runtime_evidence("family_evidence", {"family_hash": "family"}) == partial
+    assert (
+        read_runtime_evidence("family_evidence", {"family_hash": "family"}) == partial
+    )

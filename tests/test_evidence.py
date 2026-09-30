@@ -107,6 +107,7 @@ def test_serialize_entry_exposes_traceback_basename_only(db):
     assert data["attributes"]["traceback_filename"] == "views.py"
     assert "/srv/private" not in json.dumps(data)
 
+
 def test_serialize_entry_normalizes_query_and_exception(evidence_family):
     from orbit.evidence import serialize_entry
 
@@ -458,7 +459,12 @@ def test_read_capture_health_reports_storage_unavailable(db):
 
 def test_capture_health_uses_effective_allowlisted_flags(settings, db):
     from orbit.evidence import read_capture_health
-    settings.ORBIT_CONFIG = {"ENABLED": False, "RECORD_QUERIES": True, "RECORD_SECRET_FLAG": True}
+
+    settings.ORBIT_CONFIG = {
+        "ENABLED": False,
+        "RECORD_QUERIES": True,
+        "RECORD_SECRET_FLAG": True,
+    }
     data = read_capture_health()
     flags = data["capture"]["configured_capture_flags"]
     assert data["capture"]["orbit_enabled"] is False
@@ -469,6 +475,7 @@ def test_capture_health_uses_effective_allowlisted_flags(settings, db):
 def test_capture_health_marks_uninitialized_registry_partial(db):
     from orbit.evidence import read_capture_health
     from orbit.health import module_registry
+
     module_registry.reset()
     data = read_capture_health()
     assert data["evidence_quality"]["status"] == "partial"
