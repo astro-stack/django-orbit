@@ -72,9 +72,10 @@ def create_mcp_server():
         "Django Orbit",
         instructions=(
             "Django Orbit captures telemetry from a Django application: HTTP requests, "
-            "SQL queries, exceptions, logs, cache operations, model events, background jobs, "
-            "and more. Use these tools to debug performance issues, find errors, detect N+1 "
-            "query patterns, and understand what your application is doing."
+            "SQL queries, exceptions, logs, cache operations, model events, "
+            "background jobs, and more. Use these tools to debug performance issues, "
+            "find errors, detect N+1 query patterns, and understand what your "
+            "application is doing."
         ),
     )
 
@@ -113,7 +114,8 @@ def create_mcp_server():
         SQL, execution time, and the family_hash of the request that triggered it.
 
         Args:
-            threshold_ms: Minimum duration to consider slow (default: SLOW_QUERY_THRESHOLD_MS from config)
+            threshold_ms: Minimum duration to consider slow (default: "
+                "SLOW_QUERY_THRESHOLD_MS from config)"
             limit: Number of results to return (max 100, default 20)
         """
         if not get_config().get("MCP_ENABLED", True):
@@ -154,8 +156,9 @@ def create_mcp_server():
         if not get_config().get("MCP_ENABLED", True):
             return _mcp_disabled_output()
 
-        from django.utils import timezone
         from datetime import timedelta
+
+        from django.utils import timezone
 
         limit = min(limit, 100)
         since = timezone.now() - timedelta(hours=hours)
@@ -299,6 +302,19 @@ def create_mcp_server():
         )
 
     # -------------------------------------------------------------------------
+    # Tool: get_capture_health
+    # -------------------------------------------------------------------------
+    @mcp.tool()
+    def get_capture_health() -> str:
+        """Read safe metadata about Orbit capture readiness and coverage."""
+        if not get_config().get("MCP_ENABLED", True):
+            return _mcp_disabled_output()
+
+        from orbit.evidence import read_capture_health
+
+        return _format_output(read_capture_health())
+
+    # -------------------------------------------------------------------------
     # Tool: get_stats_summary
     # -------------------------------------------------------------------------
     @mcp.tool()
@@ -316,9 +332,10 @@ def create_mcp_server():
         if not get_config().get("MCP_ENABLED", True):
             return _mcp_disabled_output()
 
-        from django.utils import timezone
         from datetime import timedelta
+
         from django.db.models import Avg, Count
+        from django.utils import timezone
 
         since = timezone.now() - timedelta(hours=hours)
         base = OrbitEntry.objects.filter(created_at__gte=since)
