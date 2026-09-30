@@ -49,6 +49,7 @@ nav:
     - Running Demo: running-demo.md
   - Reference:
     - API: api.md
+    - Evidence API: evidence-api.md
     - Customization: customization.md
   - Development:
     - Contributing: contributing.md
