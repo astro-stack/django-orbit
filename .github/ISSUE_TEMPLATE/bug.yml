@@ -1,0 +1,52 @@
+name: Bug report
+description: Report a reproducible bug in Django Orbit
+title: "bug: "
+labels: [bug, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please remove secrets, credentials, tokens and private customer data before posting logs.
+  - type: input
+    id: orbit-version
+    attributes:
+      label: Django Orbit version
+      placeholder: "0.12.3"
+    validations:
+      required: true
+  - type: input
+    id: python-django
+    attributes:
+      label: Python and Django versions
+      placeholder: "Python 3.12, Django 5.0"
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the observed behavior and the expected behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      description: Include the smallest safe example or a link to a public reproduction.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or Orbit evidence
+      description: Paste sanitized output only. Incident bundles are useful when they contain no secrets.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues.
+          required: true
+        - label: I removed secrets and private data from this report.
+          required: true
