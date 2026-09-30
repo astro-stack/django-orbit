@@ -40,6 +40,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added async-task-local request-family correlation for logs and LLM watcher entries.
+
+### Changed
+
+- Request-family correlation now restores the parent context after each request and nested log scope.
+
 - Added a metadata-first AI/LLM watcher for supported OpenAI and Anthropic SDK calls. It records provider, operation, model, status, latency, token usage, errors and tool-call names.
 - Added safe LLM watcher configuration: `RECORD_LLM`, `LLM_CAPTURE_CONTENT`, `LLM_CAPTURE_TOOL_CALL_ARGUMENTS` and `LLM_MAX_CONTENT_CHARS`. Prompt/response content and tool-call arguments are disabled by default.
 - Added a detail-panel action to copy a coding-agent prompt generated from the current request family or exception fingerprint.
@@ -53,6 +59,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.11.0] - 2026-06-26
 
 ### Added
+
+- Added async-task-local request-family correlation for logs and LLM watcher entries.
+
+### Changed
+
+- Request-family correlation now restores the parent context after each request and nested log scope.
 
 - Added endpoint-level agentic investigation via `investigate_endpoint`, including request volume, error rate, slowest requests, query analysis, exception groups and suggested next tools.
 - Added `compare_endpoint_windows` to compare current endpoint behavior against a baseline window and classify regressions, stable endpoints, improvements or insufficient data.
@@ -82,6 +94,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.10.0] - 2026-06-25
 
 ### Added
+
+- Added async-task-local request-family correlation for logs and LLM watcher entries.
+
+### Changed
+
+- Request-family correlation now restores the parent context after each request and nested log scope.
 
 - Added an agent-native MCP base: safe serialization, exposure audit, request investigation, exception-group investigation, on-demand incident bundles, ticket-text debug briefs, fix hypotheses and test-plan suggestions.
 
@@ -115,6 +133,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `MASK_ALL_PAYLOADS` masks every entry payload at write time (off by default).
 
 ### Added
+
+- Added async-task-local request-family correlation for logs and LLM watcher entries.
+
+### Changed
+
+- Request-family correlation now restores the parent context after each request and nested log scope.
 
 - **Query EXPLAIN** — run a query plan on demand from a query's detail panel
   (`Explain plan`). Vendor-aware (PostgreSQL / MySQL / SQLite) with graceful fallback.
@@ -185,6 +209,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added async-task-local request-family correlation for logs and LLM watcher entries.
+
+### Changed
+
+- Request-family correlation now restores the parent context after each request and nested log scope.
+
 - **HTML email preview** (Issue #14): When an email is sent via `EmailMultiAlternatives`,
   the HTML alternative is now captured and rendered in a sandboxed `<iframe>` in the
   dashboard detail panel. A Plain text / HTML preview tab switcher appears automatically.
@@ -211,6 +241,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.8.0] - 2026-04-02
 
 ### Added
+
+- Added async-task-local request-family correlation for logs and LLM watcher entries.
+
+### Changed
+
+- Request-family correlation now restores the parent context after each request and nested log scope.
 
 - **External Storage Backends** (`orbit.backends`): Route all Orbit writes to a
   dedicated database alias instead of the project's `default` database.
@@ -257,6 +293,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added async-task-local request-family correlation for logs and LLM watcher entries.
+
+### Changed
+
+- Request-family correlation now restores the parent context after each request and nested log scope.
+
 - **MCP Server** (`python manage.py orbit_mcp`): Expose Orbit telemetry as an
   [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server so AI
   assistants like Claude, Cursor, and Copilot can query your app's observability
@@ -300,6 +342,12 @@ ORBIT_CONFIG = {
 ## [0.6.4] - 2026-03-30
 
 ### Added
+
+- Added async-task-local request-family correlation for logs and LLM watcher entries.
+
+### Changed
+
+- Request-family correlation now restores the parent context after each request and nested log scope.
 - **Duplicate Query Detection (N+1)**: Identify and highlight repeated SQL queries in a single request
   - "DUP" badge in request feed
   - Detailed duplicate stats in entry details (count, most repeated query)
@@ -326,6 +374,12 @@ ORBIT_CONFIG = {
 ## [0.6.3] - 2026-01-25
 
 ### Added
+
+- Added async-task-local request-family correlation for logs and LLM watcher entries.
+
+### Changed
+
+- Request-family correlation now restores the parent context after each request and nested log scope.
 
 - **Plug-and-Play Module System**: Each watcher/module now operates independently
   - If one module fails to initialize, others continue working normally
@@ -389,6 +443,12 @@ ORBIT_CONFIG = {
 ## [0.6.0] - 2026-01-22
 
 ### Added
+
+- Added async-task-local request-family correlation for logs and LLM watcher entries.
+
+### Changed
+
+- Request-family correlation now restores the parent context after each request and nested log scope.
 - **Transaction Watcher**: Track database transaction blocks
   - Intercepts `transaction.atomic()` context managers
   - Records commit/rollback status
@@ -416,6 +476,12 @@ ORBIT_CONFIG = {
 ## [0.5.0] - 2025-12-19
 
 ### Added
+
+- Added async-task-local request-family correlation for logs and LLM watcher entries.
+
+### Changed
+
+- Request-family correlation now restores the parent context after each request and nested log scope.
 - **Jobs Watcher**: Track background job executions
   - Celery integration via signals
   - Django-Q integration via signals
@@ -459,6 +525,12 @@ ORBIT_CONFIG = {
 ## [0.4.0] - 2025-12-18
 
 ### Added
+
+- Added async-task-local request-family correlation for logs and LLM watcher entries.
+
+### Changed
+
+- Request-family correlation now restores the parent context after each request and nested log scope.
 - **Mail Watcher**: Capture all outgoing emails sent via `django.core.mail`
   - Records subject, from, to, cc, bcc, body, and attachments
   - Supports HTML email alternatives
@@ -481,6 +553,12 @@ ORBIT_CONFIG = {
 ## [0.3.0] - 2025-12-16
 
 ### Added
+
+- Added async-task-local request-family correlation for logs and LLM watcher entries.
+
+### Changed
+
+- Request-family correlation now restores the parent context after each request and nested log scope.
 - **Dashboard Security**: Configurable `AUTH_CHECK` to restrict access
 - **Data Management**: `orbit_prune` management command with age/importance filtering
 - **Search & Filtering**: Full-text search, UUID lookup
@@ -489,6 +567,12 @@ ORBIT_CONFIG = {
 ## [0.2.0] - 2025-12-16
 
 ### Added
+
+- Added async-task-local request-family correlation for logs and LLM watcher entries.
+
+### Changed
+
+- Request-family correlation now restores the parent context after each request and nested log scope.
 - **New Watchers**:
   - `Commands`: Track management commands execution
   - `Cache`: Monitor cache operations (get, set, delete)
@@ -515,6 +599,12 @@ ORBIT_CONFIG = {
 ## [0.1.0] - 2024-12-01
 
 ### Added
+
+- Added async-task-local request-family correlation for logs and LLM watcher entries.
+
+### Changed
+
+- Request-family correlation now restores the parent context after each request and nested log scope.
 - Initial release of Django Orbit
 - `OrbitEntry` model for storing telemetry data
 - `OrbitMiddleware` for capturing HTTP requests/responses
