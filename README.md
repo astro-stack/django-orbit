@@ -1,175 +1,112 @@
 # Django Orbit
 
-**AI agent-native observability and debugging for Django.**
+**AI agent-native runtime evidence and debugging for Django.**
 
-Current release: **v0.13.0**.
+Django Orbit records what your application is doing and gives that evidence to
+you and your coding agent. Requests, SQL, logs, exceptions, jobs, cache
+operations and other runtime events are linked into bounded, safe context for
+investigation.
 
-Django Orbit is a reusable Django app that records what your application is doing and exposes it through a dashboard and MCP tools. It captures requests, SQL queries, logs, exceptions, cache operations, jobs, storage, mail, permissions and more, then links related events by `family_hash` so humans and AI agents can debug from one coherent timeline.
+Orbit has its own dashboard at <code>/orbit/</code> and a read-only MCP server. It does not
+inject HTML into your application or require you to leave your coding-agent
+workflow to start debugging.
 
-Unlike Django Debug Toolbar, Orbit does not inject HTML into your app. It lives at its own isolated `/orbit/` URL and is designed to observe from a distance without interfering with the host project.
-
-<img width="1312" height="612" alt="Django Orbit Dashboard" src="https://github.com/user-attachments/assets/87528512-b458-4217-8dde-699a23c507ce" />
+<img width="1312" height="612" alt="Django Orbit dashboard" src="https://github.com/user-attachments/assets/87528512-b458-4217-8dde-699a23c507ce" />
 
 [![PyPI version](https://img.shields.io/pypi/v/django-orbit?style=flat-square)](https://pypi.org/project/django-orbit/)
 [![CI](https://github.com/astro-stack/django-orbit/actions/workflows/ci.yml/badge.svg)](https://github.com/astro-stack/django-orbit/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue?style=flat-square&logo=python)](https://python.org)
 [![Django](https://img.shields.io/badge/Django-4.0%2B-green?style=flat-square&logo=django)](https://djangoproject.com)
 [![License](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](LICENSE)
-[![Code Style](https://img.shields.io/badge/Code%20Style-Black-black?style=flat-square)](https://github.com/psf/black)
 
-Current maintenance release: **v0.13.0**.
-
-- [Documentation](https://astro-stack.github.io/django-orbit)
-- [Try the demo](#try-the-demo)
-- [MCP / AI assistant setup](#mcp-ai-assistant-setup)
+[Install](#install) | [Try the demo](#try-the-demo) | [Connect an agent](#connect-a-coding-agent) | [Documentation](https://astro-stack.github.io/django-orbit)
 
 ## Why Orbit
 
-Django teams increasingly debug with AI coding agents, but most local observability tools are built only for humans. Orbit is built for both:
+When a Django issue reaches a coding agent, the hard part is usually not
+writing a patch. It is reconstructing what happened:
 
-- humans get a focused dashboard for inspecting runtime behavior;
-- agents get structured MCP tools for investigation and handoff;
-- captured events are grouped by request family, so evidence stays connected;
-- agent output is masked, bounded and read-only by default.
+- Which request or job failed?
+- Which SQL queries, logs and exceptions belong to it?
+- Is the signal a real regression, a slow query or only duplicate evidence?
+- What should be reproduced with a test before changing code?
 
-| Capability | Django Debug Toolbar | Django Orbit |
-|---|---:|---:|
-| Runs outside your app UI | No | Yes |
-| Works with APIs and SPAs | Limited | Yes |
-| Persistent request history | No | Yes |
-| SQL, logs and exceptions together | Partial | Yes |
-| Background jobs and infrastructure events | No | Yes |
-| Agent-native MCP debugging tools | No | Yes |
-| Request-to-fix handoff bundles | No | Yes |
-| Plug-and-play watcher health | No | Yes |
+Orbit captures that runtime evidence locally and keeps it connected by request
+family. Humans can inspect it in the dashboard. Agents can query a bounded,
+masked and read-only context through MCP.
 
-Inspired by Laravel Telescope, Spatie Ray and Django Debug Toolbar.
+The intended workflow is:
 
-## What Orbit Tracks
+~~~text
+runtime event -> Orbit evidence -> agent investigation -> test plan -> fix -> verification
+~~~
 
-| Category | Events |
-|---|---|
-| HTTP | Requests, responses, headers, body, status codes |
-| Database | SQL queries, slow queries, duplicate query / N+1 signals |
-| Logging | Python `logging` output, any level |
-| Exceptions | Exception type, message, traceback and request context |
-| Cache | GET hits/misses, SET, DELETE |
-| Models | ORM create, update and delete events |
-| Commands | `manage.py` executions with exit code |
-| HTTP Client | Outgoing requests via supported clients |
-| Mail | Sent email metadata and body previews |
-| Signals | Django signal dispatches |
-| Jobs | Celery, Django-Q, RQ and APScheduler signals/hooks |
-| Redis | GET, SET, DEL, HGET, LPUSH and more |
-| Permissions | Authorization checks, granted/denied |
-| Transactions | `atomic()` commits and rollbacks |
-| Storage | File save/open/delete operations |
-| AI/LLM | Provider/model/token metadata, latency, errors and tool-call names |
+Orbit is inspired by Django Debug Toolbar, Laravel Telescope and Spatie Ray,
+but lives outside the host application's UI and is designed for APIs, SPAs,
+background work and AI-assisted debugging.
 
-All events can be linked by `family_hash`, which lets you inspect every query, log and exception associated with one request or operation.
+## Install
 
-## What's New in v0.13.0
-
-- Added a versioned, metadata-first Evidence API for stable agent and integration consumers.
-- Correlation now uses task-local context and restores parent state across requests and nested log scopes.
-- MCP request detail now returns the Evidence API envelope and applies `MCP_MAX_LIMIT` safely.
-- The detail panel adds an evidence-backed Investigation guide and a Copy fix handoff with ranked hypotheses and regression-test targets.
-
-## What's New in v0.12.3
-
-- Fixed the release automation split so tagged releases use the verified PyPI trusted-publishing workflow.
-- Aligned the README release markers and package-facing release notes.
-
-## What's New in v0.12.0
-
-Orbit v0.12.0 makes Orbit more useful for AI-native Django apps and safer to release:
-
-- AI/LLM watcher records provider, model, token usage, latency, status and tool-call names;
-- prompts, completions and tool-call arguments are not captured by default;
-- entry details can copy a coding-agent prompt from the current request family or exception fingerprint;
-- release verification now checks version consistency, changelog, package build, Twine metadata and strict docs;
-- PRs include a release/readiness checklist for tests, docs and safety review.
-
-## Installation
-
-```bash
+~~~bash
 pip install django-orbit
-```
+~~~
 
-For AI assistant integration, install the MCP extra:
+For MCP access from Claude, Codex, Cursor or another compatible client:
 
-```bash
+~~~bash
 pip install django-orbit[mcp]
-```
+~~~
 
 ## Quick Start
 
-Add Orbit to `INSTALLED_APPS`:
+Add Orbit to your Django project:
 
-```python
+~~~python
+# settings.py
 INSTALLED_APPS = [
     # ...
     "orbit",
 ]
-```
 
-Add the middleware early in the stack:
-
-```python
 MIDDLEWARE = [
     "orbit.middleware.OrbitMiddleware",
     # ...
 ]
-```
+~~~
 
 Mount the dashboard URLs:
 
-```python
+~~~python
+# urls.py
 from django.urls import include, path
 
 urlpatterns = [
     path("orbit/", include("orbit.urls")),
     # ...
 ]
-```
+~~~
 
 Run migrations and start Django:
 
-```bash
-python manage.py migrate orbit
+~~~bash
+python manage.py migrate
 python manage.py runserver
-```
+~~~
 
-Visit `http://localhost:8000/orbit/`.
+Open <code>http://localhost:8000/orbit/</code> and exercise an endpoint in your app.
+Orbit will show the captured request and its related runtime evidence.
 
-## Try the Demo
+For the full setup, configuration reference and production guidance, see the
+[Quick Start documentation](https://astro-stack.github.io/django-orbit/quickstart/).
 
-```bash
-git clone https://github.com/astro-stack/django-orbit.git
-cd django-orbit
-pip install -e .
-python demo.py setup
-python manage.py runserver
-```
+## Connect a Coding Agent
 
-| URL | Purpose |
-|---|---|
-| `http://localhost:8000/` | Demo app |
-| `http://localhost:8000/orbit/` | Orbit dashboard |
-| `http://localhost:8000/orbit/stats/` | Stats dashboard |
-| `http://localhost:8000/orbit/health/` | Watcher health dashboard |
+Orbit's MCP server runs locally over stdio. It reads Orbit evidence and does
+not modify your application.
 
-## MCP AI Assistant Setup
+Add a server entry to an MCP-compatible client:
 
-Orbit exposes a local MCP server so AI assistants can query live Django runtime evidence.
-
-```bash
-pip install django-orbit[mcp]
-```
-
-Add this server to Claude Desktop, Cursor, Windsurf or any MCP-compatible client:
-
-```json
+~~~json
 {
   "mcpServers": {
     "django-orbit": {
@@ -179,205 +116,160 @@ Add this server to Claude Desktop, Cursor, Windsurf or any MCP-compatible client
     }
   }
 }
-```
+~~~
 
-The server launches on demand over stdio. It is read-only: it queries `OrbitEntry` data and never mutates the host app.
+The exact location of this entry depends on the client. See the [MCP setup
+guide](https://astro-stack.github.io/django-orbit/mcp/) for Claude Desktop,
+Claude Code, Codex, Cursor and other clients.
 
-### Raw Telemetry Tools
+### Ticket to Fix
 
-| Tool | Purpose |
-|---|---|
-| `get_recent_requests` | Last N requests with status, path and duration |
-| `get_slow_queries` | SQL queries above the configured threshold |
-| `get_exceptions` | Exceptions within a time window |
-| `get_n1_patterns` | Requests with duplicate-query evidence |
-| `get_request_detail` | Versioned, metadata-only evidence for one `family_hash` |
-| `get_capture_health` | Metadata-only capture readiness, safe flags and watcher state |
-| `search_entries` | Keyword search across entries |
-| `get_stats_summary` | Error rate, average response time and cache stats |
+Once MCP is connected, a practical investigation looks like this:
 
-### Agent-Native Tools
+~~~text
+1. Describe the ticket or failing behavior.
+2. Match it to recent Orbit evidence.
+3. Inspect the request family, exception group or endpoint window.
+4. Generate a masked incident bundle.
+5. Ask the agent for ranked hypotheses and a regression-test plan.
+6. Inspect the code, write the test and apply the smallest justified fix.
+7. Re-run the test and verify the runtime signal again.
+~~~
 
-| Tool | Purpose |
-|---|---|
-| `audit_mcp_exposure` | Show the effective MCP safety policy |
-| `preview_masked_entry` | Preview one entry exactly as an agent sees it, with masked payload and risk paths |
-| `find_sensitive_payload_risks` | Find recent entries whose payload keys look like secrets, tokens or credentials |
-| `list_agent_safe_fields` | Document the allowlisted fields and payload policy per entry type |
-| `investigate_request` | Diagnose one request family: timeline, signals, queries, hypotheses and next actions |
-| `investigate_exception_group` | Summarize an exception fingerprint and affected paths |
-| `create_incident_bundle` | Create JSON, Markdown or prompt handoff from request, fingerprint or ticket text |
-| `build_debug_brief` | Match natural-language ticket text to recent evidence |
-| `investigate_endpoint` | Summarize endpoint health, errors, slow requests and related exceptions |
-| `compare_endpoint_windows` | Compare recent endpoint behavior against a baseline window to spot regressions |
-| `find_n_plus_one_candidates` | Rank recent duplicate-query/N+1 candidates with suggested next tools |
-| `summarize_exception_groups` | Group recent exceptions by fingerprint with affected paths and representatives |
-| `daily_health_brief` | Produce local daily triage from recent runtime signals |
-| `generate_release_risk_brief` | Flag blocker/caution signals before a release |
-| `generate_pr_context` | Produce PR-ready evidence, test plan and release-risk context from Orbit data |
-| `propose_fix_hypotheses` | Rank likely fix directions from captured evidence |
-| `propose_test_plan` | Suggest regression/performance tests for the observed issue |
+Useful tools for this flow include:
 
-### Agent Workflow
+| Tool | Use |
+| --- | --- |
+| <code>build_debug_brief</code> | Match a ticket description to recent evidence |
+| <code>investigate_request</code> | Inspect one request family and related signals |
+| <code>investigate_exception_group</code> | Group an exception fingerprint and affected paths |
+| <code>create_incident_bundle</code> | Create JSON, Markdown or prompt handoff context |
+| <code>propose_fix_hypotheses</code> | Rank possible fix directions from evidence |
+| <code>propose_test_plan</code> | Suggest focused regression or performance tests |
+| <code>generate_pr_context</code> | Prepare evidence and release-risk context for a PR |
 
-A typical ticket-to-fix handoff looks like this:
-
-```text
-audit_mcp_exposure()
-find_sensitive_payload_risks(limit=20)
-build_debug_brief("checkout returns 500 payment token rejected")
-create_incident_bundle("fingerprint", "<fingerprint>", format="markdown")
-create_incident_bundle("fingerprint", "<fingerprint>", format="prompt")
-propose_fix_hypotheses("fingerprint", "<fingerprint>")
-propose_test_plan("family_hash", "<family_hash>")
-generate_pr_context("fingerprint", "<fingerprint>")
-compare_endpoint_windows("/checkout/", method="POST")
-find_n_plus_one_candidates(hours=24)
-summarize_exception_groups(hours=24)
-```
-
-The goal is not for Orbit to edit code. The goal is to give a human or coding agent enough structured, safe evidence to reproduce, test and fix the issue.
-
-The same flow works in Codex, Claude Desktop/Claude Code, Cursor and other MCP-compatible assistants; see the docs demo for the Claude-specific config path.
+The agent is not expected to edit code automatically. Orbit supplies context so
+the agent can investigate, propose and verify with the developer in control.
 
 ## Agent Safety
 
-Agent-facing output goes through Orbit's safe serializer:
+MCP output is designed to be safe to inspect before sharing with an agent:
 
-- sensitive keys are masked using `MASK_KEYS`;
-- payloads can be disabled with `MCP_INCLUDE_PAYLOADS: False`;
-- result sizes are bounded by `MCP_MAX_LIMIT`;
-- oversized payloads are replaced with truncation metadata;
-- `MCP_ENABLED: False` blocks all MCP tools with a stable disabled response;
-- `preview_masked_entry`, `find_sensitive_payload_risks` and `list_agent_safe_fields` let teams verify exactly what coding agents can see before sharing context.
+- common sensitive keys are masked;
+- result sizes and payloads are bounded;
+- <code>MCP_INCLUDE_PAYLOADS: False</code> enables metadata-only output;
+- prompts, completions and tool-call arguments are not captured by default;
+- <code>audit_mcp_exposure</code>, <code>preview_masked_entry</code> and
+  <code>list_agent_safe_fields</code> expose the effective safety boundary;
+- MCP is read-only and can be disabled with <code>MCP_ENABLED: False</code>.
 
-Residual risk: MCP gives a local assistant read access to Orbit telemetry. Masking and truncation reduce exposure, but telemetry can still reveal sensitive operational context such as endpoints, SQL shape, exception messages or user identifiers. In shared, staging or sensitive environments, prefer `MCP_ENABLED: False`; if agents only need metadata, set `MCP_INCLUDE_PAYLOADS: False`.
+Recommended local or shared-environment settings:
 
-Example:
-
-```python
-ORBIT_CONFIG = {
-    "MCP_ENABLED": True,
-    "MCP_INCLUDE_PAYLOADS": True,
-    "MCP_MAX_LIMIT": 100,
-    "MCP_MAX_PAYLOAD_CHARS": 12000,
-
-    # AI/LLM watcher. Metadata-only by default.
-    "RECORD_LLM": True,
-    "LLM_CAPTURE_CONTENT": False,
-    "LLM_CAPTURE_TOOL_CALL_ARGUMENTS": False,
-}
-```
-
-## Configuration
-
-All settings go in `ORBIT_CONFIG` or `ORBIT` in `settings.py`. Most projects can start with defaults.
-
-```python
-ORBIT_CONFIG = {
-    "ENABLED": True,
-    "SLOW_QUERY_THRESHOLD_MS": 500,
-    "STORAGE_LIMIT": 1000,
-
-    # Access control. Set this for shared/staging environments.
-    "AUTH_CHECK": lambda request: request.user.is_staff,
-
-    # Keep Orbit from breaking the host app if a watcher fails.
-    "WATCHER_FAIL_SILENTLY": True,
-
-    # MCP / agent exposure controls.
-    "MCP_ENABLED": True,
-    "MCP_INCLUDE_PAYLOADS": True,
-    "MCP_MAX_LIMIT": 100,
-    "MCP_MAX_PAYLOAD_CHARS": 12000,
-}
-```
-
-All watchers can be controlled individually with `RECORD_*` flags such as `RECORD_REQUESTS`, `RECORD_QUERIES`, `RECORD_EXCEPTIONS`, `RECORD_JOBS`, `RECORD_REDIS`, `RECORD_TRANSACTIONS` and `RECORD_STORAGE`.
-
-See the [configuration docs](https://astro-stack.github.io/django-orbit/configuration/) for the full list.
-
-## Dashboard
-
-### Main Dashboard: `/orbit/`
-
-The main dashboard shows a live feed of captured entries. You can filter by type, search, inspect details, export JSON and navigate related entries.
-
-### Stats Dashboard: `/orbit/stats/`
-
-The stats dashboard summarizes request throughput, Apdex, percentiles, error rate, slow queries, cache hit rate, job health and security/permission signals.
-
-### Health Dashboard: `/orbit/health/`
-
-Each watcher registers with Orbit's health system. Failed or missing integrations are shown without taking down the rest of Orbit.
-
-## Storage Backends
-
-By default, Orbit stores entries in the project's default database. For production or heavier usage, route Orbit writes to a dedicated database alias:
-
-```python
-DATABASES = {
-    "default": {...},
-    "orbit": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "orbit.sqlite3",
-    },
-}
-
-ORBIT_CONFIG = {
-    "STORAGE_BACKEND": "orbit.backends.django_db.DjangoDBBackend",
-    "STORAGE_DB_ALIAS": "orbit",
-}
-```
-
-```bash
-python manage.py migrate orbit --database=orbit
-```
-
-## Security Model
-
-Orbit is powerful because it records application behavior. Treat access to `/orbit/` and MCP as developer/operator access.
-
-### Production Safety Checklist
-
-- Protect `/orbit/` with `AUTH_CHECK`.
-- Keep `WATCHER_FAIL_SILENTLY: True` so Orbit cannot break the host app.
-- Disable MCP with `MCP_ENABLED: False` unless a local assistant explicitly needs access.
-- Use `MCP_INCLUDE_PAYLOADS: False` for metadata-only agent access.
-- Keep `LLM_CAPTURE_CONTENT: False` and `LLM_CAPTURE_TOOL_CALL_ARGUMENTS: False` outside local debugging.
-- Prefer a dedicated storage backend/database for heavier or shared environments.
-- Keep `IGNORE_PATHS` aligned with internal health, metrics and static paths.
-
-Recommended defaults for shared environments:
-
-```python
+~~~python
 ORBIT_CONFIG = {
     "AUTH_CHECK": lambda request: request.user.is_staff,
-    "MCP_ENABLED": False,  # enable only where local agent access is intended
+    "MCP_ENABLED": True,
     "MCP_INCLUDE_PAYLOADS": False,
+    "MCP_MAX_LIMIT": 100,
     "LLM_CAPTURE_CONTENT": False,
     "LLM_CAPTURE_TOOL_CALL_ARGUMENTS": False,
     "WATCHER_FAIL_SILENTLY": True,
 }
-```
+~~~
 
-Orbit masks common sensitive keys in request data and agent-facing output, but you should still avoid exposing Orbit dashboards or MCP servers to untrusted users.
+Orbit records operational context, so <code>/orbit/</code> and the local MCP process must
+still be treated as developer or operator access. Read the [security
+guide](https://astro-stack.github.io/django-orbit/security/) before enabling it
+in staging or production.
 
-## Roadmap
+## What Orbit Captures
 
-The current base makes Orbit agent-native. Next tracks:
+Orbit supports watchers for the parts of a Django application that usually
+matter during debugging:
 
-- OpenTelemetry bridge for interoperability with wider observability tooling;
-- deeper AI/LLM integrations for LangChain, LiteLLM and raw provider HTTP calls;
-- dashboard affordances for copying incident bundles;
-- GitHub/Jira ticket handoff flows;
-- deeper query and regression analysis.
+- HTTP requests and responses;
+- SQL, slow queries, duplicate evidence and classified N+1 candidates;
+- Python logs and exceptions with request context;
+- cache, model, transaction and permission activity;
+- management commands and background jobs;
+- outgoing HTTP, mail, Redis and storage operations;
+- AI/LLM metadata such as provider, model, tokens, latency, errors and tool
+  names.
 
-See [Agent-Native Roadmap](https://astro-stack.github.io/django-orbit/roadmap/).
+Related events are connected by a <code>family_hash</code>. The full watcher matrix,
+configuration keys and extension points are documented in the [API and
+configuration reference](https://astro-stack.github.io/django-orbit/api/).
+
+## Try the Demo
+
+The repository includes a small Django project with curated scenarios:
+
+~~~bash
+git clone https://github.com/astro-stack/django-orbit.git
+cd django-orbit
+pip install -e .
+python demo.py setup
+python manage.py runserver
+~~~
+
+Then open:
+
+| URL | Purpose |
+| --- | --- |
+| <code>http://localhost:8000/</code> | Generate demo runtime events |
+| <code>http://localhost:8000/orbit/</code> | Inspect captured evidence |
+| <code>http://localhost:8000/orbit/stats/</code> | Review runtime metrics |
+| <code>http://localhost:8000/orbit/health/</code> | Check watcher health |
+
+Run <code>python demo.py reset</code> to restore the curated demo corpus.
+
+See [Running the Demo](https://astro-stack.github.io/django-orbit/running-demo/)
+for the complete walkthrough and the [Codex/Claude debugging demo](https://astro-stack.github.io/django-orbit/codex-debug-demo/).
+
+## Current Release: v0.13.0
+
+The 0.13 line strengthens the agent-native base:
+
+- versioned, privacy-safe Evidence API contracts;
+- async-safe request correlation;
+- capture health and metadata-only request detail through MCP;
+- evidence-backed investigation guidance;
+- safe fix handoffs with hypotheses and regression-test targets;
+- deterministic query and N+1 analysis with explicit limitations.
+
+Read the [full changelog](CHANGELOG.md) for the release history.
+
+## Documentation Map
+
+- [Installation](https://astro-stack.github.io/django-orbit/installation/)
+- [Quick Start](https://astro-stack.github.io/django-orbit/quickstart/)
+- [Configuration](https://astro-stack.github.io/django-orbit/configuration/)
+- [Dashboard guide](https://astro-stack.github.io/django-orbit/dashboard/)
+- [Stats dashboard](https://astro-stack.github.io/django-orbit/stats/)
+- [MCP reference](https://astro-stack.github.io/django-orbit/mcp/)
+- [Evidence API](https://astro-stack.github.io/django-orbit/evidence-api/)
+- [Security](https://astro-stack.github.io/django-orbit/security/)
+- [Storage backends](https://astro-stack.github.io/django-orbit/storage-backends/)
+- [Roadmap](https://astro-stack.github.io/django-orbit/roadmap/)
+- [Contributing](CONTRIBUTING.md)
+
+## Orbit Pro
+
+Django Orbit remains MIT-licensed and useful on its own. The open source
+package includes the local dashboard, watchers, local MCP tools, masking,
+incident bundles and safety controls.
+
+[Orbit Pro](https://labs.wearehik.com/django-orbit/pro/) is a separate planned
+self-hosted verification layer for teams using coding agents. It will build on
+the open core with release comparison, saved investigations and verification of
+agent-assisted changes. Planned capabilities are not required to use Orbit
+today.
 
 ## Contributing
 
-Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
+Contributions are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md) and
+read the relevant documentation before changing capture, MCP or safety
+behavior.
 
 ## License
 
