@@ -156,3 +156,4 @@ PLANNING.md
 # claude — ignore machine-local settings and transient workspace; track agents
 .claude/settings.local.json
 .claude/workspace/
+.orbit-staging-*/
