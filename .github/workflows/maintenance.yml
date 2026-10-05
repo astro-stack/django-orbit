@@ -84,7 +84,7 @@ jobs:
 
       - name: Report failures
         if: always() && (steps.install.outcome != 'success' || steps.tests.outcome != 'success' || steps.audit.outcome != 'success' || steps.package.outcome != 'success' || steps.docs.outcome != 'success')
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           INSTALL_OUTCOME: ${{ steps.install.outcome }}
           TESTS_OUTCOME: ${{ steps.tests.outcome }}
