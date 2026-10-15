@@ -79,11 +79,6 @@ regression-test plan, so you can paste a useful starting point into Codex, Claud
 Cursor or another coding agent even when MCP is not connected. It does not edit code
 or claim a root cause; verify the evidence against the repository first.
 
-Signals are opt-in because Django framework lifecycle dispatches can otherwise
-overwhelm an investigation feed. Orbit records named signals when
-`RECORD_SIGNALS` is enabled; anonymous dispatches remain off unless
-`RECORD_ANONYMOUS_SIGNALS` is explicitly enabled.
-
 ## Detailed Views
 
 Click on any row in the feed to open the **Detail Panel**.
@@ -150,3 +145,5 @@ repository for tokens, components and UI principles.
 - [Stats Dashboard](stats.md)
 - [Configuration](configuration.md)
 - [Security](security.md)
+
+Signal recording is disabled by default because framework lifecycle dispatches can overwhelm the event feed. Set RECORD_SIGNALS to True when signal-level context is useful; Orbit ignores common Django model lifecycle signals by default.

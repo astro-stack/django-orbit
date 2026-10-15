@@ -150,8 +150,7 @@ ORBIT_CONFIG = {
 | `RECORD_MODELS` | `True` | ORM signals (post_save, post_delete) |
 | `RECORD_HTTP_CLIENT` | `True` | Outgoing HTTP requests (httpx, requests) |
 | `RECORD_MAIL` | `True` | Email sending via Django mail |
-| `RECORD_SIGNALS` | `False` | Named Django signals. Enable deliberately when signal-level context is useful. |
-| `RECORD_ANONYMOUS_SIGNALS` | `False` | Unnamed framework signal dispatches. Keep disabled to avoid lifecycle noise. |
+| `RECORD_SIGNALS` | `False` | Django signals. Enable only when signal-level context is useful. |
 
 #### Phase 3 Watchers (v0.5.0+)
 

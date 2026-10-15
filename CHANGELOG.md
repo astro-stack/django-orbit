@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Signal capture is disabled by default to keep framework lifecycle dispatches out of the event feed.
+
+
 No unreleased changes.
 
 ## [0.13.0] - 2026-09-30

@@ -64,10 +64,8 @@ DEFAULTS = {
     "RECORD_DUMPS": True,
     # Phase 2 watchers (v0.4.0)
     "RECORD_MAIL": True,
-    # Django emits many unnamed framework lifecycle signals. Keep these opt-in
-    # so an otherwise useful event feed is not dominated by implementation noise.
+    # Signal dispatches are noisy in most projects; enable only when useful.
     "RECORD_SIGNALS": False,
-    "RECORD_ANONYMOUS_SIGNALS": False,
     "IGNORE_SIGNALS": [
         "django.db.models.signals.pre_init",
         "django.db.models.signals.post_init",
