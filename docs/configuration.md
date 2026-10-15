@@ -26,7 +26,7 @@ ORBIT_CONFIG = {
     'RECORD_MODELS': True,
     'RECORD_HTTP_CLIENT': True,
     'RECORD_MAIL': True,
-    'RECORD_SIGNALS': True,
+    'RECORD_SIGNALS': False,
     
     # Recording Settings - Phase 3 (v0.5.0)
     'RECORD_JOBS': True,      # Background jobs (Celery, Django-Q, RQ, APScheduler)
@@ -150,7 +150,12 @@ ORBIT_CONFIG = {
 | `RECORD_MODELS` | `True` | ORM signals (post_save, post_delete) |
 | `RECORD_HTTP_CLIENT` | `True` | Outgoing HTTP requests (httpx, requests) |
 | `RECORD_MAIL` | `True` | Email sending via Django mail |
-| `RECORD_SIGNALS` | `True` | Django signals |
+| `RECORD_SIGNALS` | `False` | Django signals. Enable only when signal-level context is useful. |
+
+With `RECORD_SIGNALS=True`, `IGNORE_SIGNALS` filters common ORM lifecycle
+signals (`pre_init`, `post_init`, `pre_save`, `post_save`, `pre_delete`,
+`post_delete`, `m2m_changed`). Set `IGNORE_SIGNALS=[]` to include those dispatches
+deliberately. `RECORD_MODELS` is independent and continues recording model changes.
 
 #### Phase 3 Watchers (v0.5.0+)
 

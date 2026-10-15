@@ -41,12 +41,11 @@ DEFAULTS = {
     # depth across all watchers). Off by default to avoid over-redaction; request
     # headers/body are always masked regardless.
     "MASK_ALL_PAYLOADS": False,
-    # B1: optional callable (or dotted path) receiving an OrbitEntry and returning a list
-    # of tags to attach. Lets you tag entries (e.g. by tenant, feature, status) for search.
+    # B1: optional callable (or dotted path) receiving an OrbitEntry and returning tags.
+    # Tags can identify tenant, feature, status, or other searchable context.
     "TAG_CALLBACK": None,
-    # B2: on-demand query EXPLAIN from the detail panel. EXPLAIN_ANALYZE actually executes
-    # the statement (only ever allowed for SELECT, in a rolled-back savepoint), so it is off
-    # by default.
+    # B2: on-demand query EXPLAIN from the detail panel. EXPLAIN_ANALYZE executes SELECT
+    # inside a rolled-back savepoint, so it is disabled by default.
     "ENABLE_EXPLAIN": True,
     "EXPLAIN_ANALYZE": False,
     "MAX_BODY_SIZE": 65536,  # 64KB
@@ -64,10 +63,16 @@ DEFAULTS = {
     "RECORD_DUMPS": True,
     # Phase 2 watchers (v0.4.0)
     "RECORD_MAIL": True,
-    "RECORD_SIGNALS": True,
+    # Signal dispatches are noisy in most projects; enable only when useful.
+    "RECORD_SIGNALS": False,
     "IGNORE_SIGNALS": [
         "django.db.models.signals.pre_init",
         "django.db.models.signals.post_init",
+        "django.db.models.signals.pre_save",
+        "django.db.models.signals.post_save",
+        "django.db.models.signals.pre_delete",
+        "django.db.models.signals.post_delete",
+        "django.db.models.signals.m2m_changed",
     ],
     # Phase 3 watchers (v0.5.0)
     "RECORD_JOBS": True,

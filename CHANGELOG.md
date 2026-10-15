@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Copy fix handoff works from the dynamically loaded detail panel, supports a
   local clipboard fallback, and offers a preview of the masked handoff text.
 
+### Changed
+
+- Signal capture is disabled by default to keep framework lifecycle dispatches
+  out of the event feed. Common ORM lifecycle signals are ignored when enabled.
+
 ## [0.13.0] - 2026-09-30
 
 ### Added
