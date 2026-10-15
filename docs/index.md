@@ -1,6 +1,6 @@
 # Django Orbit Documentation
 
-Current maintenance release: **v0.13.0**.
+Current release: **v0.14.0**.
 
 Welcome to the Django Orbit documentation. This guide covers installation, configuration, usage, and customization.
 
@@ -47,6 +47,12 @@ Django Orbit is an AI agent-native observability and debugging tool for Django a
 | Modern UI | Basic | Focused dashboard |
 | Agent-native MCP tools | No | Yes |
 | Ticket-to-fix handoff bundles | No | Yes |
+
+## What's New in v0.14.0
+
+- **Compact MCP context**: `summarize_request_family` returns metadata-only counts and observed signals, preserving capture warnings and configured limits.
+- **Reliable fix handoff**: copy from dynamically loaded event details with a clipboard fallback and masked preview.
+- **Quieter feed defaults**: signal capture is disabled by default. Enable `RECORD_SIGNALS` explicitly when needed; common ORM lifecycle signals remain ignored unless configured otherwise.
 
 ## What's New in v0.13.0
 

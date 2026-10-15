@@ -227,16 +227,17 @@ Run <code>python demo.py reset</code> to restore the curated demo corpus.
 See [Running the Demo](https://astro-stack.github.io/django-orbit/running-demo/)
 for the complete walkthrough and the [Codex/Claude debugging demo](https://astro-stack.github.io/django-orbit/codex-debug-demo/).
 
-## Current Release: v0.13.0
+## Current Release: v0.14.0
 
-The 0.13 line strengthens the agent-native base:
+The 0.14 release improves everyday agent debugging:
 
-- versioned, privacy-safe Evidence API contracts;
-- async-safe request correlation;
-- capture health and metadata-only request detail through MCP;
-- evidence-backed investigation guidance;
-- safe fix handoffs with hypotheses and regression-test targets;
-- deterministic query and N+1 analysis with explicit limitations.
+- compact metadata-only request summaries through `summarize_request_family`;
+- reliable handoff copying from dynamically loaded event details, with a preview and clipboard fallback;
+- less default feed noise: signal capture is now opt-in.
+
+The Evidence API, async-safe correlation, investigation tools and local
+dashboard remain available. See the [MCP reference](https://astro-stack.github.io/django-orbit/mcp/)
+for tool limits and evidence-quality warnings.
 
 Read the [full changelog](CHANGELOG.md) for the release history.
 

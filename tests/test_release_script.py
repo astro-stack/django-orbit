@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+from orbit import __version__
+
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "verify_release.py"
 pytestmark = pytest.mark.django_db
@@ -24,14 +26,14 @@ def run_metadata_check(tag: str) -> subprocess.CompletedProcess[str]:
 
 
 def test_release_metadata_accepts_the_project_tag() -> None:
-    result = run_metadata_check("v0.13.0")
+    result = run_metadata_check(f"v{__version__}")
 
     assert result.returncode == 0
-    assert "Release metadata OK for v0.13.0" in result.stdout
+    assert f"Release metadata OK for v{__version__}" in result.stdout
 
 
 def test_release_metadata_rejects_a_tag_for_another_version() -> None:
-    result = run_metadata_check("v0.12.0")
+    result = run_metadata_check("v999.999.999")
 
     assert result.returncode != 0
-    assert "does not match project version 0.13.0" in result.stderr
+    assert f"does not match project version {__version__}" in result.stderr
