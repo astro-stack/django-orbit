@@ -90,12 +90,19 @@
             <button
                 type="button"
                 data-agent-handoff-url="{% url 'orbit:agent_handoff' entry.id %}"
-                onclick="copyOrbitAgentHandoff(this)"
-                class="inline-flex items-center gap-2 rounded-lg border border-orbit-accent-cyan/50 px-3 py-2 text-sm font-medium text-orbit-accent-cyan transition-colors hover:bg-orbit-accent-cyan/10"
+                class="orbit-copy-remote-btn inline-flex items-center gap-2 rounded-lg border border-orbit-accent-cyan/50 px-3 py-2 text-sm font-medium text-orbit-accent-cyan transition-colors hover:bg-orbit-accent-cyan/10"
                 title="Copy fix handoff">
                 <i data-lucide="clipboard-check" class="w-4 h-4"></i>
                 Copy fix handoff
             </button>
+            <a
+                href="{% url 'orbit:agent_handoff' entry.id %}"
+                target="_blank"
+                rel="noopener"
+                class="text-xs font-medium text-orbit-text-secondary transition-colors hover:text-orbit-accent-cyan"
+                title="Open the exact handoff before copying it">
+                Preview handoff
+            </a>
             <span class="text-xs text-orbit-text-muted">Masked evidence, ranked hypotheses, and regression tests for Codex, Claude, or Cursor.</span>
         </div>
         {% endif %}
@@ -545,25 +552,4 @@
             el.innerHTML = syntaxHighlight(el.textContent);
         }
     })();
-    async function copyOrbitAgentHandoff(button) {
-        const url = button.getAttribute('data-agent-handoff-url');
-        const label = button.innerHTML;
-        try {
-            const response = await fetch(url, {headers: {'Accept': 'text/plain'}});
-            const text = await response.text();
-            if (!response.ok) {
-                throw new Error(text || 'Could not build handoff');
-            }
-            await navigator.clipboard.writeText(text);
-            button.innerHTML = '<i data-lucide="check" class="w-4 h-4 text-emerald-400"></i> Fix handoff copied';
-        } catch (error) {
-            button.innerHTML = '<i data-lucide="alert-triangle" class="w-4 h-4 text-rose-400"></i> Could not copy handoff';
-        } finally {
-            lucide.createIcons();
-            setTimeout(() => {
-                button.innerHTML = label;
-                lucide.createIcons();
-            }, 1800);
-        }
-    }
 </script>

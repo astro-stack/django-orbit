@@ -272,8 +272,86 @@
             }
         }
 
+        async function copyTextWithFallback(text) {
+            if (navigator.clipboard && window.isSecureContext) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    return;
+                } catch (error) {
+                    // Browser permissions can reject the API even in a secure context.
+                }
+            }
+
+            const previousFocus = document.activeElement;
+            const fallback = document.createElement("textarea");
+            fallback.value = text;
+            fallback.setAttribute("readonly", "");
+            fallback.className = "fixed -left-full top-0 opacity-0";
+            document.body.appendChild(fallback);
+            fallback.select();
+
+            let copied = false;
+            try {
+                copied = document.execCommand("copy");
+            } finally {
+                fallback.remove();
+                if (previousFocus && typeof previousFocus.focus === "function") {
+                    previousFocus.focus({preventScroll: true});
+                }
+            }
+
+            if (!copied) {
+                throw new Error("Clipboard access is unavailable");
+            }
+        }
+
+        async function copyRemoteText(button) {
+            const url = button.dataset.agentHandoffUrl;
+            const original = button.innerHTML;
+
+            if (!url || button.disabled) {
+                return;
+            }
+
+            button.disabled = true;
+
+            try {
+                const response = await fetch(url, {headers: {Accept: "text/plain"}});
+                const text = await response.text();
+
+                if (!response.ok) {
+                    throw new Error("Could not build handoff");
+                }
+
+                await copyTextWithFallback(text);
+                button.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i><span>Fix handoff copied</span>';
+            } catch (error) {
+                button.innerHTML = '<i data-lucide="alert-triangle" class="w-4 h-4"></i><span>Copy failed; use Preview handoff</span>';
+                console.error("Failed to copy Orbit handoff:", error);
+            } finally {
+                lucide.createIcons();
+                setTimeout(() => {
+                    button.innerHTML = original;
+                    button.disabled = false;
+                    lucide.createIcons();
+                }, 1800);
+            }
+        }
+
         document.addEventListener("click", (event) => {
-            const button = event.target.closest(".orbit-copy-btn");
+            const target = event.target instanceof Element ? event.target : null;
+            if (!target) {
+                return;
+            }
+
+            const handoffButton = target.closest(".orbit-copy-remote-btn");
+
+            if (handoffButton) {
+                copyRemoteText(handoffButton);
+                return;
+            }
+
+            const button = target.closest(".orbit-copy-btn");
 
             if (!button) {
                 return;

@@ -456,8 +456,11 @@ def test_get_request_detail_returns_versioned_metadata_only_evidence(
 
     assert data["schema_version"] == "orbit.evidence.v1"
     assert data["evidence_quality"]["status"] in {"complete", "partial"}
-    assert data["events"][1]["type"] == "query"
-    assert "payload" not in data["events"][1]
+    query = next(
+        event for event in data["events"] if event["id"] == str(sample_slow_query.id)
+    )
+    assert query["type"] == "query"
+    assert "payload" not in query
     assert "SELECT * FROM products" not in str(data)
 
 

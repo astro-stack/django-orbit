@@ -30,6 +30,13 @@ pytest
 
 Pull requests also run GitHub Actions CI on supported Python/Django combinations, release metadata, documentation builds, package builds and Twine metadata checks.
 
+Dashboard clipboard behavior is also checked with Node.js 24 and its built-in
+test runner (no npm dependencies):
+
+```bash
+node --test tests/js/handoff_clipboard.test.cjs
+```
+
 Before pushing a release PR, run the same local preflight used by maintainers:
 
 ```bash
