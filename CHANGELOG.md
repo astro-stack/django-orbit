@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `summarize_request_family` provides compact, metadata-only MCP context using
+  the public Evidence API, preserving incomplete-capture warnings and limits.
+
 ### Fixed
 
 - Copy fix handoff works from the dynamically loaded detail panel, supports a

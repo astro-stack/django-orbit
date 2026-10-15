@@ -22,6 +22,7 @@ from orbit.utils import mask_sensitive_data, parse_tags, serialize_for_json
 HIGH_LEVEL_TOOLS = [
     "audit_mcp_exposure",
     "investigate_request",
+    "summarize_request_family",
     "investigate_exception_group",
     "create_incident_bundle",
     "preview_masked_entry",
@@ -234,11 +235,13 @@ def _diagnose(entries: list[OrbitEntry]) -> dict[str, Any]:
         )
     if "duplicate_query" in signals:
         hypotheses.append(
-            "Duplicate SQL queries suggest a possible N+1 or missing eager loading pattern."
+            "Duplicate SQL queries suggest a possible N+1 or missing eager "
+            "loading pattern."
         )
     if "error_log" in signals:
         hypotheses.append(
-            "Error-level logs near the event may contain the domain-specific failure reason."
+            "Error-level logs near the event may contain the domain-specific "
+            "failure reason."
         )
     if not hypotheses:
         hypotheses.append(
@@ -296,11 +299,13 @@ def _recommended_next_actions(diagnosis: dict[str, Any]) -> list[str]:
     signals = set(diagnosis.get("signals", []))
     if "exception" in signals:
         actions.append(
-            "Inspect the representative traceback and add a regression test for the failing path."
+            "Inspect the representative traceback and add a regression test "
+            "for the failing path."
         )
     if "duplicate_query" in signals:
         actions.append(
-            "Check ORM relationships for select_related() or prefetch_related() opportunities."
+            "Check ORM relationships for select_related() or prefetch_related() "
+            "opportunities."
         )
     if "slow_query" in signals:
         actions.append(
@@ -308,7 +313,8 @@ def _recommended_next_actions(diagnosis: dict[str, Any]) -> list[str]:
         )
     if "error_log" in signals:
         actions.append(
-            "Use nearby error logs to narrow the domain condition that triggered the failure."
+            "Use nearby error logs to narrow the domain condition that "
+            "triggered the failure."
         )
     return actions
 
@@ -328,7 +334,10 @@ def audit_mcp_exposure() -> dict[str, Any]:
             "serializer": "agent_safe_serialize_entry",
             "payloads_masked": True,
             "sensitive_keys": config.get("MASK_KEYS", []),
-            "truncation": "Payloads larger than MCP_MAX_PAYLOAD_CHARS are replaced with size metadata.",
+            "truncation": (
+                "Payloads larger than MCP_MAX_PAYLOAD_CHARS are replaced "
+                "with size metadata."
+            ),
         },
     }
 
@@ -576,6 +585,10 @@ def _bundle_to_markdown(bundle: dict[str, Any]) -> str:
     diagnosis = _diagnosis_from_primary(primary)
     source = bundle.get("source", {})
     handoff = bundle.get("agent_handoff", {})
+    suggested_prompt = handoff.get(
+        "suggested_prompt",
+        "Investigate this Django issue using the Orbit evidence below.",
+    )
     lines = [
         "# Django Orbit Incident Bundle",
         "",
@@ -588,7 +601,7 @@ def _bundle_to_markdown(bundle: dict[str, Any]) -> str:
         "",
         "Suggested prompt:",
         "",
-        f"> {handoff.get('suggested_prompt', 'Investigate this Django issue using the Orbit evidence below.')}",
+        f"> {suggested_prompt}",
         "",
         "Next tool sequence:",
     ]
@@ -819,7 +832,9 @@ def create_incident_bundle(
                 },
                 {
                     "tool": "propose_fix_hypotheses",
-                    "when": "Use after the bundle identifies the dominant failure signal.",
+                    "when": (
+                        "Use after the bundle identifies the dominant failure signal."
+                    ),
                 },
                 {
                     "tool": "propose_test_plan",
@@ -1531,10 +1546,13 @@ def _pr_context_to_markdown(context: dict[str, Any]) -> str:
     if hypotheses:
         lines.extend(["", "### Fix Hypotheses"])
         for hypothesis in hypotheses:
+            action = hypothesis.get(
+                "recommended_action", hypothesis.get("evidence", "")
+            )
             lines.append(
                 f"- **{hypothesis.get('title', 'Hypothesis')}** "
                 f"({hypothesis.get('confidence', 'unknown')}): "
-                f"{hypothesis.get('recommended_action', hypothesis.get('evidence', ''))}"
+                f"{action}"
             )
 
     tests = context.get("test_plan") or []
@@ -1547,12 +1565,15 @@ def _pr_context_to_markdown(context: dict[str, Any]) -> str:
             )
 
     release = context.get("release_risk") or {}
+    recommendation = release.get(
+        "recommendation", "Review Orbit evidence before release."
+    )
     lines.extend(
         [
             "",
             "### Release Risk",
             f"- Level: `{release.get('risk_level', 'unknown')}`",
-            f"- Recommendation: {release.get('recommendation', 'Review Orbit evidence before release.')}",
+            f"- Recommendation: {recommendation}",
             "",
             "### Safety",
             "- Orbit payloads were masked before this context was generated.",
@@ -1614,7 +1635,10 @@ def generate_pr_context(
         "safety": {
             "payloads_masked": True,
             "does_not_modify_code": True,
-            "intended_use": "Paste into PR descriptions, coding-agent prompts, or release review notes.",
+            "intended_use": (
+                "Paste into PR descriptions, coding-agent prompts, "
+                "or release review notes."
+            ),
         },
     }
     context["pr_body_markdown"] = _pr_context_to_markdown(context)
@@ -1642,8 +1666,14 @@ def propose_fix_hypotheses(
             {
                 "title": "Fix the failing exception path",
                 "confidence": "high",
-                "evidence": "Orbit captured an exception in the matched request or exception group.",
-                "recommended_action": "Inspect the representative traceback and add a regression test before changing code.",
+                "evidence": (
+                    "Orbit captured an exception in the matched request "
+                    "or exception group."
+                ),
+                "recommended_action": (
+                    "Inspect the representative traceback and add a regression "
+                    "test before changing code."
+                ),
             }
         )
     if "duplicate_query" in signals:
@@ -1651,8 +1681,13 @@ def propose_fix_hypotheses(
             {
                 "title": "Remove possible N+1 query pattern",
                 "confidence": "medium",
-                "evidence": "Duplicate SQL queries were captured in the request family.",
-                "recommended_action": "Review ORM relationship loading and consider select_related() or prefetch_related().",
+                "evidence": (
+                    "Duplicate SQL queries were captured in the request family."
+                ),
+                "recommended_action": (
+                    "Review ORM relationship loading and consider select_related() "
+                    "or prefetch_related()."
+                ),
             }
         )
     if "slow_query" in signals:
@@ -1661,7 +1696,9 @@ def propose_fix_hypotheses(
                 "title": "Optimize slow SQL path",
                 "confidence": "medium",
                 "evidence": "At least one query exceeded the slow-query threshold.",
-                "recommended_action": "Run EXPLAIN and check index/filter shape for the slowest SELECT.",
+                "recommended_action": (
+                    "Run EXPLAIN and check index/filter shape for the slowest SELECT."
+                ),
             }
         )
     if "error_log" in signals:
@@ -1670,7 +1707,9 @@ def propose_fix_hypotheses(
                 "title": "Use domain log message as failure clue",
                 "confidence": "medium",
                 "evidence": "Error-level logs were captured near the failure.",
-                "recommended_action": "Trace the log message to the application branch that emitted it.",
+                "recommended_action": (
+                    "Trace the log message to the application branch that emitted it."
+                ),
             }
         )
     if not hypotheses:
@@ -1678,8 +1717,13 @@ def propose_fix_hypotheses(
             {
                 "title": "Collect more focused runtime evidence",
                 "confidence": "low",
-                "evidence": "Orbit did not capture a strong failure signal for this source.",
-                "recommended_action": "Reproduce the issue with request, query, log and exception recording enabled.",
+                "evidence": (
+                    "Orbit did not capture a strong failure signal for this source."
+                ),
+                "recommended_action": (
+                    "Reproduce the issue with request, query, log and exception "
+                    "recording enabled."
+                ),
             }
         )
 
@@ -1710,7 +1754,10 @@ def propose_test_plan(
         {
             "type": "integration",
             "target": str(path),
-            "purpose": "Reproduce the observed runtime path with Orbit evidence as the fixture for expected behavior.",
+            "purpose": (
+                "Reproduce the observed runtime path with Orbit evidence as the "
+                "fixture for expected behavior."
+            ),
         }
     ]
     if "exception" in signals:
@@ -1718,7 +1765,10 @@ def propose_test_plan(
             {
                 "type": "unit",
                 "target": "exception branch",
-                "purpose": "Cover the failing branch from the representative traceback with a focused regression test.",
+                "purpose": (
+                    "Cover the failing branch from the representative traceback "
+                    "with a focused regression test."
+                ),
             }
         )
     if "duplicate_query" in signals or "slow_query" in signals:
@@ -1726,7 +1776,10 @@ def propose_test_plan(
             {
                 "type": "performance",
                 "target": str(path),
-                "purpose": "Assert query count or slow-query behavior does not regress after the fix.",
+                "purpose": (
+                    "Assert query count or slow-query behavior does not regress "
+                    "after the fix."
+                ),
             }
         )
     if "error_log" in signals:
