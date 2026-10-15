@@ -43,12 +43,11 @@ DEFAULTS = {
     # depth across all watchers). Off by default to avoid over-redaction; request
     # headers/body are always masked regardless.
     "MASK_ALL_PAYLOADS": False,
-    # B1: optional callable (or dotted path) receiving an OrbitEntry and returning a list
-    # of tags to attach. Lets you tag entries (e.g. by tenant, feature, status) for search.
+    # B1: optional callable (or dotted path) receiving an OrbitEntry and returning tags.
+    # Tags can identify tenant, feature, status, or other searchable context.
     "TAG_CALLBACK": None,
-    # B2: on-demand query EXPLAIN from the detail panel. EXPLAIN_ANALYZE actually executes
-    # the statement (only ever allowed for SELECT, in a rolled-back savepoint), so it is off
-    # by default.
+    # B2: on-demand query EXPLAIN from the detail panel. EXPLAIN_ANALYZE executes SELECT
+    # inside a rolled-back savepoint, so it is disabled by default.
     "ENABLE_EXPLAIN": True,
     "EXPLAIN_ANALYZE": False,
     "MAX_BODY_SIZE": 65536,  # 64KB
