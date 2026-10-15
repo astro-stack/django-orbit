@@ -6,6 +6,7 @@ edge cases gracefully (empty database, invalid inputs, etc.).
 The actual MCP transport is not tested here â€” only the tool logic.
 """
 
+import asyncio
 import json
 
 from django.test import override_settings
@@ -467,6 +468,49 @@ def test_get_request_detail_returns_versioned_metadata_only_evidence(
 # ---------------------------------------------------------------------------
 # Tool: get_capture_health
 # ---------------------------------------------------------------------------
+@pytest.mark.django_db
+def test_request_summary_tool_returns_bounded_metadata_only_context(
+    mcp_server, sample_request, sample_slow_query, sample_exception
+):
+    data = _call_tool(mcp_server, "summarize_request_family", family_hash="abc123")
+
+    assert data["resource"] == "request_family_summary"
+    assert data["count"] == 3
+    assert data["summary"]["request"]["id"] == str(sample_request.id)
+    assert data["summary"]["observed_signals"]["exceptions"] == 1
+    assert "entries" not in data
+    assert "SELECT * FROM products" not in json.dumps(data)
+
+
+@pytest.mark.django_db
+@override_settings(ORBIT_CONFIG={"MCP_ENABLED": False})
+def test_disabled_request_summary_does_not_read_evidence(mcp_server, monkeypatch):
+    from orbit import evidence
+
+    monkeypatch.setattr(
+        evidence, "read_family_evidence", lambda *a, **kw: pytest.fail("No read")
+    )
+    data = _call_tool(mcp_server, "summarize_request_family", family_hash="abc123")
+
+    assert data["disabled"] is True
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("limit", [True, "2", 2.0])
+def test_request_summary_sdk_rejects_coerced_limits(mcp_server, monkeypatch, limit):
+    from mcp.server.fastmcp.exceptions import ToolError
+
+    from orbit import evidence
+
+    monkeypatch.setattr(
+        evidence, "read_family_evidence", lambda *a, **kw: pytest.fail("No read")
+    )
+    tool = mcp_server._tool_manager._tools["summarize_request_family"]
+
+    with pytest.raises(ToolError, match="valid integer"):
+        asyncio.run(tool.run({"family_hash": "abc123", "limit": limit}))
+
+
 @pytest.mark.django_db
 def test_get_capture_health_returns_evidence_envelope(mcp_server):
     data = _call_tool(mcp_server, "get_capture_health")

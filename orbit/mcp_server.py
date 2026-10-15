@@ -17,7 +17,7 @@ Requires the optional 'mcp' dependency:
 
 import json
 import logging
-from typing import Any
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +56,7 @@ def create_mcp_server():
         if sys.modules.get("mcp") is None and "mcp" in sys.modules:
             raise ImportError
         from mcp.server.fastmcp import FastMCP
+        from pydantic import StrictInt
     except ImportError:
         raise ImportError(
             "The 'mcp' package is required to run the Orbit MCP server.\n"
@@ -472,6 +473,25 @@ def create_mcp_server():
         return _format_output(
             agentic_tools.investigate_request(family_hash, limit=limit)
         )
+
+    @mcp.tool()
+    def summarize_request_family(
+        family_hash: str, limit: Optional[StrictInt] = None
+    ) -> str:
+        """Get a compact metadata-only brief before deeper request investigation.
+
+        Returns observed event counts, request metadata, signal counts and the
+        Evidence API completeness report. Counts describe only returned events;
+        missing signals never prove a request is healthy. Raw payloads, messages
+        and SQL are always omitted. The positive integer limit is capped by
+        MCP_MAX_LIMIT. Use get_request_detail for the ordered metadata timeline
+        or investigate_request for richer investigation context.
+        """
+        if not get_config().get("MCP_ENABLED", True):
+            return _mcp_disabled_output()
+        from orbit.request_context import summarize_request_family as summarize
+
+        return _format_output(summarize(family_hash, limit=limit))
 
     @mcp.tool()
     def investigate_exception_group(fingerprint: str, limit: int = None) -> str:

@@ -141,6 +141,7 @@ Useful tools for this flow include:
 | Tool | Use |
 | --- | --- |
 | <code>build_debug_brief</code> | Match a ticket description to recent evidence |
+| <code>summarize_request_family</code> | Start with compact metadata and capture-quality warnings |
 | <code>investigate_request</code> | Inspect one request family and related signals |
 | <code>investigate_exception_group</code> | Group an exception fingerprint and affected paths |
 | <code>create_incident_bundle</code> | Create JSON, Markdown or prompt handoff context |

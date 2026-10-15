@@ -26,8 +26,8 @@ Current MCP tools expose useful raw slices. The next generation should expose in
 | `compare_endpoint_windows(path, baseline_hours=24, current_hours=1)` | Compare current endpoint behavior against a prior window to detect regressions. |
 | `find_slowest_endpoints(hours=24, limit=10)` | Rank endpoints by p95 or average duration with query and exception context. |
 | `find_erroring_endpoints(hours=24, limit=10)` | Rank endpoints by error rate and show representative requests. |
-| `summarize_request_family(family_hash)` | Compact, agent-friendly summary of one family without full payload noise. |
-| `get_request_timeline(family_hash)` | Return ordered spans/events suitable for RCA and timeline rendering. |
+| `summarize_request_family(family_hash, limit=None)` | Shipped: metadata-only family summary with bounded returned-event counts, positive observed signals and preserved evidence quality; no payloads or hypotheses. |
+| `get_request_timeline(family_hash)` | Covered by the shipped `get_request_detail` ordered metadata timeline; no duplicate tool planned. |
 | `find_related_requests(family_hash, limit=10)` | Find similar requests by path, exception fingerprint, tags or duplicate-query signature. |
 | `explain_status_code_spike(status_code, hours=24)` | Identify paths and fingerprints driving a spike in 4xx/5xx responses. |
 

@@ -78,6 +78,7 @@ The MCP server exposes raw telemetry tools plus higher-level agentic investigati
 | `get_exceptions` | Exceptions in a time window with full traceback |
 | `get_n1_patterns` | Requests where N+1 duplicate queries were detected |
 | `get_request_detail` | Versioned, metadata-only evidence for one request via `family_hash`, capped by `MCP_MAX_LIMIT` |
+| `summarize_request_family` | Compact, metadata-only counts and observed signals for one `family_hash`; never returns payloads |
 | `get_capture_health` | Metadata-only capture readiness, safe flags and watcher state through Evidence API |
 | `search_entries` | Keyword search across all event types |
 | `get_stats_summary` | Error rate, avg response time, cache hit rate |
@@ -99,6 +100,29 @@ The MCP server exposes raw telemetry tools plus higher-level agentic investigati
 | `propose_fix_hypotheses` | Ranked fix directions from captured evidence; does not edit code |
 | `propose_test_plan` | Suggested regression/performance tests for the observed issue |
 
+
+## Compact Request Context
+
+`summarize_request_family(family_hash, limit=None)` summarizes only metadata from `orbit.evidence.read_family_evidence`. It always omits raw payloads, messages, SQL, tags and entry summaries, even with `MCP_INCLUDE_PAYLOADS=True`. It returns no hypotheses or absence-of-error verdicts.
+
+The response reuses `schema_version="orbit.evidence.v1"` and the Evidence envelope fields `status`, `reason`, `family_hash`, `count`, `truncated` and `evidence_quality`, with `resource="request_family_summary"`. Evidence quality status and warnings are preserved. Recovery actions respect the effective MCP cap: retries never exceed it; once reached, `review_mcp_limit` asks for a configuration review, or `review_family_scope` indicates the Evidence contract maximum has been reached. For `unavailable`, `invalid` or `not_found` responses, `summary` is `None`. Otherwise, `summary` contains:
+
+- `counts_scope="returned_events"`;
+- `request`: `{id, method, path, status_code, duration_ms, query_count, duplicate_query_count, had_exception}`, or `None` when no request event is returned;
+- `event_counts` and `observed_signals`, which includes only positive counts for `exceptions`, `http_server_errors`, `http_client_errors`, `slow_queries` and `duplicate_queries`;
+- `first_seen` and `last_seen` for the returned events.
+
+Counts describe only the returned subset, not all retained traffic. Missing signals are not proof that no errors occurred. `limit` must be a positive integer; invalid values are rejected before reading evidence. The default is the configured maximum, capped by both `MCP_MAX_LIMIT` and Evidence's `MAX_FAMILY_LIMIT`; explicit limits are capped by those same bounds.
+
+Start compact, then request the ordered metadata timeline or richer investigation evidence:
+
+```text
+summarize_request_family("<family_hash>", limit=100)
+get_request_detail("<family_hash>")
+investigate_request("<family_hash>")
+```
+
+`get_request_detail` already provides an ordered metadata timeline. The richer investigation tools use a different policy: they can include masked payload-derived evidence and hypotheses, subject to their MCP safety settings. The summary's unconditional metadata-only guarantee does not extend to those tools.
 
 ## Agentic Debugging Workflow
 
@@ -126,13 +150,13 @@ Incident bundles are generated on demand from current `OrbitEntry` data. They ar
 
 ## Agent Safety
 
-All MCP entry output goes through Orbit's agent-safe serializer. It masks sensitive keys using `MASK_KEYS`, can omit payloads entirely, and replaces oversized payloads with deterministic truncation metadata. Use `audit_mcp_exposure`, `preview_masked_entry`, `find_sensitive_payload_risks` and `list_agent_safe_fields` to verify the effective policy before sharing an MCP session with an assistant.
+Payload-bearing MCP entry output goes through Orbit's agent-safe serializer. It masks sensitive keys using `MASK_KEYS`, can omit payloads entirely, and replaces oversized payloads with deterministic truncation metadata. Evidence-backed tools such as `summarize_request_family` and `get_request_detail` instead return metadata-only Evidence responses regardless of `MCP_INCLUDE_PAYLOADS`. Use `audit_mcp_exposure`, `preview_masked_entry`, `find_sensitive_payload_risks` and `list_agent_safe_fields` to verify the effective policy before sharing an MCP session with an assistant.
 
 Residual risk: MCP gives a local assistant read access to Orbit telemetry. Masking and truncation reduce raw secret exposure, but telemetry can still reveal sensitive operational context such as endpoint names, SQL shape, exception messages, user identifiers or business events. In shared, staging or sensitive environments, prefer `MCP_ENABLED: False`; if agents only need metadata, set `MCP_INCLUDE_PAYLOADS: False`.
 
 ### What an Agent Can See
 
-With default MCP settings, an assistant can read Orbit entries through tool responses: common fields such as type, timestamps, duration, family hash, tags and masked payload data. For LLM entries, the default payload contains provider/model/token metadata and tool-call names, not prompts or completions.
+With default MCP settings, payload-bearing entry tools can expose common fields such as type, timestamps, duration, family hash, tags and masked payload data. The compact summary and Evidence-backed request detail do not expose tags or payloads. For LLM entries returned by payload-bearing tools, the default payload contains provider/model/token metadata and tool-call names, not prompts or completions.
 
 An agent does not get direct database access, shell access or code-editing permission through Orbit MCP. It only receives the data returned by Orbit's read-only tools. If `MCP_INCLUDE_PAYLOADS` is `False`, entry payloads are omitted and the assistant sees metadata-only records.
 
@@ -189,7 +213,7 @@ This starts the server in stdio mode. It reads JSON-RPC messages from stdin and 
 
 ## How It Works
 
-The `orbit_mcp` management command calls `create_mcp_server()` from `orbit/mcp_server.py`, which builds a `FastMCP` instance with the raw telemetry and agentic investigation tools. Each tool queries `OrbitEntry` directly from your Django database.
+The `orbit_mcp` management command calls `create_mcp_server()` from `orbit/mcp_server.py`, which builds a `FastMCP` instance with the raw telemetry and agentic investigation tools. Payload-based tools query `OrbitEntry`; Evidence-backed tools read through `orbit.evidence`, with `summarize_request_family` consuming only family evidence metadata.
 
 The server is stateless and read-only — it never modifies your data.
 
