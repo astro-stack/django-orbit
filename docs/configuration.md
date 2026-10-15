@@ -152,6 +152,11 @@ ORBIT_CONFIG = {
 | `RECORD_MAIL` | `True` | Email sending via Django mail |
 | `RECORD_SIGNALS` | `False` | Django signals. Enable only when signal-level context is useful. |
 
+With `RECORD_SIGNALS=True`, `IGNORE_SIGNALS` filters common ORM lifecycle
+signals (`pre_init`, `post_init`, `pre_save`, `post_save`, `pre_delete`,
+`post_delete`, `m2m_changed`). Set `IGNORE_SIGNALS=[]` to include those dispatches
+deliberately. `RECORD_MODELS` is independent and continues recording model changes.
+
 #### Phase 3 Watchers (v0.5.0+)
 
 | Option | Default | Description |

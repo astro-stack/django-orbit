@@ -7,8 +7,6 @@ Provides default configuration and allows user overrides via Django settings.
 from django.conf import settings
 
 # Default configuration
-
-_DJANGO_SIGNAL_PREFIX = "django.db.models.signals."
 DEFAULTS = {
     "ENABLED": True,
     # Authentication check (callable or path to function)
@@ -70,11 +68,11 @@ DEFAULTS = {
     "IGNORE_SIGNALS": [
         "django.db.models.signals.pre_init",
         "django.db.models.signals.post_init",
-        _DJANGO_SIGNAL_PREFIX + "pre_save",
-        _DJANGO_SIGNAL_PREFIX + "post_save",
-        _DJANGO_SIGNAL_PREFIX + "pre_delete",
-        _DJANGO_SIGNAL_PREFIX + "post_delete",
-        _DJANGO_SIGNAL_PREFIX + "m2m_changed",
+        "django.db.models.signals.pre_save",
+        "django.db.models.signals.post_save",
+        "django.db.models.signals.pre_delete",
+        "django.db.models.signals.post_delete",
+        "django.db.models.signals.m2m_changed",
     ],
     # Phase 3 watchers (v0.5.0)
     "RECORD_JOBS": True,
