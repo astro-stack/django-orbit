@@ -40,6 +40,14 @@ jobs:
       - name: Compile Python sources
         run: python -m compileall -q orbit tests
 
+      - name: Setup Node for dashboard interaction tests
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Test dashboard clipboard interactions
+        run: node --test tests/js/handoff_clipboard.test.cjs
+
       - name: Run tests with coverage report
         run: python -m pytest --cov=orbit --cov-report=term-missing --cov-report=xml -q
 

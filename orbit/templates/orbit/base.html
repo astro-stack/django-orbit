@@ -274,10 +274,15 @@
 
         async function copyTextWithFallback(text) {
             if (navigator.clipboard && window.isSecureContext) {
-                await navigator.clipboard.writeText(text);
-                return;
+                try {
+                    await navigator.clipboard.writeText(text);
+                    return;
+                } catch (error) {
+                    // Browser permissions can reject the API even in a secure context.
+                }
             }
 
+            const previousFocus = document.activeElement;
             const fallback = document.createElement("textarea");
             fallback.value = text;
             fallback.setAttribute("readonly", "");
@@ -290,6 +295,9 @@
                 copied = document.execCommand("copy");
             } finally {
                 fallback.remove();
+                if (previousFocus && typeof previousFocus.focus === "function") {
+                    previousFocus.focus({preventScroll: true});
+                }
             }
 
             if (!copied) {
@@ -318,7 +326,7 @@
                 await copyTextWithFallback(text);
                 button.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i><span>Fix handoff copied</span>';
             } catch (error) {
-                button.innerHTML = '<i data-lucide="alert-triangle" class="w-4 h-4"></i><span>Could not copy handoff</span>';
+                button.innerHTML = '<i data-lucide="alert-triangle" class="w-4 h-4"></i><span>Copy failed; use Preview handoff</span>';
                 console.error("Failed to copy Orbit handoff:", error);
             } finally {
                 lucide.createIcons();
@@ -331,16 +339,19 @@
         }
 
         document.addEventListener("click", (event) => {
-            const handoffButton = event.target instanceof Element
-                ? event.target.closest(".orbit-copy-remote-btn")
-                : null;
+            const target = event.target instanceof Element ? event.target : null;
+            if (!target) {
+                return;
+            }
+
+            const handoffButton = target.closest(".orbit-copy-remote-btn");
 
             if (handoffButton) {
                 copyRemoteText(handoffButton);
                 return;
             }
 
-            const button = event.target.closest(".orbit-copy-btn");
+            const button = target.closest(".orbit-copy-btn");
 
             if (!button) {
                 return;
