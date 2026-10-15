@@ -83,6 +83,11 @@ or claim a root cause; verify the evidence against the repository first.
 
 Click on any row in the feed to open the **Detail Panel**.
 
+The **Copy fix handoff** action fetches the masked handoff from the server and
+copies it using the browser clipboard API or a local fallback. **Preview
+handoff** opens the exact text so you can inspect it before sharing it with an
+agent.
+
 ### JSON Payload
 
 The core of every entry is its JSON payload. Orbit renders this with syntax highlighting, making it easy to explore complex data structures.

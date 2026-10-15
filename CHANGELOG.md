@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Fixed
+
+- Copy fix handoff works from the dynamically loaded detail panel, supports a
+  local clipboard fallback, and offers a preview of the masked handoff text.
 
 ## [0.13.0] - 2026-09-30
 
