@@ -71,11 +71,11 @@ DEFAULTS = {
     "IGNORE_SIGNALS": [
         "django.db.models.signals.pre_init",
         "django.db.models.signals.post_init",
-        f"{_DJANGO_SIGNAL_PREFIX}pre_save",
-        f"{_DJANGO_SIGNAL_PREFIX}post_save",
-        f"{_DJANGO_SIGNAL_PREFIX}pre_delete",
-        f"{_DJANGO_SIGNAL_PREFIX}post_delete",
-        f"{_DJANGO_SIGNAL_PREFIX}m2m_changed",
+        _DJANGO_SIGNAL_PREFIX + "pre_save",
+        _DJANGO_SIGNAL_PREFIX + "post_save",
+        _DJANGO_SIGNAL_PREFIX + "pre_delete",
+        _DJANGO_SIGNAL_PREFIX + "post_delete",
+        _DJANGO_SIGNAL_PREFIX + "m2m_changed",
     ],
     # Phase 3 watchers (v0.5.0)
     "RECORD_JOBS": True,
