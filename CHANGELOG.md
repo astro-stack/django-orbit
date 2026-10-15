@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [0.14.0] - 2026-10-14
+
 ### Added
 
 - `summarize_request_family` provides compact, metadata-only MCP context using
