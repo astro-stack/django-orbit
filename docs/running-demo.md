@@ -66,6 +66,8 @@ python manage.py runserver
 | `/duplicate-queries/` | N+1 query problem |
 | `POST /api/data/` | POST request with body |
 
+Signal recording is disabled by default to keep the demo feed focused on requests, queries, logs, and exceptions.
+
 ## PowerShell Note
 
 PowerShell's `curl` is an alias. Use:

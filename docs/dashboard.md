@@ -81,6 +81,11 @@ or claim a root cause; verify the evidence against the repository first.
 
 ## Detailed Views
 
+Signal recording is disabled by default because framework lifecycle dispatches
+can overwhelm the event feed. Enable `RECORD_SIGNALS` when useful; common ORM
+lifecycle signals remain filtered by `IGNORE_SIGNALS`. The separate model
+watcher continues recording model changes.
+
 Click on any row in the feed to open the **Detail Panel**.
 
 ### JSON Payload
