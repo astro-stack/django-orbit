@@ -56,6 +56,16 @@ Use the search bar in the header to find specific entries:
 - **By UUID**: Paste a specific Entry ID to jump to it
 - **By Content**: Text search searches inside the JSON payload
 
+Pagination preserves the selected type, search, tag and request family. The feed
+accepts `page` and `per_page` parameters: malformed values fall back to page 1
+and 25 rows; valid page sizes are clamped to 1..100. URLs opened with `q`,
+`family`, `tag`, `page` and `per_page` retain that context during refresh.
+
+**Pause feed** pauses browser polling, not server-side recording. Recording
+remains controlled by Django's `ORBIT_CONFIG` and watcher setup. Manual refresh
+works while polling is paused. Failed loads show a retry action; feed failures
+keep the last loaded rows, and late responses cannot overwrite a newer selection.
+
 ### Metrics strip
 
 When viewing **All Events**, a compact one-line metrics strip sits above the feed with

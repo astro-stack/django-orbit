@@ -78,7 +78,7 @@
             <!-- Status Indicator -->
             <div class="flex items-center gap-2 mb-4 px-2">
                 <div class="w-2 h-2 rounded-full status-dot" :class="isPaused ? 'bg-amber-400' : 'bg-emerald-400'"></div>
-                <span class="text-xs text-orbit-text-muted" x-text="isPaused ? 'Paused' : 'Recording Active'"></span>
+                <span class="text-xs text-orbit-text-muted" x-text="isPaused ? 'Live feed paused' : 'Live feed updating'"></span>
             </div>
             
             <!-- Clear Button -->
@@ -128,7 +128,7 @@
                     :class="isPaused ? 'text-amber-400 bg-amber-500/10' : 'text-orbit-text-secondary hover:text-orbit-text-primary'"
                     class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-all">
                     <i :data-lucide="isPaused ? 'play' : 'pause'" class="w-4 h-4"></i>
-                    <span x-text="isPaused ? 'Resume' : 'Pause'"></span>
+                    <span x-text="isPaused ? 'Resume feed' : 'Pause feed'"></span>
                 </button>
                 
                 <!-- Refresh Button -->
@@ -161,6 +161,12 @@
             </div>
         </header>
         
+        <div x-cloak x-show="feedError" role="status" aria-live="polite"
+             class="flex items-center gap-3 border-b border-amber-500/30 px-6 py-2 text-sm text-amber-300">
+            <span x-text="feedError"></span>
+            <button @click="refreshFeed(true, true)" class="underline">Retry</button>
+        </div>
+
         <!-- Statistics Panel (only visible for All Events) -->
         <div x-cloak x-show="currentType === 'all'"
              class="border-b border-orbit-border bg-orbit-bg-secondary/40">
@@ -247,6 +253,12 @@
                     </div>
                 </div>
                 
+                <div x-cloak x-show="detailError" role="status" aria-live="polite"
+                     class="flex items-center gap-3 border-b border-amber-500/30 p-4 text-sm text-amber-300">
+                    <span x-text="detailError"></span>
+                    <button @click="openDetail(detailEntryId, true)" class="underline">Retry</button>
+                </div>
+
                 <!-- Detail Content -->
                 <div id="detail-container" class="flex-1 overflow-y-auto p-4 min-h-[200px]">
                     <!-- Loading state shown when isLoadingDetail is true -->
@@ -320,20 +332,35 @@ function orbitDashboard() {
         detail: '{{ orbit_urls.detail_base }}',
         clear: '{{ orbit_urls.clear }}'
     };
+    const initial = new URLSearchParams(window.location.search);
+    const pageNumber = (value, fallback, maximum = Number.MAX_SAFE_INTEGER) => {
+        if (value === null || !/^[+-]?\d+$/.test(value) || value.length > 64) return fallback;
+        const number = Number(value);
+        if (!Number.isSafeInteger(number)) return fallback;
+        return Math.max(1, Math.min(number, maximum));
+    };
 
     return {
-        currentType: '{{ current_type }}',
+        currentType: initial.get('type') || '{{ current_type }}',
         isPaused: false,
         detailOpen: false,
         detailEntryId: null,
         detailIndex: -1,
         detailTotal: 0,
         pollingInterval: null,
-        currentPage: 1,
-        searchQuery: '',
+        currentPage: pageNumber(initial.get('page'), 1),
+        perPage: pageNumber(initial.get('per_page'), 25, 100),
+        searchQuery: initial.get('q') || '',
+        familyFilter: initial.get('family') || '',
+        tagFilter: initial.get('tag') || '',
         showOnboarding: false,
         isLoading: false,
         isLoadingDetail: false,
+        feedRequestVersion: 0,
+        detailRequestVersion: 0,
+        feedPending: false,
+        feedError: '',
+        detailError: '',
         
         search() {
             this.currentPage = 1;
@@ -341,6 +368,17 @@ function orbitDashboard() {
         },
         
         init() {
+            // Route HTMX pagination through the same ordered fetch path as polling.
+            document.body.addEventListener('htmx:beforeRequest', (e) => {
+                if (e.detail?.target?.id !== 'feed-container') return;
+                const path = e.detail.requestConfig?.path;
+                if (!path) return;
+                const url = new URL(path, window.location.origin);
+                this.currentPage = pageNumber(url.searchParams.get('page'), 1);
+                this.perPage = pageNumber(url.searchParams.get('per_page'), this.perPage, 100);
+                e.preventDefault();
+                this.refreshFeed(true, true);
+            });
             // Show the onboarding tour on first visit only
             if (!localStorage.getItem('orbit:onboarded')) {
                 this.showOnboarding = true;
@@ -415,7 +453,7 @@ function orbitDashboard() {
             
             // Poll every 3 seconds
             this.pollingInterval = setInterval(() => {
-                if (!this.isPaused) {
+                if (!this.isPaused && !this.feedPending) {
                     this.refreshFeed();
                 }
             }, 3000);
@@ -455,6 +493,8 @@ function orbitDashboard() {
 
         
         async refreshFeed(preservePage = true, showLoading = false) {
+            const version = ++this.feedRequestVersion;
+            this.feedPending = true;
             const container = document.getElementById('feed-container');
             const page = preservePage ? this.currentPage : 1;
 
@@ -470,11 +510,17 @@ function orbitDashboard() {
                 const queryParams = new URLSearchParams({
                     type: this.currentType,
                     page: page,
-                    q: this.searchQuery
+                    q: this.searchQuery,
+                    per_page: this.perPage
                 });
+                if (this.familyFilter) queryParams.set('family', this.familyFilter);
+                if (this.tagFilter) queryParams.set('tag', this.tagFilter);
                 const response = await fetch(`${URLS.feed}?${queryParams}`);
-                if (response.ok) {
-                    container.innerHTML = await response.text();
+                if (!response.ok) throw new Error('Feed request failed');
+                const html = await response.text();
+                if (version === this.feedRequestVersion) {
+                    container.innerHTML = html;
+                    this.feedError = '';
                     htmx.process(container);  // Process HTMX attributes on new content
                     lucide.createIcons();
                     container.scrollTop = prevScroll;
@@ -482,43 +528,36 @@ function orbitDashboard() {
                     // Keep the open panel's prev/next bounds in sync with the new rows
                     if (this.detailOpen) this.updateDetailPosition();
 
-                    // Update current page from response (listen for page changes via HTMX)
-                    this.setupPageTracking();
                 }
             } catch (error) {
-                console.error('Failed to refresh feed:', error);
+                if (version === this.feedRequestVersion) {
+                    this.feedError = 'Could not refresh entries. Showing the last loaded results.';
+                }
             } finally {
-                this.isLoading = false;
+                if (version === this.feedRequestVersion) {
+                    this.isLoading = false;
+                    this.feedPending = false;
+                }
             }
         },
         
-        setupPageTracking() {
-            // Track page changes from pagination buttons
-            document.querySelectorAll('#feed-container [hx-get]').forEach(el => {
-                el.addEventListener('htmx:afterRequest', (e) => {
-                    const url = new URL(e.detail.pathInfo.requestPath, window.location.origin);
-                    const page = url.searchParams.get('page');
-                    if (page) {
-                        this.currentPage = parseInt(page);
-                    }
-                });
-            });
-        },
-        
-        async openDetail(entryId) {
+        async openDetail(entryId, force = false) {
             // If clicking the same entry while panel is open, close it
-            if (this.detailOpen && this.detailEntryId === entryId) {
+            if (!force && this.detailOpen && this.detailEntryId === entryId) {
                 this.closeDetail();
                 return;
             }
             
             // If clicking a different entry, just update the content (don't close/reopen)
+            const version = ++this.detailRequestVersion;
             this.detailEntryId = entryId;
+            this.detailError = '';
             this.updateDetailPosition();
             this.isLoadingDetail = true;
             
             // Small delay to prevent click.away from immediately closing
             await new Promise(resolve => setTimeout(resolve, 10));
+            if (version !== this.detailRequestVersion) return;
             this.detailOpen = true;
             
             const container = document.getElementById('detail-container');
@@ -533,8 +572,10 @@ function orbitDashboard() {
             
             try {
                 const response = await fetch(`${URLS.detail}${entryId}/`);
-                if (response.ok) {
-                    container.innerHTML = await response.text();
+                if (!response.ok) throw new Error('Detail request failed');
+                const html = await response.text();
+                if (version === this.detailRequestVersion) {
+                    container.innerHTML = html;
                     if (window.htmx) {
                         htmx.process(container);
                     }
@@ -547,14 +588,19 @@ function orbitDashboard() {
                     }
                 }
             } catch (error) {
-                console.error('Failed to load detail:', error);
-                container.innerHTML = '<p class="text-rose-400">Failed to load details</p>';
+                if (version === this.detailRequestVersion) {
+                    container.innerHTML = '';
+                    this.detailError = 'Could not load details. Retry or select another event.';
+                }
             } finally {
-                this.isLoadingDetail = false;
+                if (version === this.detailRequestVersion) this.isLoadingDetail = false;
             }
         },
         
         closeDetail() {
+            this.detailRequestVersion++;
+            this.isLoadingDetail = false;
+            this.detailError = '';
             this.detailOpen = false;
             this.detailEntryId = null;
             this.detailIndex = -1;

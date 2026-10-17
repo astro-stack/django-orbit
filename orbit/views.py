@@ -480,24 +480,62 @@ class OrbitFeedPartial(OrbitProtectedView, View):
     and when filtering by entry type.
     """
 
+    @staticmethod
+    def _pagination_number(value, default, maximum=None):
+        """Default malformed/over-64-character integers; clamp valid ones.
+
+        Page defaults to 1 and is later bounded by the result count. Per-page
+        defaults to 25 and is clamped to 1..100 before any database access.
+        """
+        try:
+            number = int(value) if len(str(value)) <= 64 else default
+        except (TypeError, ValueError):
+            number = default
+        return max(1, min(number, maximum) if maximum is not None else number)
+
+    @staticmethod
+    def _pagination_context(request, entry_type, page, per_page, total_count):
+        """Build every pagination URL from allowlisted, encoded filter state."""
+        from urllib.parse import urlencode, urlunsplit
+
+        from django.urls import reverse
+
+        total_pages = (total_count + per_page - 1) // per_page
+        filters = {
+            key: request.GET[key]
+            for key in ("q", "tag", "family")
+            if key in request.GET
+        }
+        params = {**filters, "type": entry_type, "per_page": per_page}
+        feed_path = reverse("orbit:feed")
+
+        def page_url(number):
+            return urlunsplit(
+                ("", "", feed_path, urlencode({**params, "page": number}), "")
+            )
+
+        return {
+            "current_type": entry_type,
+            "page": page,
+            "per_page": per_page,
+            "total_pages": total_pages,
+            "total_count": total_count,
+            "has_prev": page > 1,
+            "has_next": page < total_pages,
+            "first_page_url": page_url(1),
+            "prev_page_url": page_url(max(1, page - 1)),
+            "next_page_url": page_url(min(page + 1, max(1, total_pages))),
+            "last_page_url": page_url(max(1, total_pages)),
+        }
+
     def get(self, request: HttpRequest) -> HttpResponse:
         # Get filter parameters
         entry_type = request.GET.get("type", "all")
-        per_page = int(request.GET.get("per_page", 25))
-        page = int(request.GET.get("page", 1))
+        if entry_type not in dict(OrbitEntry.TYPE_CHOICES):
+            entry_type = "all"
+        per_page = self._pagination_number(request.GET.get("per_page", 25), 25, 100)
+        page = self._pagination_number(request.GET.get("page", 1), 1)
         family_hash = request.GET.get("family")
-
-        # Build queryset
-        queryset = OrbitEntry.objects.all()
-
-        # Filter by type
-        if entry_type and entry_type != "all":
-            queryset = queryset.filter(type=entry_type)
-
-        # Filter by family
-        if family_hash:
-            queryset = queryset.filter(family_hash=family_hash)
-
         query = request.GET.get("q")
 
         # Tag filter (B1): explicit ?tag=foo, or a "tag:foo" prefix typed in the
@@ -506,9 +544,6 @@ class OrbitFeedPartial(OrbitProtectedView, View):
         if not tag and query and query.lower().startswith("tag:"):
             tag = query[4:].strip()
             query = None
-        if tag:
-            queryset = queryset.filter(tags__contains="," + tag + ",")
-
         # Exception grouping (B3): on the plain Exceptions view, collapse identical
         # exceptions into one row with a count + first/last seen. Skipped when searching
         # or drilling into a family so those flows still show individual occurrences.
@@ -519,6 +554,14 @@ class OrbitFeedPartial(OrbitProtectedView, View):
             and not tag
         ):
             return self._exception_groups_response(request, per_page, page)
+
+        queryset = OrbitEntry.objects.all()
+        if entry_type != "all":
+            queryset = queryset.filter(type=entry_type)
+        if family_hash:
+            queryset = queryset.filter(family_hash=family_hash)
+        if tag:
+            queryset = queryset.filter(tags__contains="," + tag + ",")
 
         # Filter by search query "q"
         if query:
@@ -559,13 +602,9 @@ class OrbitFeedPartial(OrbitProtectedView, View):
             "orbit/partials/feed.html",
             {
                 "entries": entries,
-                "current_type": entry_type,
-                "page": page,
-                "per_page": per_page,
-                "total_pages": total_pages,
-                "total_count": total_count,
-                "has_prev": page > 1,
-                "has_next": page < total_pages,
+                **self._pagination_context(
+                    request, entry_type, page, per_page, total_count
+                ),
             },
         )
 
@@ -601,13 +640,9 @@ class OrbitFeedPartial(OrbitProtectedView, View):
             "orbit/partials/feed_exception_groups.html",
             {
                 "groups": groups,
-                "current_type": OrbitEntry.TYPE_EXCEPTION,
-                "page": page,
-                "per_page": per_page,
-                "total_pages": total_pages,
-                "total_count": total_count,
-                "has_prev": page > 1,
-                "has_next": page < total_pages,
+                **self._pagination_context(
+                    request, OrbitEntry.TYPE_EXCEPTION, page, per_page, total_count
+                ),
             },
         )
 
