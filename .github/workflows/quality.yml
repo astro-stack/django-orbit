@@ -45,8 +45,8 @@ jobs:
         with:
           node-version: "24"
 
-      - name: Test dashboard clipboard interactions
-        run: node --test tests/js/handoff_clipboard.test.cjs
+      - name: Test dashboard interactions
+        run: node --test tests/js/*.test.cjs
 
       - name: Run tests with coverage report
         run: python -m pytest --cov=orbit --cov-report=term-missing --cov-report=xml -q

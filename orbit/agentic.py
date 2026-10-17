@@ -129,6 +129,10 @@ def _safe_limit(limit: int | None, default: int = 20) -> int:
     return max(1, min(limit, configured_max))
 
 
+def _agent_summary(entry: OrbitEntry) -> str:
+    return entry.summary if _config_bool("MCP_INCLUDE_PAYLOADS", True) else ""
+
+
 def agent_safe_serialize_entry(
     entry: OrbitEntry,
     *,
@@ -141,8 +145,9 @@ def agent_safe_serialize_entry(
     The serializer always masks sensitive keys before output and annotates payload
     truncation/omission so agents know when evidence is incomplete.
     """
-    if include_payload is None:
-        include_payload = _config_bool("MCP_INCLUDE_PAYLOADS", True)
+    include_payload = (
+        _config_bool("MCP_INCLUDE_PAYLOADS", True) and include_payload is not False
+    )
     if max_payload_chars is None:
         max_payload_chars = _config_int(
             "MCP_MAX_PAYLOAD_CHARS", DEFAULT_MAX_PAYLOAD_CHARS
@@ -151,11 +156,11 @@ def agent_safe_serialize_entry(
     data: dict[str, Any] = {
         "id": str(entry.id),
         "type": entry.type,
-        "summary": entry.summary,
+        "summary": entry.summary if include_payload else "",
         "duration_ms": entry.duration_ms,
         "family_hash": entry.family_hash,
         "fingerprint": entry.fingerprint,
-        "tags": parse_tags(entry.tags),
+        "tags": parse_tags(entry.tags) if include_payload else [],
         "created_at": entry.created_at.isoformat(),
         "is_error": entry.is_error,
         "is_warning": entry.is_warning,
@@ -164,6 +169,7 @@ def agent_safe_serialize_entry(
 
     if not include_payload:
         data["payload_omitted"] = True
+        data["derived_fields_omitted"] = ["summary", "tags"]
         return data
 
     payload, truncated, original_size = _truncate_payload(
@@ -256,6 +262,7 @@ def _diagnose(entries: list[OrbitEntry]) -> dict[str, Any]:
 
 
 def _query_analysis(entries: list[OrbitEntry]) -> dict[str, Any]:
+    include_payloads = _config_bool("MCP_INCLUDE_PAYLOADS", True)
     queries = [entry for entry in entries if entry.type == OrbitEntry.TYPE_QUERY]
     slow = [entry for entry in queries if entry.payload.get("is_slow")]
     duplicate = [entry for entry in queries if entry.payload.get("is_duplicate")]
@@ -271,7 +278,11 @@ def _query_analysis(entries: list[OrbitEntry]) -> dict[str, Any]:
         "duplicate_count": len(duplicate),
         "top_slow": _serialize_entries(top_slow, limit=5),
         "duplicate_signatures": [
-            {"sql_preview": sql, "count": count}
+            {
+                "sql_preview": sql if include_payloads else "",
+                "count": count,
+                **({} if include_payloads else {"sql_preview_omitted": True}),
+            }
             for sql, count in duplicate_signatures.most_common(5)
             if sql
         ],
@@ -436,7 +447,7 @@ def find_sensitive_payload_risks(limit: int = 20) -> dict[str, Any]:
             {
                 "id": str(entry.id),
                 "type": entry.type,
-                "summary": entry.summary,
+                "summary": _agent_summary(entry),
                 "family_hash": entry.family_hash,
                 "fingerprint": entry.fingerprint,
                 "created_at": entry.created_at.isoformat(),
@@ -450,7 +461,8 @@ def find_sensitive_payload_risks(limit: int = 20) -> dict[str, Any]:
         "count": len(candidates),
         "candidates": candidates,
         "safety_report": {
-            "raw_values_exposed": False,
+            "raw_values_exposed": None,
+            "residual_risk": "unknown",
             "payloads_masked": True,
             "scan_limit": scan_limit,
         },
@@ -674,7 +686,7 @@ def _bundle_to_markdown(bundle: dict[str, Any]) -> str:
             "",
             "## Safety",
             "- Payloads are masked before export.",
-            "- Raw sensitive values are not included in this bundle.",
+            "- Residual sensitive-data risk is unknown; review before sharing.",
             "- Oversized payloads are replaced with truncation metadata.",
         ]
     )
@@ -752,6 +764,8 @@ def _bundle_to_prompt(bundle: dict[str, Any]) -> str:
             "",
             "Safety constraints:",
             "- Orbit masked sensitive payload values before this prompt was generated.",
+            "- Residual sensitive-data risk is unknown; key masking is not "
+            "universal redaction.",
             "- Do not assume omitted or truncated payload data is available.",
             "- Do not edit code without a test plan tied to the evidence above.",
         ]
@@ -810,7 +824,17 @@ def create_incident_bundle(
         "safety_report": {
             "payloads_masked": True,
             "payload_truncation_enabled": True,
-            "raw_sensitive_values_exposed": False,
+            "raw_sensitive_values_exposed": None,
+            "residual_risk": "unknown",
+            "include_payloads": _config_bool("MCP_INCLUDE_PAYLOADS", True),
+            "redaction_coverage": [
+                "configured_sensitive_payload_keys",
+                "derived_text_omitted_when_payloads_disabled",
+            ],
+            "limitations": [
+                "Free text is not universally redacted when payloads are enabled.",
+                "Identifiers and operational metadata may remain sensitive.",
+            ],
             "serializer": "agent_safe_serialize_entry",
         },
         "agent_handoff": {
@@ -1371,7 +1395,7 @@ def daily_health_brief(hours: int = 24, limit: int | None = None) -> dict[str, A
             {
                 "type": "exception",
                 "severity": "error",
-                "summary": exception.summary,
+                "summary": _agent_summary(exception),
                 "fingerprint": exception.fingerprint,
                 "entry": agent_safe_serialize_entry(exception, include_payload=False),
             }
@@ -1381,7 +1405,7 @@ def daily_health_brief(hours: int = 24, limit: int | None = None) -> dict[str, A
             {
                 "type": "http_error",
                 "severity": "error",
-                "summary": request.summary,
+                "summary": _agent_summary(request),
                 "family_hash": request.family_hash,
                 "entry": agent_safe_serialize_entry(request, include_payload=False),
             }
@@ -1391,7 +1415,7 @@ def daily_health_brief(hours: int = 24, limit: int | None = None) -> dict[str, A
             {
                 "type": "job_failure",
                 "severity": "error",
-                "summary": job.summary,
+                "summary": _agent_summary(job),
                 "family_hash": job.family_hash,
                 "entry": agent_safe_serialize_entry(job, include_payload=False),
             }
@@ -1401,7 +1425,7 @@ def daily_health_brief(hours: int = 24, limit: int | None = None) -> dict[str, A
             {
                 "type": "slow_query",
                 "severity": "warning",
-                "summary": query.summary,
+                "summary": _agent_summary(query),
                 "family_hash": query.family_hash,
                 "entry": agent_safe_serialize_entry(query, include_payload=False),
             }

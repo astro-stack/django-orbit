@@ -1,51 +1,11 @@
-{% comment %}
-Compact KPI strip for the dashboard (All Events). Error-focused, single row.
-Rendered inside a collapsible bar in dashboard.html. Full analytics live at /orbit/stats/.
-{% endcomment %}
 <div class="flex items-center gap-x-6 gap-y-2 flex-wrap text-sm">
-    <!-- Requests -->
-    <div class="flex items-center gap-2" title="Requests in the last hour">
-        <i data-lucide="globe" class="w-4 h-4 text-cyan-400"></i>
-        <span class="font-semibold text-orbit-text-primary">{{ stats.requests_per_hour }}</span>
-        <span class="text-xs text-orbit-text-muted">req/hr</span>
-    </div>
-    <!-- Queries -->
-    <div class="flex items-center gap-2" title="Queries in the last hour">
-        <i data-lucide="database" class="w-4 h-4 text-emerald-400"></i>
-        <span class="font-semibold text-orbit-text-primary">{{ stats.queries_per_hour }}</span>
-        <span class="text-xs text-orbit-text-muted">queries/hr</span>
-    </div>
-    <!-- Avg response -->
-    <div class="flex items-center gap-2" title="Average response time (last hour)">
-        <i data-lucide="clock" class="w-4 h-4 text-violet-400"></i>
-        <span class="font-semibold text-orbit-text-primary">{{ stats.avg_response_time|floatformat:0 }}<span class="text-xs text-orbit-text-muted">ms</span></span>
-        <span class="text-xs text-orbit-text-muted">avg</span>
-    </div>
-
-    <div class="h-4 w-px bg-orbit-border"></div>
-
-    <!-- Errors (loud) -->
-    <div class="flex items-center gap-2" title="Exceptions + 4xx/5xx responses">
-        <i data-lucide="alert-triangle" class="w-4 h-4 {% if error_count > 0 %}text-rose-400{% else %}text-orbit-text-muted{% endif %}"></i>
-        <span class="font-semibold {% if error_count > 0 %}text-rose-400{% else %}text-orbit-text-primary{% endif %}">{{ error_count }}</span>
-        <span class="text-xs text-orbit-text-muted">errors</span>
-    </div>
-    <!-- Slow queries (loud) -->
-    <div class="flex items-center gap-2" title="Slow queries above the threshold">
-        <i data-lucide="gauge" class="w-4 h-4 {% if slow_query_count > 0 %}text-amber-400{% else %}text-orbit-text-muted{% endif %}"></i>
-        <span class="font-semibold {% if slow_query_count > 0 %}text-amber-400{% else %}text-orbit-text-primary{% endif %}">{{ slow_query_count }}</span>
-        <span class="text-xs text-orbit-text-muted">slow</span>
-    </div>
-    <!-- Duplicate / N+1 -->
-    <div class="flex items-center gap-2" title="Duplicate (N+1) queries">
-        <i data-lucide="copy" class="w-4 h-4 {% if stats.duplicate_queries > 0 %}text-violet-400{% else %}text-orbit-text-muted{% endif %}"></i>
-        <span class="font-semibold {% if stats.duplicate_queries > 0 %}text-violet-400{% else %}text-orbit-text-primary{% endif %}">{{ stats.duplicate_queries }}</span>
-        <span class="text-xs text-orbit-text-muted">N+1</span>
-    </div>
-
-    <a href="{% url 'orbit:stats' %}"
-       class="ml-auto flex items-center gap-1.5 text-xs text-orbit-text-muted hover:text-orbit-accent-cyan transition-colors">
-        <span>Full analytics</span>
-        <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
-    </a>
+    <div class="flex items-center gap-2" title="Requests in the current explorer scope"><i data-lucide="globe" class="w-4 h-4 text-cyan-400"></i><strong>{{ explorer_metrics.request_count }}</strong><span class="text-xs text-orbit-text-muted">requests</span></div>
+    <div class="flex items-center gap-2" title="Queries in the current explorer scope"><i data-lucide="database" class="w-4 h-4 text-emerald-400"></i><strong>{{ explorer_metrics.query_count }}</strong><span class="text-xs text-orbit-text-muted">queries</span></div>
+    <div class="flex items-center gap-2" title="Mean request duration in the current explorer scope"><i data-lucide="clock" class="w-4 h-4 text-violet-400"></i><strong>{% if explorer_metrics.avg_response_time == None %}—{% else %}{{ explorer_metrics.avg_response_time|floatformat:0 }} ms{% endif %}</strong><span class="text-xs text-orbit-text-muted">avg response</span></div>
+    <div class="flex items-center gap-2" title="Failed HTTP requests in the current explorer scope"><i data-lucide="activity" class="w-4 h-4 text-rose-400"></i><strong>{{ explorer_metrics.failed_request_count }}</strong><span class="text-xs text-orbit-text-muted">failed requests</span></div>
+    <div class="flex items-center gap-2" title="Recorded exceptions in the current explorer scope"><i data-lucide="alert-triangle" class="w-4 h-4 text-amber-400"></i><strong>{{ explorer_metrics.exception_count }}</strong><span class="text-xs text-orbit-text-muted">exceptions</span></div>
+    <div class="flex items-center gap-2" title="Slow queries in the current explorer scope"><i data-lucide="gauge" class="w-4 h-4 text-amber-400"></i><strong>{{ explorer_metrics.slow_query_count }}</strong><span class="text-xs text-orbit-text-muted">slow queries</span></div>
+    <div class="flex items-center gap-2" title="Queries recorded as duplicates; this does not prove an N+1 pattern"><i data-lucide="copy" class="w-4 h-4 text-violet-400"></i><strong>{{ explorer_metrics.duplicate_query_count }}</strong><span class="text-xs text-orbit-text-muted">duplicate queries</span></div>
+    <div class="flex items-center gap-2" title="Failed HTTP requests as a percentage of requests in the current scope"><strong>{{ explorer_metrics.error_rate_pct|floatformat:1 }}%</strong><span class="text-xs text-orbit-text-muted">request error rate</span></div>
+    <a href="{% url 'orbit:stats' %}" class="ml-auto inline-flex items-center gap-1.5 text-xs text-orbit-text-muted hover:text-orbit-accent-cyan"><span>Global analytics</span><i data-lucide="arrow-right" class="h-3.5 w-3.5"></i></a>
 </div>

@@ -20,8 +20,31 @@ def test_dashboard_has_grouped_nav_and_standalone_all_events(client):
     for group in ("Core", "Infrastructure", "Application"):
         assert group in html
 
-    # "All Events" is rendered exactly once (standalone, not duplicated inside a group)
-    assert html.count(">All Events<") == 1
+    # The mobile selector is separate from the unique desktop navigation entry.
+    nav = html.split('<nav class="flex-1 px-3 py-4 space-y-4 overflow-y-auto">', 1)[
+        1
+    ].split("</nav>", 1)[0]
+    assert nav.count(">All Events<") == 1
+
+
+@pytest.mark.django_db
+def test_dashboard_has_responsive_mobile_explorer_controls(client):
+    html = client.get(reverse("orbit:dashboard")).content.decode()
+    aside = html.split("<aside", 1)[1].split(">", 1)[0]
+    assert "hidden md:flex" in aside
+    assert "w-64" in aside
+    assert 'aria-label="Event type"' in html
+    assert '<option value="request">Requests</option>' in html
+    assert "min-w-0" in html
+    assert ':aria-expanded="filtersExpanded.toString()"' in html
+    assert "orbit-filter-controls:not(.is-expanded)" in html
+    assert "max-h-[70vh] overflow-y-auto" in html
+    assert "xl:w-[600px]" in html
+    assert "md:w-[600px]" not in html
+    assert "xl:flex-nowrap" in html
+    assert 'max="86400000"' in html
+    assert "<option>CONNECT</option>" in html
+    assert "<option>TRACE</option>" in html
 
 
 @pytest.mark.django_db

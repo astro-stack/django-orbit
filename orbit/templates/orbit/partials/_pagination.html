@@ -1,5 +1,6 @@
 {% comment %}Shared feed pagination. Expects: page, total_pages, total_count, per_page,
-current_type, has_prev, has_next. All buttons re-fetch the feed via HTMX.{% endcomment %}
+has_prev, has_next, first_page_url, prev_page_url, next_page_url, last_page_url.
+URLs are encoded by the view; HTML autoescaping remains enabled.{% endcomment %}
 {% if total_pages > 1 %}
 <div class="flex items-center justify-between px-4 py-3 border-t border-orbit-border/50">
     <div class="text-sm text-orbit-text-muted">
@@ -9,7 +10,7 @@ current_type, has_prev, has_next. All buttons re-fetch the feed via HTMX.{% endc
         <!-- Previous -->
         <button
             {% if has_prev %}
-            hx-get="{% url 'orbit:feed' %}?type={{ current_type }}&page={{ page|add:-1 }}&per_page={{ per_page }}"
+            hx-get="{{ prev_page_url }}"
             hx-target="#feed-container"
             hx-swap="innerHTML"
             hx-indicator=".htmx-indicator"
@@ -26,7 +27,7 @@ current_type, has_prev, has_next. All buttons re-fetch the feed via HTMX.{% endc
         <div class="flex items-center gap-1">
             {% if page > 2 %}
             <button
-                hx-get="{% url 'orbit:feed' %}?type={{ current_type }}&page=1&per_page={{ per_page }}"
+                hx-get="{{ first_page_url }}"
                 hx-target="#feed-container"
                 hx-swap="innerHTML"
                 class="w-8 h-8 text-sm rounded-lg text-orbit-text-secondary hover:text-orbit-text-primary bg-orbit-bg-tertiary hover:bg-orbit-bg-tertiary/80 transition-all">
@@ -39,7 +40,7 @@ current_type, has_prev, has_next. All buttons re-fetch the feed via HTMX.{% endc
 
             {% if page > 1 %}
             <button
-                hx-get="{% url 'orbit:feed' %}?type={{ current_type }}&page={{ page|add:-1 }}&per_page={{ per_page }}"
+                hx-get="{{ prev_page_url }}"
                 hx-target="#feed-container"
                 hx-swap="innerHTML"
                 class="w-8 h-8 text-sm rounded-lg text-orbit-text-secondary hover:text-orbit-text-primary bg-orbit-bg-tertiary hover:bg-orbit-bg-tertiary/80 transition-all">
@@ -53,7 +54,7 @@ current_type, has_prev, has_next. All buttons re-fetch the feed via HTMX.{% endc
 
             {% if page < total_pages %}
             <button
-                hx-get="{% url 'orbit:feed' %}?type={{ current_type }}&page={{ page|add:1 }}&per_page={{ per_page }}"
+                hx-get="{{ next_page_url }}"
                 hx-target="#feed-container"
                 hx-swap="innerHTML"
                 class="w-8 h-8 text-sm rounded-lg text-orbit-text-secondary hover:text-orbit-text-primary bg-orbit-bg-tertiary hover:bg-orbit-bg-tertiary/80 transition-all">
@@ -66,7 +67,7 @@ current_type, has_prev, has_next. All buttons re-fetch the feed via HTMX.{% endc
             <span class="text-orbit-text-muted px-1">...</span>
             {% endif %}
             <button
-                hx-get="{% url 'orbit:feed' %}?type={{ current_type }}&page={{ total_pages }}&per_page={{ per_page }}"
+                hx-get="{{ last_page_url }}"
                 hx-target="#feed-container"
                 hx-swap="innerHTML"
                 class="w-8 h-8 text-sm rounded-lg text-orbit-text-secondary hover:text-orbit-text-primary bg-orbit-bg-tertiary hover:bg-orbit-bg-tertiary/80 transition-all">
@@ -78,7 +79,7 @@ current_type, has_prev, has_next. All buttons re-fetch the feed via HTMX.{% endc
         <!-- Next -->
         <button
             {% if has_next %}
-            hx-get="{% url 'orbit:feed' %}?type={{ current_type }}&page={{ page|add:1 }}&per_page={{ per_page }}"
+            hx-get="{{ next_page_url }}"
             hx-target="#feed-container"
             hx-swap="innerHTML"
             hx-indicator=".htmx-indicator"

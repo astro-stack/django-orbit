@@ -1,0 +1,7 @@
+<div data-orbit-feed>
+    {% include feed_template %}
+</div>
+<template data-orbit-metrics>
+    {% include "orbit/partials/stats.html" %}
+</template>
+{{ explorer_state|json_script:"orbit-explorer-state" }}

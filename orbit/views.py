@@ -5,12 +5,14 @@ Dashboard views for the Orbit interface.
 """
 
 import json
+from datetime import timedelta
 
 from django.db.models import BooleanField, Case, F, When, Window
 from django.db.models.functions import RowNumber
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
+from django.utils import timezone
 from django.views import View
 from django.views.generic import TemplateView
 
@@ -29,6 +31,13 @@ __all__ = [
 ]
 
 from orbit import __version__ as ORBIT_VERSION
+from orbit.explorer import (
+    ExplorerFilters,
+    calculate_metrics,
+    exception_group_page,
+    exception_groups,
+    scoped_entries,
+)
 from orbit.mixins import OrbitProtectedView
 from orbit.models import OrbitEntry
 
@@ -480,135 +489,202 @@ class OrbitFeedPartial(OrbitProtectedView, View):
     and when filtering by entry type.
     """
 
+    @staticmethod
+    def _pagination_number(value, default, maximum=None):
+        """Default malformed/over-64-character integers; clamp valid ones.
+
+        Page defaults to 1 and is later bounded by the result count. Per-page
+        defaults to 25 and is clamped to 1..100 before any database access.
+        """
+        try:
+            number = int(value) if len(str(value)) <= 64 else default
+        except (TypeError, ValueError):
+            number = default
+        return max(1, min(number, maximum) if maximum is not None else number)
+
+    @staticmethod
+    def _pagination_context(request, entry_type, page, per_page, total_count):
+        """Build every pagination URL from allowlisted, encoded filter state."""
+        from urllib.parse import urlencode, urlunsplit
+
+        from django.urls import reverse
+
+        total_pages = (total_count + per_page - 1) // per_page
+        parsed, errors = ExplorerFilters.parse(request.GET)
+        params = {
+            **(
+                {
+                    key: parsed.canonical[key]
+                    for key in parsed.canonical
+                    if key in request.GET
+                }
+                if not errors
+                else {}
+            ),
+            "type": entry_type,
+            "per_page": per_page,
+        }
+        feed_path = reverse("orbit:feed")
+
+        def page_url(number):
+            return urlunsplit(
+                ("", "", feed_path, urlencode({**params, "page": number}), "")
+            )
+
+        return {
+            "current_type": entry_type,
+            "page": page,
+            "per_page": per_page,
+            "total_pages": total_pages,
+            "total_count": total_count,
+            "has_prev": page > 1,
+            "has_next": page < total_pages,
+            "first_page_url": page_url(1),
+            "prev_page_url": page_url(max(1, page - 1)),
+            "next_page_url": page_url(min(page + 1, max(1, total_pages))),
+            "last_page_url": page_url(max(1, total_pages)),
+        }
+
     def get(self, request: HttpRequest) -> HttpResponse:
-        # Get filter parameters
-        entry_type = request.GET.get("type", "all")
-        per_page = int(request.GET.get("per_page", 25))
-        page = int(request.GET.get("page", 1))
-        family_hash = request.GET.get("family")
-
-        # Build queryset
-        queryset = OrbitEntry.objects.all()
-
-        # Filter by type
-        if entry_type and entry_type != "all":
-            queryset = queryset.filter(type=entry_type)
-
-        # Filter by family
-        if family_hash:
-            queryset = queryset.filter(family_hash=family_hash)
-
-        query = request.GET.get("q")
-
-        # Tag filter (B1): explicit ?tag=foo, or a "tag:foo" prefix typed in the
-        # search box.
-        tag = request.GET.get("tag")
-        if not tag and query and query.lower().startswith("tag:"):
-            tag = query[4:].strip()
-            query = None
-        if tag:
-            queryset = queryset.filter(tags__contains="," + tag + ",")
-
-        # Exception grouping (B3): on the plain Exceptions view, collapse identical
-        # exceptions into one row with a count + first/last seen. Skipped when searching
-        # or drilling into a family so those flows still show individual occurrences.
-        if (
+        filters, errors = ExplorerFilters.parse(request.GET)
+        if errors:
+            return JsonResponse(
+                {"error": "invalid_filters", "fields": errors}, status=400
+            )
+        entry_type = filters.type
+        per_page = self._pagination_number(request.GET.get("per_page", 25), 25, 100)
+        page = self._pagination_number(request.GET.get("page", 1), 1)
+        tag_effective = filters.tag or (
+            filters.q[4:].strip() if filters.q.lower().startswith("tag:") else ""
+        )
+        grouped = (
             entry_type == OrbitEntry.TYPE_EXCEPTION
-            and not family_hash
-            and not query
-            and not tag
+            and not filters.family
+            and not tag_effective
+            and not (filters.q and not filters.q.lower().startswith("tag:"))
+        )
+        if (
+            grouped
+            and filters.range == "all"
+            and not filters.path
+            and not filters.method
+            and not filters.status_class
+            and not filters.min_duration_ms
         ):
             return self._exception_groups_response(request, per_page, page)
-
-        # Filter by search query "q"
-        if query:
-            import uuid
-
-            try:
-                # Try explicit UUID search
-                uuid_obj = uuid.UUID(query)
-                queryset = queryset.filter(id=uuid_obj)
-            except ValueError:
-                # Text search on payload using generic "contains"
-                # For SQLite/Postgres JSONField, we can use __icontains
-                # Ideally we cast to text for better compatibility if needed,
-                # but let's try direct first as it handles some string casting
-                # implicitly in Django 4.2+
-                from django.db.models import TextField
-                from django.db.models.functions import Cast
-
-                # Cast payload to text to search inside keys and values
-                queryset = queryset.annotate(
-                    payload_text=Cast("payload", TextField())
-                ).filter(payload_text__icontains=query)
-
-        # Calculate pagination
-        total_count = queryset.count()
-        total_pages = (total_count + per_page - 1) // per_page  # Ceiling division
-        page = max(1, min(page, total_pages)) if total_pages > 0 else 1
-
-        # Get entries for current page - only load necessary fields for performance
-        offset = (page - 1) * per_page
-        entries = queryset.only(
-            "id", "type", "payload", "duration_ms", "created_at"
-        ).order_by("-created_at", "-id")[offset : offset + per_page]
-
-        # Render partial
-        return TemplateResponse(
-            request,
-            "orbit/partials/feed.html",
-            {
-                "entries": entries,
-                "current_type": entry_type,
-                "page": page,
-                "per_page": per_page,
-                "total_pages": total_pages,
-                "total_count": total_count,
-                "has_prev": page > 1,
-                "has_next": page < total_pages,
+        now = timezone.now()
+        queryset = scoped_entries(filters, now)
+        total_entries = queryset.count()
+        metrics = calculate_metrics(queryset)
+        range_minutes = {"15m": 15, "1h": 60, "24h": 1440}
+        window_start = (
+            now - timedelta(minutes=range_minutes[filters.range])
+            if filters.range != "all"
+            else None
+        )
+        if grouped:
+            total_count = exception_groups(queryset).count()
+            total_pages = (total_count + per_page - 1) // per_page
+            page = max(1, min(page, total_pages)) if total_pages else 1
+            groups, _ = exception_group_page(queryset, page, per_page, total_count)
+            entries = []
+            feed_template = "orbit/partials/feed_exception_groups.html"
+        else:
+            total_count = total_entries
+            total_pages = (total_count + per_page - 1) // per_page
+            page = max(1, min(page, total_pages)) if total_pages else 1
+            entries = queryset.only(
+                "id", "type", "payload", "duration_ms", "created_at"
+            ).order_by("-created_at", "-id")[(page - 1) * per_page : page * per_page]
+            groups = []
+            feed_template = "orbit/partials/feed.html"
+        explorer_state = {
+            "filters": filters.canonical,
+            "page": page,
+            "per_page": per_page,
+            "total_count": total_count,
+            "total_entries": total_entries,
+            "grouped": grouped,
+            "window": {
+                "start": window_start.isoformat() if window_start else None,
+                "end": now.isoformat() if window_start else None,
             },
+        }
+        context = {
+            "entries": entries,
+            "groups": groups,
+            "feed_template": feed_template,
+            "explorer_metrics": metrics,
+            "explorer_state": explorer_state,
+            **self._pagination_context(
+                request, entry_type, page, per_page, total_count
+            ),
+            "total_entries": total_entries,
+            "stats": {
+                "requests_per_hour": metrics["request_count"],
+                "queries_per_hour": metrics["query_count"],
+                "avg_response_time": metrics["avg_response_time"],
+                "duplicate_queries": metrics["duplicate_query_count"],
+            },
+            "error_count": metrics["failed_request_count"] + metrics["exception_count"],
+            "slow_query_count": metrics["slow_query_count"],
+        }
+        return TemplateResponse(
+            request, "orbit/partials/explorer_response.html", context
         )
 
     def _exception_groups_response(self, request, per_page, page):
-        """Render the grouped Exceptions feed (B3). Aggregation happens in the DB."""
-        groups_qs = OrbitEntry.objects.exception_groups()
-
-        total_count = groups_qs.count()  # number of distinct errors
-        total_pages = (total_count + per_page - 1) // per_page
-        page = max(1, min(page, total_pages)) if total_pages > 0 else 1
-        offset = (page - 1) * per_page
-
-        page_groups = list(groups_qs[offset : offset + per_page])
-        group_keys = [g["group_key"] for g in page_groups]
-        latest = OrbitEntry.objects.latest_for_groups(group_keys)
-
-        groups = []
-        for g in page_groups:
-            rep = latest.get(g["group_key"])
-            if rep is None:
-                continue
-            groups.append(
-                {
-                    "entry": rep,
-                    "count": g["count"],
-                    "first_seen": g["first_seen"],
-                    "last_seen": g["last_seen"],
-                }
+        """Compatibility entry point using the Explorer response shape."""
+        filters, errors = ExplorerFilters.parse(request.GET)
+        if errors:
+            return JsonResponse(
+                {"error": "invalid_filters", "fields": errors}, status=400
             )
-
-        return TemplateResponse(
-            request,
-            "orbit/partials/feed_exception_groups.html",
-            {
-                "groups": groups,
-                "current_type": OrbitEntry.TYPE_EXCEPTION,
+        now = timezone.now()
+        queryset = scoped_entries(filters, now)
+        total_entries = queryset.count()
+        total_count = exception_groups(queryset).count()
+        total_pages = (total_count + per_page - 1) // per_page
+        page = max(1, min(page, total_pages)) if total_pages else 1
+        groups, _ = exception_group_page(queryset, page, per_page, total_count)
+        metrics = calculate_metrics(queryset)
+        window_start = (
+            now - timedelta(minutes={"15m": 15, "1h": 60, "24h": 1440}[filters.range])
+            if filters.range != "all"
+            else None
+        )
+        context = {
+            "entries": [],
+            "groups": groups,
+            "feed_template": "orbit/partials/feed_exception_groups.html",
+            "explorer_metrics": metrics,
+            "explorer_state": {
+                "filters": filters.canonical,
                 "page": page,
                 "per_page": per_page,
-                "total_pages": total_pages,
                 "total_count": total_count,
-                "has_prev": page > 1,
-                "has_next": page < total_pages,
+                "total_entries": total_entries,
+                "grouped": True,
+                "window": {
+                    "start": window_start.isoformat() if window_start else None,
+                    "end": now.isoformat() if window_start else None,
+                },
             },
+            **self._pagination_context(
+                request, OrbitEntry.TYPE_EXCEPTION, page, per_page, total_count
+            ),
+            "total_entries": total_entries,
+            "stats": {
+                "requests_per_hour": metrics["request_count"],
+                "queries_per_hour": metrics["query_count"],
+                "avg_response_time": metrics["avg_response_time"],
+                "duplicate_queries": metrics["duplicate_query_count"],
+            },
+            "error_count": metrics["failed_request_count"] + metrics["exception_count"],
+            "slow_query_count": metrics["slow_query_count"],
+        }
+        return TemplateResponse(
+            request, "orbit/partials/explorer_response.html", context
         )
 
 

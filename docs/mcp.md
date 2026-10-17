@@ -158,7 +158,14 @@ Residual risk: MCP gives a local assistant read access to Orbit telemetry. Maski
 
 With default MCP settings, payload-bearing entry tools can expose common fields such as type, timestamps, duration, family hash, tags and masked payload data. The compact summary and Evidence-backed request detail do not expose tags or payloads. For LLM entries returned by payload-bearing tools, the default payload contains provider/model/token metadata and tool-call names, not prompts or completions.
 
-An agent does not get direct database access, shell access or code-editing permission through Orbit MCP. It only receives the data returned by Orbit's read-only tools. If `MCP_INCLUDE_PAYLOADS` is `False`, entry payloads are omitted and the assistant sees metadata-only records.
+An agent does not get direct database access, shell access or code-editing permission through Orbit MCP. It only receives the data returned by Orbit's read-only tools. If `MCP_INCLUDE_PAYLOADS` is `False`, entry payloads, derived free-text summaries, tags and query-analysis SQL previews are omitted. Entry serializers retain empty `summary` and `tags` fields for compatibility and report `derived_fields_omitted`. A per-call payload request cannot override the disabled configuration.
+
+Incident-bundle safety reports describe policy coverage rather than certify that
+no sensitive values exist. `raw_sensitive_values_exposed` is `null` and
+`residual_risk` is `unknown`: key-based masking is not universal free-text
+redaction. When payloads are enabled, messages, SQL literals and tags can still
+contain private text. Identifiers, paths and other operational metadata can
+remain sensitive in either mode. Review exports before sharing them.
 
 Use this sequence before sharing a sensitive session:
 
