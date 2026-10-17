@@ -93,6 +93,31 @@ function harness(search = '') {
 }
 
 const tick = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
+test('Alpine automatic init plus template initialization registers one row handler', async () => {
+    const h = harness();
+    h.state.init(); // Alpine automatically calls the component init method.
+    const root = template.match(/<div[^>]*x-data="orbitDashboard\(\)"[^>]*>/)[0];
+    if (/x-init="init\(\)"/.test(root)) h.state.init();
+    assert.equal(h.calls.length, 1);
+    h.emit('click', { target: { closest: () => ({ dataset: { entryId: 'first' } }) } });
+    assert.equal(h.state.detailOpen, true);
+    assert.equal(h.state.detailEntryId, 'first');
+    assert.equal(h.calls.length, 2);
+    reply(h.calls[1], 'first detail');
+    await tick();
+    assert.equal(h.detail.innerHTML, 'first detail');
+});
+
+test('repeated init does not duplicate listeners, initial requests or poll timers', () => {
+    const h = harness();
+    h.state.init();
+    const clickCount = h.listeners.get('click').length;
+    h.state.init();
+    assert.equal(h.listeners.get('click').length, clickCount);
+    assert.equal(h.calls.length, 1);
+    assert.equal(h.timers.length, 1);
+});
+
 test('outside click on another feed row preserves the pending detail selection', async () => {
     const h = harness();
     h.state.detailOpen = true;

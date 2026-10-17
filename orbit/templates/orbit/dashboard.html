@@ -8,7 +8,7 @@
         .orbit-filter-controls:not(.is-expanded) { display: none; }
     }
 </style>
-<div x-data="orbitDashboard()" x-init="init()" class="h-full flex bg-grid">
+<div x-data="orbitDashboard()" class="h-full flex bg-grid">
     
     <!-- Sidebar Navigation -->
     <aside class="w-64 border-r border-orbit-border bg-orbit-bg-secondary hidden md:flex flex-col">
@@ -423,6 +423,7 @@ function orbitDashboard() {
         emptyScope: false,
         draftVersion: 0,
         isPaused: false,
+        initialized: false,
         detailOpen: false,
         detailEntryId: null,
         detailIndex: -1,
@@ -476,6 +477,8 @@ function orbitDashboard() {
         },
         
         init() {
+            if (this.initialized) return;
+            this.initialized = true;
             // Route HTMX pagination through the same ordered fetch path as polling.
             document.body.addEventListener('htmx:beforeRequest', (e) => {
                 if (e.detail?.target?.id !== 'feed-container') return;

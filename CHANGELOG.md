@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Initialize dashboard event listeners once so selecting an event cannot
+  immediately toggle its detail closed through duplicate click handlers.
 - Switch directly between event details with one click while the panel is open.
 - Keep schema-command recording suspension active when command telemetry is
   disabled or ignored; restore nested state safely after failures (#72).
