@@ -53,6 +53,7 @@ class _JSONPathIsString(Func):
 
     def as_sql(self, compiler, connection):
         expression_sql, expression_params = compiler.compile(self.source_expressions[0])
+        expression_params = list(expression_params)
         if connection.vendor == "sqlite":
             return (
                 "JSON_TYPE(%s, %%s) = 'text'" % expression_sql,

@@ -218,6 +218,16 @@ def test_json_path_string_expression_rejects_unapproved_keys():
         _JSONPathIsString(F("payload"), "payload__path")
 
 
+@pytest.mark.parametrize("vendor", ["sqlite", "postgresql", "mysql"])
+@pytest.mark.parametrize("params", [[], ()])
+def test_json_path_expression_accepts_list_and_tuple_compiler_params(vendor, params):
+    compiler = SimpleNamespace(compile=lambda expression: ('"payload"', params))
+    expression = _JSONPathIsString(F("payload"), "path")
+    sql, bound = expression.as_sql(compiler, SimpleNamespace(vendor=vendor))
+    assert "%s" in sql
+    assert len(bound) == 1
+
+
 def test_path_filter_treats_percent_and_underscore_as_literal(client):
     matching = OrbitEntry.objects.create(
         type="request", payload={"path": "/literal/%_segment/"}
