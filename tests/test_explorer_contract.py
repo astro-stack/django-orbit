@@ -102,3 +102,33 @@ def test_filter_state_uses_inert_escaped_json(client):
     parsed = ExplorerResponse(response.content.decode())
     assert parsed.state["filters"]["q"] == probe
     assert '<script id="synthetic-injection">' not in response.content.decode()
+
+
+@pytest.mark.parametrize(
+    "entry_type,field", [("request", "path"), ("exception", "request_path")]
+)
+@pytest.mark.parametrize(
+    "bad_value,probe",
+    [
+        ({"nested": "needle"}, "needle"),
+        (["needle"], "needle"),
+        (123, "123"),
+        (True, "true"),
+        (None, "null"),
+    ],
+)
+def test_path_scope_only_accepts_json_strings(
+    client, entry_type, field, bad_value, probe
+):
+    valid = OrbitEntry.objects.create(type=entry_type, payload={field: f"/{probe}/"})
+    OrbitEntry.objects.create(type=entry_type, payload={field: bad_value})
+    response = client.get(reverse("orbit:feed"), {"path": probe, "type": entry_type})
+    assert response.status_code == 200
+    context = response.context_data
+    entries = (
+        [group["entry"] for group in context["groups"]]
+        if context["explorer_state"]["grouped"]
+        else list(context["entries"])
+    )
+    assert entries == [valid]
+    assert context["explorer_state"]["total_entries"] == 1
