@@ -7,7 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Fixed
+
+- Keep schema-command recording suspension active when command telemetry is
+  disabled or ignored; restore nested state safely after failures (#72).
+- Omit derived summaries, tags and SQL previews when MCP payloads are disabled;
+  report residual export risk without claiming universal redaction.
+- Validate feed pagination limits and preserve search, tag and family filters
+  across every pagination control.
+- Prevent stale feed/detail responses from replacing newer selections and show
+  recoverable load errors. Clarify that Pause feed does not stop capture.
 
 ## [0.14.0] - 2026-10-14
 

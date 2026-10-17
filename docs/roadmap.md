@@ -232,21 +232,51 @@ Workflow:
 MCP sequence example:
 
 ```text
-investigate_ticket("Users get 500 on checkout")
+build_debug_brief("Users get 500 on checkout")
 create_incident_bundle("ticket", "Users get 500 on checkout")
-propose_fix_hypotheses(bundle_id)
-propose_test_plan(bundle_id)
-generate_pr_context(bundle_id)
+propose_fix_hypotheses("ticket", "Users get 500 on checkout")
+propose_test_plan("ticket", "Users get 500 on checkout")
+generate_pr_context("ticket", "Users get 500 on checkout")
 ```
 
 ## Near-Term Priority
 
-The v0.11.0 release shipped endpoint investigation, daily health briefs and release risk briefs. The v0.12.0 release starts the AI/LLM watcher and hardens release verification. The next pragmatic PR sequence:
+### Shipped Through v0.14.0
 
-1. Add `agent_safe_serialize_entry()` and make existing MCP tools use it.
-2. Add `investigate_request(family_hash)`.
-3. Add `investigate_exception_group(fingerprint)`.
-4. Add `create_incident_bundle(...)` as on-demand JSON.
-5. Add `build_debug_brief(query, hours=72)`.
-6. Expand AI watcher integrations to LangChain, LiteLLM and provider HTTP fallbacks.
-7. Add OpenTelemetry export design doc and config stub.
+Orbit already provides entry serialization, request and exception investigation,
+ticket search, incident bundles, hypotheses, test plans and PR context. The
+versioned Evidence API and compact request-family summary provide bounded,
+metadata-first evidence. These are existing capabilities, not future tools.
+
+### Current Hardening Slice (Unreleased)
+
+- Preserve schema-operation safety independently of command recording (#72).
+- Align derived-text omission and residual-risk reports with MCP configuration.
+- Preserve feed filters across pagination and bound malformed pagination input.
+- Prevent stale asynchronous responses and clarify polling versus capture state.
+
+### Next: Explorer
+
+- Add structured time, path, method, status, duration and signal filters.
+- Make active filters visible and reproduce the same selection through URLs.
+- Keep feed results, metrics and exports scoped consistently.
+- Add a request-oriented view while retaining the raw Events view.
+
+### Then: Investigation Workspace
+
+- Organize detail into summary, timeline, evidence and agent handoff.
+- Carry evidence quality, missing fields and truncation into existing tools.
+- Link hypotheses to supporting entries and falsifiable test expectations.
+- Compare incident-specific before/after windows with sufficient samples;
+  return an inconclusive outcome when verification evidence is inadequate.
+
+### Later / Separate Compatibility Work
+
+- Evaluate MCP SDK 2.x with protocol and tool-call tests before changing the
+  supported dependency range (#66).
+- Expand AI watcher integrations to LangChain, LiteLLM and provider HTTP fallbacks.
+- Add an OpenTelemetry bridge without replacing Django-native evidence.
+
+Local inspection, safety controls and portable handoffs remain open source.
+Optional Pro coordination can add shared history, approvals and automated
+verification without removing the existing local capabilities.
