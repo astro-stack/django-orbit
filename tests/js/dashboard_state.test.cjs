@@ -93,6 +93,51 @@ function harness(search = '') {
 }
 
 const tick = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
+test('outside click on another feed row preserves the pending detail selection', async () => {
+    const h = harness();
+    h.state.detailOpen = true;
+    h.state.detailEntryId = 'first';
+    const pending = h.state.openDetail('second');
+    h.state.handleDetailOutside({ target: { closest: (selector) => selector === '#feed-container [data-entry-id]' ? {} : null } });
+    await tick();
+    assert.equal(h.state.detailOpen, true);
+    assert.equal(h.state.detailEntryId, 'second');
+    reply(h.calls[0], '<article>Second detail</article>');
+    await pending;
+    assert.match(h.detail.innerHTML, /Second detail/);
+    h.state.handleDetailOutside({ target: { closest: () => null } });
+    assert.equal(h.state.detailOpen, false);
+});
+
+test('clicking the selected row still toggles the detail closed', async () => {
+    const h = harness();
+    h.state.detailOpen = true;
+    h.state.detailEntryId = 'first';
+    await h.state.openDetail('first');
+    assert.equal(h.state.detailOpen, false);
+    assert.equal(h.calls.length, 0);
+});
+
+test('template wires outside handling and either listener order preserves row selection', async () => {
+    assert.match(template, /@click\.away="handleDetailOutside\(\$event\)"/);
+    for (const outsideFirst of [true, false]) {
+        const h = harness();
+        h.state.init();
+        h.state.detailOpen = true;
+        h.state.detailEntryId = 'first';
+        const row = { dataset: { entryId: 'second' } };
+        const event = { target: { closest: () => row } };
+        if (outsideFirst) h.state.handleDetailOutside(event);
+        h.emit('click', event);
+        if (!outsideFirst) h.state.handleDetailOutside(event);
+        reply(h.calls[1], 'second detail');
+        await tick();
+        assert.equal(h.state.detailEntryId, 'second');
+        assert.equal(h.state.detailOpen, true);
+        assert.equal(h.detail.innerHTML, 'second detail');
+    }
+});
+
 const reply = (call, html, status = 200, jsonPayload = null) => {
     if (status < 400 && new URL(call.url, 'https://example.test').pathname === '/orbit/feed/' && !html.includes('data-orbit-feed')) {
         const params = new URL(call.url, 'https://example.test').searchParams;
@@ -448,14 +493,17 @@ test('out-of-order detail bodies cannot overwrite the selected entry', async () 
     assert.equal(h.state.detailEntryId, 'b');
 });
 
-test('close invalidates the detail opening delay', async () => {
+test('detail opens immediately and close invalidates its pending request', async () => {
     const h = harness();
     const pending = h.state.openDetail('a');
+    assert.equal(h.state.detailOpen, true);
     h.state.closeDetail();
+    reply(h.calls[0], 'obsolete');
     await pending;
     assert.equal(h.state.detailOpen, false);
     assert.equal(h.state.isLoadingDetail, false);
-    assert.equal(h.calls.length, 0);
+    assert.equal(h.calls.length, 1);
+    assert.doesNotMatch(h.detail.innerHTML, /obsolete/);
 });
 
 test('close invalidates a pending detail body', async () => {

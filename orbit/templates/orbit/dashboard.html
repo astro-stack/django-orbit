@@ -281,7 +281,7 @@
                 x-transition:leave-start="translate-x-0"
                 x-transition:leave-end="translate-x-full"
                 class="absolute inset-0 z-20 w-full border-l border-orbit-border bg-orbit-bg-secondary overflow-hidden flex flex-col xl:relative xl:inset-auto xl:z-auto xl:w-[600px] xl:flex-none"
-                @click.away="closeDetail()">
+                @click.away="handleDetailOutside($event)">
                 
                 <!-- Detail Header -->
                 <div class="h-14 border-b border-orbit-border flex items-center justify-between px-4">
@@ -762,9 +762,6 @@ function orbitDashboard() {
             this.updateDetailPosition();
             this.isLoadingDetail = true;
             
-            // Small delay to prevent click.away from immediately closing
-            await new Promise(resolve => setTimeout(resolve, 10));
-            if (version !== this.detailRequestVersion) return;
             this.detailOpen = true;
             
             const container = document.getElementById('detail-container');
@@ -804,6 +801,12 @@ function orbitDashboard() {
             }
         },
         
+        handleDetailOutside(event) {
+            // Selecting a feed row replaces the detail; it is not a dismissal.
+            if (event.target.closest('#feed-container [data-entry-id]')) return;
+            this.closeDetail();
+        },
+
         closeDetail() {
             this.detailRequestVersion++;
             this.isLoadingDetail = false;

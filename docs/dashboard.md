@@ -169,7 +169,9 @@ With the detail panel open:
 - **`j`** / **`↓`**: Next entry in the current feed
 - **`k`** / **`↑`**: Previous entry
 - **`Escape`**: Close the detail panel
-- **Click outside**: Close the detail panel
+- **Click another event**: Replace the open detail with that event in one click
+- **Click the selected event again**: Close the detail panel
+- **Click outside the panel and event rows**: Close the detail panel
 
 The panel header also has prev/next buttons and a position indicator (e.g. `3/25`).
 
