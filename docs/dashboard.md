@@ -56,22 +56,40 @@ Use the search bar in the header to find specific entries:
 - **By UUID**: Paste a specific Entry ID to jump to it
 - **By Content**: Text search searches inside the JSON payload
 
-Pagination preserves the selected type, search, tag and request family. The feed
-accepts `page` and `per_page` parameters: malformed values fall back to page 1
-and 25 rows; valid page sizes are clamped to 1..100. URLs opened with `q`,
-`family`, `tag`, `page` and `per_page` retain that context during refresh.
+The compact scope controls filter by time range (`all`, `15m`, `1h`, `24h`),
+path substring on request and exception entries whose stored JSON path value is
+a string (SQLite, PostgreSQL and MySQL are supported; other database vendors
+fail closed), method on request and exception stored fields, request status
+class, and minimum duration using each entry's own duration value across entry types.
+Status applies only to requests. These filters do not expand through a request
+family or apply request fields to related queries. Existing type, search, tag
+and request-family filters remain available. Controls are drafts until **Apply**;
+search applies immediately with the current controls. A successful response
+updates the feed and scoped metrics together and writes canonical filters plus
+the effective page to the URL. Back/forward restores a scope without adding a
+history entry. Invalid filters or failed initial/history navigation preserve the
+last successful feed and metrics and suspend polling until **Apply** or **Clear**
+successfully establishes a scope.
+
+Pagination preserves the selected type, search, tag, request family and
+structured filters. The feed accepts `page` and `per_page` parameters:
+malformed values fall back to page 1 and 25 rows; valid page sizes are clamped
+to 1..100. Repeated structured-filter query keys are rejected rather than
+silently collapsed.
 
 **Pause feed** pauses browser polling, not server-side recording. Recording
 remains controlled by Django's `ORBIT_CONFIG` and watcher setup. Manual refresh
 works while polling is paused. Failed loads show a retry action; feed failures
 keep the last loaded rows, and late responses cannot overwrite a newer selection.
 
-### Metrics strip
+### Scoped metrics
 
-When viewing **All Events**, a compact one-line metrics strip sits above the feed with
-the numbers that matter for debugging: requests/hr, queries/hr, average response time, and
-error-focused counts (**errors**, **slow** queries, **N+1** duplicates). For full
-analytics, use the **Full analytics** link or the **Stats** button to open the
+The compact metrics strip remains visible for every feed and uses the same
+confirmed filter scope and time window as its rows. It distinguishes failed
+requests from exceptions, displays a dash when no request duration is available,
+and labels duplicate-query counts without claiming they prove an N+1 pattern.
+The sidebar badges are recorded totals, not filtered counts. For full analytics,
+use the **Full analytics** link or the **Stats** button to open the
 [Stats Dashboard](stats.md).
 
 ### Export

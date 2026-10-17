@@ -3,10 +3,15 @@
 {% block title %}Django Orbit{% endblock %}
 
 {% block body %}
+<style>
+    @media (max-width: 767px) {
+        .orbit-filter-controls:not(.is-expanded) { display: none; }
+    }
+</style>
 <div x-data="orbitDashboard()" x-init="init()" class="h-full flex bg-grid">
     
     <!-- Sidebar Navigation -->
-    <aside class="w-64 border-r border-orbit-border bg-orbit-bg-secondary flex flex-col">
+    <aside class="w-64 border-r border-orbit-border bg-orbit-bg-secondary hidden md:flex flex-col">
         <!-- Logo / Header -->
         <div class="p-6 border-b border-orbit-border">
             <div class="flex items-center gap-3">
@@ -41,7 +46,7 @@
                class="w-full flex items-center gap-3 pl-3 pr-2 py-2 rounded-r-lg transition-all text-left text-sm">
                 <i data-lucide="layers" class="w-4 h-4 shrink-0"></i>
                 <span class="flex-1 truncate font-medium">All Events</span>
-                <span class="text-xs bg-orbit-bg-tertiary text-orbit-text-muted px-2 py-0.5 rounded-full">{{ counts.all }}</span>
+                <span class="text-xs bg-orbit-bg-tertiary text-orbit-text-muted px-2 py-0.5 rounded-full" aria-label="Recorded total: {{ counts.all }}">{{ counts.all }} recorded</span>
             </button>
             <div class="border-t border-orbit-border/60 !mt-3"></div>
 
@@ -62,9 +67,9 @@
                         <i data-lucide="{{ item.icon }}" class="w-4 h-4 text-{{ item.color }}-400 shrink-0"></i>
                         <span class="flex-1 truncate">{{ item.label }}</span>
                         {% if item.is_alert and item.count > 0 %}
-                        <span class="text-xs bg-rose-500/15 text-rose-400 px-2 py-0.5 rounded-full">{{ item.count }}</span>
+                        <span class="text-xs bg-rose-500/15 text-rose-400 px-2 py-0.5 rounded-full" aria-label="Recorded total: {{ item.count }}">{{ item.count }} recorded</span>
                         {% else %}
-                        <span class="text-xs bg-orbit-bg-tertiary text-orbit-text-muted px-2 py-0.5 rounded-full">{{ item.count }}</span>
+                        <span class="text-xs bg-orbit-bg-tertiary text-orbit-text-muted px-2 py-0.5 rounded-full" aria-label="Recorded total: {{ item.count }}">{{ item.count }} recorded</span>
                         {% endif %}
                     </button>
                     {% endfor %}
@@ -92,9 +97,9 @@
     </aside>
     
     <!-- Main Content Area -->
-    <main class="flex-1 flex flex-col overflow-hidden">
+    <main class="min-w-0 flex-1 flex flex-col overflow-hidden">
         <!-- Top Bar -->
-        <header class="h-14 border-b border-orbit-border bg-orbit-bg-secondary/50 backdrop-blur flex items-center justify-between px-6">
+        <header class="h-auto min-h-14 border-b border-orbit-border bg-orbit-bg-secondary/50 backdrop-blur flex flex-wrap items-center justify-between gap-y-2 px-4 py-2 xl:flex-nowrap xl:px-6 xl:py-0">
             <div class="flex items-center gap-4">
                 <h2 class="text-lg font-medium">
                     <span x-text="getTypeLabel()"></span>
@@ -106,14 +111,25 @@
                     <span>Live</span>
                 </div>
             </div>
+
+            <label class="min-w-0 flex-1 md:hidden">
+                <span class="sr-only">Event type</span>
+                <select aria-label="Event type" :value="currentType" @change="setType($event.target.value)" class="w-full min-w-0 bg-orbit-bg-primary border border-orbit-border rounded px-2 py-1.5 text-sm text-orbit-text-primary">
+                    <option value="all">All Events</option>
+                    {% for group in nav_groups %}{% for item in group.items %}
+                    <option value="{{ item.type }}">{{ item.label }}</option>
+                    {% endfor %}{% endfor %}
+                </select>
+            </label>
             
             <!-- Search Bar -->
-            <div class="flex-1 px-6">
+            <div class="order-3 basis-full min-w-0 px-0 xl:order-none xl:basis-auto xl:flex-1 xl:px-6">
                 <div class="relative">
                     <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-orbit-text-muted"></i>
                     <input 
                         type="search" 
                         x-model="searchQuery"
+                        @input="draftVersion++"
                         @input.debounce.300ms="search()"
                         placeholder="Search entries (UUID or text content)..."
                         class="w-full bg-orbit-bg-primary border border-orbit-border rounded-lg pl-9 pr-4 py-1.5 text-sm text-orbit-text-primary placeholder-orbit-text-muted focus:outline-none focus:border-orbit-accent-cyan transition-colors"
@@ -121,7 +137,7 @@
                 </div>
             </div>
 
-            <div class="flex items-center gap-3">
+            <div class="flex flex-wrap items-center justify-end gap-1 sm:gap-3">
                 <!-- Pause/Resume Button -->
                 <button 
                     @click="togglePause()"
@@ -164,16 +180,57 @@
         <div x-cloak x-show="feedError" role="status" aria-live="polite"
              class="flex items-center gap-3 border-b border-amber-500/30 px-6 py-2 text-sm text-amber-300">
             <span x-text="feedError"></span>
-            <button @click="refreshFeed(true, true)" class="underline">Retry</button>
+            <button x-show="!scopeValidationBlocked" @click="refreshFeed(true, true)" class="underline">Retry</button>
         </div>
 
-        <!-- Statistics Panel (only visible for All Events) -->
-        <div x-cloak x-show="currentType === 'all'"
-             class="border-b border-orbit-border bg-orbit-bg-secondary/40">
-            <div class="px-6 py-2">
-                {% include "orbit/partials/stats.html" %}
+        <section x-data="{ filtersExpanded: false }" aria-label="Explorer filters" class="border-b border-orbit-border bg-orbit-bg-secondary/40 px-4 py-3">
+            <div class="mb-2 flex items-center justify-between md:hidden">
+                <span class="text-sm font-medium text-orbit-text-secondary">Filters</span>
+                <button type="button" @click="filtersExpanded = !filtersExpanded" :aria-expanded="filtersExpanded.toString()" class="inline-flex items-center gap-1 rounded border border-orbit-border px-2 py-1 text-sm text-orbit-text-secondary">
+                    <i :data-lucide="filtersExpanded ? 'chevron-up' : 'chevron-down'" class="h-4 w-4"></i>
+                    <span x-text="filtersExpanded ? 'Hide filters' : 'Show filters'"></span>
+                </button>
+            </div>
+            <div class="orbit-filter-controls max-h-[70vh] overflow-y-auto md:max-h-none md:overflow-visible" :class="filtersExpanded ? 'is-expanded' : ''">
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
+                <label class="text-xs text-orbit-text-muted">Time range
+                    <select x-model="draftFilters.range" @change="draftVersion++" class="mt-1 w-full bg-orbit-bg-primary border border-orbit-border rounded px-2 py-1.5 text-sm text-orbit-text-primary">
+                        <option value="all">All time</option><option value="15m">Last 15 minutes</option><option value="1h">Last hour</option><option value="24h">Last 24 hours</option>
+                    </select>
+                </label>
+                <label class="text-xs text-orbit-text-muted">Path contains (requests/exceptions)
+                    <input x-model="draftFilters.path" @input="draftVersion++" type="search" class="mt-1 w-full bg-orbit-bg-primary border border-orbit-border rounded px-2 py-1.5 text-sm text-orbit-text-primary" placeholder="/checkout">
+                </label>
+                <label class="text-xs text-orbit-text-muted">Method (requests/exceptions)
+                    <select x-model="draftFilters.method" @change="draftVersion++" class="mt-1 w-full bg-orbit-bg-primary border border-orbit-border rounded px-2 py-1.5 text-sm text-orbit-text-primary">
+                        <option value="">Any method</option><option>GET</option><option>HEAD</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option><option>OPTIONS</option><option>CONNECT</option><option>TRACE</option>
+                    </select>
+                </label>
+                <label class="text-xs text-orbit-text-muted">Status (requests)
+                    <select x-model="draftFilters.status_class" @change="draftVersion++" class="mt-1 w-full bg-orbit-bg-primary border border-orbit-border rounded px-2 py-1.5 text-sm text-orbit-text-primary">
+                        <option value="">Any status</option><option value="2xx">2xx</option><option value="3xx">3xx</option><option value="4xx">4xx</option><option value="5xx">5xx</option>
+                    </select>
+                </label>
+                <label class="text-xs text-orbit-text-muted">Min entry duration (ms)
+                    <input x-model="draftFilters.min_duration_ms" @input="draftVersion++" type="number" min="0" max="86400000" step="1" class="mt-1 w-full bg-orbit-bg-primary border border-orbit-border rounded px-2 py-1.5 text-sm text-orbit-text-primary" placeholder="0">
+                </label>
+                <div class="flex items-end gap-2">
+                    <button @click="applyFilters()" class="inline-flex items-center gap-1.5 rounded bg-orbit-accent-cyan px-3 py-1.5 text-sm font-medium text-orbit-bg-primary"><i data-lucide="filter" class="h-4 w-4"></i>Apply</button>
+                    <button @click="clearFilters()" title="Clear filters" class="rounded border border-orbit-border p-1.5 text-orbit-text-secondary hover:text-orbit-text-primary"><i data-lucide="x" class="h-4 w-4"></i></button>
+                </div>
+            </div>
+            <p class="mt-2 text-xs text-orbit-text-muted" aria-live="polite" x-text="scopeSummary()"></p>
+            </div>
+        </section>
+
+        <!-- Scoped metrics are replaced atomically with the matching feed. -->
+        <div class="border-b border-orbit-border bg-orbit-bg-secondary/40">
+            <div id="orbit-metrics-container" class="px-6 py-2" aria-live="polite">
+                <span class="text-xs text-orbit-text-muted">Loading scoped metrics...</span>
             </div>
         </div>
+
+        <div class="sr-only" aria-live="polite" x-text="emptyScope ? 'No entries match this scope' : ''"></div>
         
         <!-- Feed Container -->
         <div class="flex-1 overflow-hidden flex relative">
@@ -223,7 +280,7 @@
                 x-transition:leave="transition ease-in duration-200"
                 x-transition:leave-start="translate-x-0"
                 x-transition:leave-end="translate-x-full"
-                class="w-[600px] border-l border-orbit-border bg-orbit-bg-secondary overflow-hidden flex flex-col"
+                class="absolute inset-0 z-20 w-full border-l border-orbit-border bg-orbit-bg-secondary overflow-hidden flex flex-col xl:relative xl:inset-auto xl:z-auto xl:w-[600px] xl:flex-none"
                 @click.away="closeDetail()">
                 
                 <!-- Detail Header -->
@@ -333,6 +390,23 @@ function orbitDashboard() {
         clear: '{{ orbit_urls.clear }}'
     };
     const initial = new URLSearchParams(window.location.search);
+    const FILTER_KEYS = ['type', 'q', 'tag', 'family', 'range', 'path', 'method', 'status_class', 'min_duration_ms'];
+    const FILTER_LABELS = { range: 'Time range', path: 'Path', method: 'HTTP method', status_class: 'Status', min_duration_ms: 'Minimum duration' };
+    const ENTRY_TYPES = new Set(['all', 'request', 'query', 'log', 'exception', 'job', 'command', 'cache', 'model', 'http_client', 'dump', 'mail', 'signal', 'redis', 'gate', 'transaction', 'storage', 'llm']);
+    const HTTP_METHODS = new Set(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'CONNECT', 'TRACE']);
+    const STATUS_CLASSES = new Set(['2xx', '3xx', '4xx', '5xx']);
+    const RANGE_MINUTES = { '15m': 15, '1h': 60, '24h': 1440 };
+    const emptyFilters = () => ({ type: 'all', q: '', tag: '', family: '', range: 'all', path: '', method: '', status_class: '', min_duration_ms: '' });
+    const readFilters = (params) => {
+        const filters = emptyFilters();
+        for (const key of FILTER_KEYS) {
+            const values = params.getAll(key);
+            if (values.length) filters[key] = values[values.length - 1];
+        }
+        if (!filters.type) filters.type = 'all';
+        return filters;
+    };
+    const hasRepeatedNewFilter = (params) => ['range', 'path', 'method', 'status_class', 'min_duration_ms'].some((key) => params.getAll(key).length > 1);
     const pageNumber = (value, fallback, maximum = Number.MAX_SAFE_INTEGER) => {
         if (value === null || !/^[+-]?\d+$/.test(value) || value.length > 64) return fallback;
         const number = Number(value);
@@ -341,7 +415,13 @@ function orbitDashboard() {
     };
 
     return {
-        currentType: initial.get('type') || '{{ current_type }}',
+        currentType: readFilters(initial).type || '{{ current_type }}',
+        appliedFilters: emptyFilters(),
+        draftFilters: readFilters(initial),
+        scopeValidationBlocked: false,
+        metricsHTML: '',
+        emptyScope: false,
+        draftVersion: 0,
         isPaused: false,
         detailOpen: false,
         detailEntryId: null,
@@ -350,9 +430,9 @@ function orbitDashboard() {
         pollingInterval: null,
         currentPage: pageNumber(initial.get('page'), 1),
         perPage: pageNumber(initial.get('per_page'), 25, 100),
-        searchQuery: initial.get('q') || '',
-        familyFilter: initial.get('family') || '',
-        tagFilter: initial.get('tag') || '',
+        searchQuery: readFilters(initial).q,
+        familyFilter: readFilters(initial).family,
+        tagFilter: readFilters(initial).tag,
         showOnboarding: false,
         isLoading: false,
         isLoadingDetail: false,
@@ -363,8 +443,36 @@ function orbitDashboard() {
         detailError: '',
         
         search() {
-            this.currentPage = 1;
-            this.refreshFeed().then(() => this.syncDetailWithFeed());
+            this.draftFilters.q = this.searchQuery;
+            this.applyFilters();
+        },
+
+        applyFilters(historyMode = 'push') {
+            this.draftFilters.q = this.searchQuery;
+            this.draftVersion++;
+            this.refreshFeed(false, true, historyMode, { ...this.draftFilters }, 1, null, true, true);
+        },
+
+        clearFilters() {
+            const reset = emptyFilters();
+            reset.type = this.currentType;
+            this.searchQuery = '';
+            this.draftFilters = reset;
+            this.applyFilters();
+        },
+
+        scopeSummary() {
+            const f = this.appliedFilters;
+            const active = [];
+            if (f.range !== 'all') active.push(f.range);
+            if (f.path) active.push(`path: ${f.path}`);
+            if (f.method) active.push(f.method);
+            if (f.status_class) active.push(f.status_class);
+            if (f.min_duration_ms) active.push(`>= ${f.min_duration_ms} ms`);
+            if (f.q) active.push(`search: ${f.q}`);
+            if (f.tag) active.push(`tag: ${f.tag}`);
+            if (f.family) active.push(`family: ${f.family}`);
+            return active.length ? `Applied scope: ${active.join(' · ')}` : 'Applied scope: all recorded entries';
         },
         
         init() {
@@ -374,10 +482,26 @@ function orbitDashboard() {
                 const path = e.detail.requestConfig?.path;
                 if (!path) return;
                 const url = new URL(path, window.location.origin);
-                this.currentPage = pageNumber(url.searchParams.get('page'), 1);
-                this.perPage = pageNumber(url.searchParams.get('per_page'), this.perPage, 100);
+                const page = pageNumber(url.searchParams.get('page'), 1);
+                const perPage = pageNumber(url.searchParams.get('per_page'), this.perPage, 100);
                 e.preventDefault();
-                this.refreshFeed(true, true);
+                this.refreshFeed(true, true, 'push', { ...this.appliedFilters }, page, perPage);
+            });
+            window.addEventListener('popstate', () => {
+                const params = new URLSearchParams(window.location.search);
+                const candidate = readFilters(params);
+                this.draftFilters = { ...candidate };
+                this.searchQuery = candidate.q;
+                this.draftVersion++;
+                if (hasRepeatedNewFilter(params)) {
+                    this.feedRequestVersion++;
+                    this.feedPending = false;
+                    this.isLoading = false;
+                    this.scopeValidationBlocked = true;
+                    this.feedError = 'Repeated filter values are invalid. Use one value per filter.';
+                    return;
+                }
+                this.refreshFeed(true, true, 'replace', candidate, pageNumber(params.get('page'), 1), pageNumber(params.get('per_page'), 25, 100), true, true);
             });
             // Show the onboarding tour on first visit only
             if (!localStorage.getItem('orbit:onboarded')) {
@@ -385,8 +509,13 @@ function orbitDashboard() {
                 this.$nextTick(() => lucide.createIcons());
             }
 
-            // Initial load
-            this.refreshFeed();
+            // Initial URL values are a candidate until the server confirms them.
+            if (hasRepeatedNewFilter(initial)) {
+                this.scopeValidationBlocked = true;
+                this.feedError = 'Repeated filter values are invalid. Use one value per filter.';
+            } else {
+                this.refreshFeed(true, false, 'replace', { ...this.draftFilters }, this.currentPage, this.perPage, true, true);
+            }
 
             // Start polling
             this.startPolling();
@@ -453,17 +582,15 @@ function orbitDashboard() {
             
             // Poll every 3 seconds
             this.pollingInterval = setInterval(() => {
-                if (!this.isPaused && !this.feedPending) {
+                if (!this.isPaused && !this.feedPending && !this.scopeValidationBlocked) {
                     this.refreshFeed();
                 }
             }, 3000);
         },
         
         setType(type) {
-            this.currentType = type;
-            this.currentPage = 1;  // Reset to page 1 when changing type
-            // Don't preserve page, show loading; then drop the panel if its entry is gone
-            this.refreshFeed(false, true).then(() => this.syncDetailWithFeed());
+            this.draftFilters.type = type;
+            this.applyFilters();
         },
         
         getTypeLabel() {
@@ -492,11 +619,17 @@ function orbitDashboard() {
         },
 
         
-        async refreshFeed(preservePage = true, showLoading = false) {
+        async refreshFeed(preservePage = true, showLoading = false, historyMode = 'replace', filterSnapshot = null, pageSnapshot = null, perPageSnapshot = null, hydrateDraft = false, allowValidationRecovery = false) {
+            if (this.scopeValidationBlocked && !allowValidationRecovery) return;
             const version = ++this.feedRequestVersion;
             this.feedPending = true;
             const container = document.getElementById('feed-container');
-            const page = preservePage ? this.currentPage : 1;
+            const page = pageSnapshot === null ? (preservePage ? this.currentPage : 1) : pageSnapshot;
+            const requestedFilters = { ...(filterSnapshot || this.appliedFilters) };
+            const requestedPerPage = perPageSnapshot || this.perPage;
+            const requestedDraftVersion = this.draftVersion;
+            let validationError = '';
+            this.feedError = '';
 
             // Only show loading for user-initiated actions (not polling)
             if (showLoading) {
@@ -507,19 +640,91 @@ function orbitDashboard() {
             const prevScroll = container.scrollTop;
 
             try {
-                const queryParams = new URLSearchParams({
-                    type: this.currentType,
-                    page: page,
-                    q: this.searchQuery,
-                    per_page: this.perPage
-                });
-                if (this.familyFilter) queryParams.set('family', this.familyFilter);
-                if (this.tagFilter) queryParams.set('tag', this.tagFilter);
+                const queryParams = new URLSearchParams();
+                for (const key of FILTER_KEYS) if (requestedFilters[key]) queryParams.set(key, requestedFilters[key]);
+                queryParams.set('page', page);
+                queryParams.set('per_page', requestedPerPage);
                 const response = await fetch(`${URLS.feed}?${queryParams}`);
-                if (!response.ok) throw new Error('Feed request failed');
+                if (!response.ok) {
+                    if (response.status === 400) {
+                        let fields = [];
+                        try {
+                            const payload = await response.json();
+                            if (payload?.error === 'invalid_filters' && payload.fields && typeof payload.fields === 'object' && !Array.isArray(payload.fields)) {
+                                fields = Object.keys(payload.fields).filter((key) => Object.prototype.hasOwnProperty.call(FILTER_LABELS, key));
+                            }
+                        } catch {
+                            fields = [];
+                        }
+                        if (version !== this.feedRequestVersion) return;
+                        this.scopeValidationBlocked = true;
+                        validationError = fields.length
+                            ? `Invalid filters: ${fields.map((key) => FILTER_LABELS[key]).join(', ')}. Correct them and apply again.`
+                            : 'Some filters are invalid. Correct them and apply again.';
+                    }
+                    throw new Error('Feed request failed');
+                }
                 const html = await response.text();
                 if (version === this.feedRequestVersion) {
-                    container.innerHTML = html;
+                    const parsed = new DOMParser().parseFromString(html, 'text/html');
+                    const feed = parsed.querySelector('[data-orbit-feed]');
+                    const metrics = parsed.querySelector('template[data-orbit-metrics]');
+                    const stateElement = parsed.getElementById('orbit-explorer-state');
+                    if (!feed || !metrics || !stateElement || stateElement.type !== 'application/json'
+                        || parsed.querySelectorAll('[data-orbit-feed]').length !== 1
+                        || parsed.querySelectorAll('template[data-orbit-metrics]').length !== 1
+                        || parsed.querySelectorAll('script#orbit-explorer-state[type="application/json"]').length !== 1
+                        || feed.querySelector('script, [hx-swap-oob]')
+                        || metrics.content.querySelector('script')) throw new Error('Invalid explorer response');
+                    const explorerState = JSON.parse(stateElement.textContent);
+                    const isCount = (value, minimum) => Number.isSafeInteger(value) && value >= minimum;
+                    const isIso = (value) => typeof value === 'string'
+                        && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?(?:Z|[+-]\d\d:\d\d)$/.test(value)
+                        && Number.isFinite(Date.parse(value));
+                    if (!explorerState || !explorerState.filters || !isCount(explorerState.page, 1)
+                        || !isCount(explorerState.per_page, 1) || explorerState.per_page > 100
+                        || !isCount(explorerState.total_count, 0) || !isCount(explorerState.total_entries, 0)
+                        || typeof explorerState.grouped !== 'boolean' || !explorerState.window) throw new Error('Invalid explorer state');
+                    for (const key of FILTER_KEYS) if (typeof explorerState.filters[key] !== 'string') throw new Error('Invalid explorer filters');
+                    const filters = explorerState.filters;
+                    if (!ENTRY_TYPES.has(filters.type) || !['all', ...Object.keys(RANGE_MINUTES)].includes(filters.range)
+                        || filters.path.length > 512 || filters.path !== filters.path.trim()
+                        || (filters.method !== '' && !HTTP_METHODS.has(filters.method))
+                        || (filters.status_class !== '' && !STATUS_CLASSES.has(filters.status_class))
+                        || (filters.min_duration_ms !== '' && (!/^(0|[1-9]\d*)$/.test(filters.min_duration_ms) || Number(filters.min_duration_ms) > 86400000))) throw new Error('Invalid explorer filters');
+                    const maxPage = Math.max(1, Math.ceil(explorerState.total_count / explorerState.per_page));
+                    if (explorerState.page > maxPage || (explorerState.grouped && explorerState.total_count > explorerState.total_entries)) throw new Error('Invalid explorer pagination');
+                    const scopeWindow = explorerState.window;
+                    if (filters.range === 'all') {
+                        if (scopeWindow.start !== null || scopeWindow.end !== null) throw new Error('Invalid explorer window');
+                    } else if (!isIso(scopeWindow.start) || !isIso(scopeWindow.end)
+                        || Date.parse(scopeWindow.end) < Date.parse(scopeWindow.start)
+                        || Date.parse(scopeWindow.end) - Date.parse(scopeWindow.start) !== RANGE_MINUTES[filters.range] * 60000) {
+                        throw new Error('Invalid explorer window');
+                    }
+                    const metricsHTML = metrics.innerHTML;
+                    const canonicalFilters = { ...explorerState.filters };
+                    const currentUrl = new URL(window.location.href || `${window.location.pathname}${window.location.search}${window.location.hash}`, window.location.origin);
+                    currentUrl.search = '';
+                    for (const key of FILTER_KEYS) if (canonicalFilters[key]) currentUrl.searchParams.set(key, canonicalFilters[key]);
+                    currentUrl.searchParams.set('page', String(explorerState.page));
+                    currentUrl.searchParams.set('per_page', String(explorerState.per_page));
+                    container.innerHTML = feed.innerHTML;
+                    document.getElementById('orbit-metrics-container').innerHTML = metricsHTML;
+                    this.metricsHTML = metricsHTML;
+                    this.appliedFilters = canonicalFilters;
+                    if (hydrateDraft && this.draftVersion === requestedDraftVersion) {
+                        this.draftFilters = { ...canonicalFilters };
+                        this.searchQuery = canonicalFilters.q;
+                    }
+                    this.currentType = canonicalFilters.type;
+                    this.familyFilter = canonicalFilters.family;
+                    this.tagFilter = canonicalFilters.tag;
+                    this.currentPage = explorerState.page;
+                    this.perPage = explorerState.per_page;
+                    this.emptyScope = explorerState.total_entries === 0;
+                    if (historyMode !== 'none') window.history[historyMode === 'push' ? 'pushState' : 'replaceState']({}, '', `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`);
+                    this.scopeValidationBlocked = false;
                     this.feedError = '';
                     htmx.process(container);  // Process HTMX attributes on new content
                     lucide.createIcons();
@@ -527,11 +732,13 @@ function orbitDashboard() {
 
                     // Keep the open panel's prev/next bounds in sync with the new rows
                     if (this.detailOpen) this.updateDetailPosition();
+                    this.syncDetailWithFeed();
 
                 }
             } catch (error) {
                 if (version === this.feedRequestVersion) {
-                    this.feedError = 'Could not refresh entries. Showing the last loaded results.';
+                    if (hydrateDraft) this.scopeValidationBlocked = true;
+                    this.feedError = validationError || 'Could not refresh entries. Showing the last loaded results.';
                 }
             } finally {
                 if (version === this.feedRequestVersion) {

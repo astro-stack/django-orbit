@@ -255,14 +255,21 @@ metadata-first evidence. These are existing capabilities, not future tools.
 - Preserve feed filters across pagination and bound malformed pagination input.
 - Prevent stale asynchronous responses and clarify polling versus capture state.
 
-### Next: Explorer
+### Explorer (Unreleased)
 
-- Add structured time, path, method, status, duration and signal filters.
-- Make active filters visible and reproduce the same selection through URLs.
-- Keep feed results, metrics and exports scoped consistently.
-- Add a request-oriented view while retaining the raw Events view.
+- Structured time, path, method, status-class and minimum-duration filters are
+  implemented for the raw feed. Path and method match stored request and
+  exception fields directly; path matching requires a JSON string value, with
+  SQLite, PostgreSQL and MySQL compile paths and fail-closed behavior for other
+  database vendors.
+  Status applies only to requests. Minimum duration uses each entry's own
+  duration across entry types. No filter expands a request family or inherits
+  request fields onto related queries.
+- Applied scope and effective pagination are represented in canonical URLs;
+  feed and metrics commit together from a server-confirmed response.
+- Request-oriented aggregation while retaining the raw Events view remains next.
 
-### Then: Investigation Workspace
+### Next: Investigation Workspace
 
 - Organize detail into summary, timeline, evidence and agent handoff.
 - Carry evidence quality, missing fields and truncation into existing tools.
@@ -272,6 +279,8 @@ metadata-first evidence. These are existing capabilities, not future tools.
 
 ### Later / Separate Compatibility Work
 
+- Distinguish installed, disabled and unavailable optional watcher integrations
+  in Health; an absent integration must not be reported as active.
 - Evaluate MCP SDK 2.x with protocol and tool-call tests before changing the
   supported dependency range (#66).
 - Expand AI watcher integrations to LangChain, LiteLLM and provider HTTP fallbacks.

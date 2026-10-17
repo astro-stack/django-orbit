@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add structured Explorer filters and server-scoped metrics with atomic feed,
+  metrics and URL updates. Request-view aggregation and workspace views remain
+  planned.
+
 ### Fixed
 
 - Keep schema-command recording suspension active when command telemetry is
