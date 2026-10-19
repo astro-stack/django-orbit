@@ -48,6 +48,10 @@ Django Orbit is an AI agent-native observability and debugging tool for Django a
 | Agent-native MCP tools | No | Yes |
 | Ticket-to-fix handoff bundles | No | Yes |
 
+## Unreleased
+
+- **Explorer filters and scoped metrics**: structured time and request filters update the feed and metrics from one server-confirmed scope; see the [Dashboard Guide](dashboard.md). Request-view aggregation and a workspace view remain planned.
+
 ## What's New in v0.14.0
 
 - **Compact MCP context**: `summarize_request_family` returns metadata-only counts and observed signals, preserving capture warnings and configured limits.

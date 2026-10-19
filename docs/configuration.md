@@ -145,7 +145,7 @@ ORBIT_CONFIG = {
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `RECORD_COMMANDS` | `True` | Django management commands |
+| `RECORD_COMMANDS` | `True` | Django management-command telemetry; schema-operation safety remains active when disabled |
 | `RECORD_CACHE` | `True` | Cache operations (hits/misses) |
 | `RECORD_MODELS` | `True` | ORM signals (post_save, post_delete) |
 | `RECORD_HTTP_CLIENT` | `True` | Outgoing HTTP requests (httpx, requests) |
@@ -156,6 +156,11 @@ With `RECORD_SIGNALS=True`, `IGNORE_SIGNALS` filters common ORM lifecycle
 signals (`pre_init`, `post_init`, `pre_save`, `post_save`, `pre_delete`,
 `post_delete`, `m2m_changed`). Set `IGNORE_SIGNALS=[]` to include those dispatches
 deliberately. `RECORD_MODELS` is independent and continues recording model changes.
+
+Schema-changing commands such as `migrate`, `flush` and `loaddata` suspend
+Orbit recording for their execution context. This guard remains active even
+with `RECORD_COMMANDS=False` or when the command is in `IGNORE_COMMANDS`.
+Nested commands and failures restore the previous recording state.
 
 #### Phase 3 Watchers (v0.5.0+)
 

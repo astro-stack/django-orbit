@@ -1,5 +1,17 @@
 # Security
 
+## Agent Export Boundaries
+
+`MCP_INCLUDE_PAYLOADS=False` omits payloads and derived free-text summaries,
+tags and query-analysis SQL previews from agent serializers and incident bundles.
+It does not anonymize identifiers, endpoint paths or other operational context.
+Explicit per-call payload inclusion cannot override a disabled configuration.
+
+Payload-enabled exports mask configured sensitive keys, not arbitrary secrets
+inside messages or SQL literals. Bundle reports expose policy coverage and an
+unknown residual risk; they do not certify universal redaction. Review the
+exact handoff before sharing it with a coding agent.
+
 !!! warning "Development Only"
     Django Orbit is designed for **development and debugging purposes**. Do not use it in production without proper security measures.
 

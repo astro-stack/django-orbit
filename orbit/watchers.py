@@ -11,15 +11,18 @@ Additional recorders for Phase 1 features:
 import functools
 import logging
 import time
-from typing import Any, Dict, Optional
 from contextlib import contextmanager
+from contextvars import ContextVar
+from typing import Any, Dict, Optional
 
 try:
     from cachalot.api import cachalot_disabled
 except ImportError:
+
     @contextmanager
     def cachalot_disabled(all_queries=False):
         yield
+
 
 from orbit.conf import get_config
 
@@ -29,10 +32,10 @@ logger = logging.getLogger(__name__)
 _orbit_table_ready: bool = False
 
 # Set while a schema-affecting command (e.g. migrate) runs, so watchers don't write to
-# OrbitEntry mid-migration. `_table_exists()` only proves the *table* exists — it can't see
+# OrbitEntry mid-migration. `_table_exists()` proves the table exists, but cannot see
 # that a newly added column isn't there yet, and a failed insert poisons the migration
 # transaction. Suspending recording around migrate makes schema changes safe to ship.
-_recording_suspended: bool = False
+_recording_suspended = ContextVar("orbit_recording_suspended", default=False)
 
 
 def _table_exists() -> bool:
@@ -48,7 +51,7 @@ def _table_exists() -> bool:
     This prevents excessive connection usage when many watcher events fire
     per request (Issue #15).
     """
-    if _recording_suspended:
+    if _recording_suspended.get():
         return False
     global _orbit_table_ready
     if _orbit_table_ready:
@@ -146,7 +149,7 @@ def record_command(
 
 def install_command_watcher():
     """
-    Install the command watcher by patching Django's BaseCommand.execute.
+    Install schema safety and optional command telemetry on BaseCommand.execute.
     """
     global _original_execute
 
@@ -162,25 +165,32 @@ def install_command_watcher():
         def patched_execute(self, *args, **options):
             command_name = self.__class__.__module__.split(".")[-1]
 
-            # Check if we should skip recording this command
+            # Suspend all OrbitEntry writes while a schema-affecting command runs, so a
+            # mid-migration write (e.g. a model-watcher signal for a new column not yet
+            # added) can't poison the migration transaction.
+            schema_commands = {
+                "migrate",
+                "makemigrations",
+                "flush",
+                "loaddata",
+                "sqlmigrate",
+            }
+            if command_name in schema_commands:
+                token = _recording_suspended.set(True)
+                try:
+                    return _original_execute(self, *args, **options)
+                finally:
+                    _recording_suspended.reset(token)
+
             config = get_config()
             ignore_commands = config.get(
                 "IGNORE_COMMANDS", ["runserver", "shell", "dbshell", "showmigrations"]
             )
-            if command_name in ignore_commands:
+            if (
+                not config.get("RECORD_COMMANDS", True)
+                or command_name in ignore_commands
+            ):
                 return _original_execute(self, *args, **options)
-
-            # Suspend all OrbitEntry writes while a schema-affecting command runs, so a
-            # mid-migration write (e.g. a model-watcher signal for a new column not yet
-            # added) can't poison the migration transaction.
-            schema_commands = {"migrate", "makemigrations", "flush", "loaddata", "sqlmigrate"}
-            if command_name in schema_commands:
-                global _recording_suspended
-                _recording_suspended = True
-                try:
-                    return _original_execute(self, *args, **options)
-                finally:
-                    _recording_suspended = False
 
             # Execute command normally WITHOUT redirecting stdout/stderr
             # This preserves interactivity for commands like collectstatic
@@ -198,7 +208,7 @@ def install_command_watcher():
             finally:
                 duration_ms = (time.perf_counter() - start_time) * 1000
 
-                # Record to Orbit (without captured output to avoid breaking interactivity)
+                # Avoid captured output to preserve command interactivity.
                 try:
                     record_command(
                         command_name=command_name,
@@ -230,20 +240,20 @@ _cache_patched = False
 def _detect_cache_backend_type(cache) -> str:
     """
     Detect the type of cache backend.
-    
+
     Returns: redis, memcached, file, locmem, db, valkey, or unknown
     """
     class_name = cache.__class__.__name__.lower()
     module_name = cache.__class__.__module__.lower()
-    
+
     # Check for Valkey first (it's a Redis fork, may use redis client)
     if "valkey" in module_name or "valkey" in class_name:
         return "valkey"
-    
+
     # Redis backends
     if "redis" in class_name or "redis" in module_name:
         return "redis"
-    
+
     # Memcached backends (django.core.cache.backends.memcached)
     if "memcached" in class_name or "memcached" in module_name:
         # Distinguish between pymemcache and python-memcached
@@ -254,23 +264,23 @@ def _detect_cache_backend_type(cache) -> str:
             elif "pymemcache" in module_name or "pymemcache" in str(type(cache._cache)):
                 return "memcached_pymemcache"
         return "memcached"
-    
+
     # File-based cache
     if "filebased" in class_name or "filebased" in module_name:
         return "file"
-    
+
     # Local memory cache
     if "locmem" in class_name or "locmem" in module_name:
         return "locmem"
-    
+
     # Database cache
     if "database" in class_name or "db" in class_name:
         return "database"
-    
+
     # Dummy cache (for testing)
     if "dummy" in class_name:
         return "dummy"
-    
+
     return "unknown"
 
 
@@ -321,7 +331,7 @@ def record_cache_operation(
 
     if ttl is not None:
         payload["ttl"] = ttl
-    
+
     if keys_count is not None:
         payload["keys_count"] = keys_count
 
@@ -363,7 +373,7 @@ def install_cache_watcher():
 def _patch_cache_backend(cache, alias: str):
     """Patch a single cache backend with comprehensive operation tracking."""
     backend_type = _detect_cache_backend_type(cache)
-    
+
     original_get = cache.get
     original_set = cache.set
     original_delete = cache.delete
@@ -390,8 +400,12 @@ def _patch_cache_backend(cache, alias: str):
 
         try:
             record_cache_operation(
-                "get", key, hit=hit, backend=alias, 
-                backend_type=backend_type, duration_ms=duration_ms
+                "get",
+                key,
+                hit=hit,
+                backend=alias,
+                backend_type=backend_type,
+                duration_ms=duration_ms,
             )
         except Exception:
             pass
@@ -404,8 +418,12 @@ def _patch_cache_backend(cache, alias: str):
         duration_ms = (time.perf_counter() - start_time) * 1000
         try:
             record_cache_operation(
-                "set", key, backend=alias, backend_type=backend_type,
-                ttl=timeout, duration_ms=duration_ms
+                "set",
+                key,
+                backend=alias,
+                backend_type=backend_type,
+                ttl=timeout,
+                duration_ms=duration_ms,
             )
         except Exception:
             pass
@@ -418,8 +436,11 @@ def _patch_cache_backend(cache, alias: str):
         duration_ms = (time.perf_counter() - start_time) * 1000
         try:
             record_cache_operation(
-                "delete", key, backend=alias, backend_type=backend_type,
-                duration_ms=duration_ms
+                "delete",
+                key,
+                backend=alias,
+                backend_type=backend_type,
+                duration_ms=duration_ms,
             )
         except Exception:
             pass
@@ -428,9 +449,10 @@ def _patch_cache_backend(cache, alias: str):
     cache.get = patched_get
     cache.set = patched_set
     cache.delete = patched_delete
-    
+
     # Patch clear() if available
     if original_clear is not None:
+
         @functools.wraps(original_clear)
         def patched_clear():
             start_time = time.perf_counter()
@@ -438,25 +460,30 @@ def _patch_cache_backend(cache, alias: str):
             duration_ms = (time.perf_counter() - start_time) * 1000
             try:
                 record_cache_operation(
-                    "clear", "*", backend=alias, backend_type=backend_type,
-                    duration_ms=duration_ms
+                    "clear",
+                    "*",
+                    backend=alias,
+                    backend_type=backend_type,
+                    duration_ms=duration_ms,
                 )
             except Exception:
                 pass
             return result
+
         cache.clear = patched_clear
-    
+
     # Patch get_many() if available
     if original_get_many is not None:
+
         @functools.wraps(original_get_many)
         def patched_get_many(keys, version=None):
             start_time = time.perf_counter()
             result = original_get_many(keys, version=version)
             duration_ms = (time.perf_counter() - start_time) * 1000
-            
+
             hits = len(result) if result else 0
             total = len(keys) if keys else 0
-            
+
             try:
                 record_cache_operation(
                     "get_many",
@@ -470,18 +497,20 @@ def _patch_cache_backend(cache, alias: str):
             except Exception:
                 pass
             return result
+
         cache.get_many = patched_get_many
-    
+
     # Patch set_many() if available
     if original_set_many is not None:
+
         @functools.wraps(original_set_many)
         def patched_set_many(mapping, timeout=None, version=None):
             start_time = time.perf_counter()
             result = original_set_many(mapping, timeout=timeout, version=version)
             duration_ms = (time.perf_counter() - start_time) * 1000
-            
+
             keys_count = len(mapping) if mapping else 0
-            
+
             try:
                 record_cache_operation(
                     "set_many",
@@ -495,18 +524,20 @@ def _patch_cache_backend(cache, alias: str):
             except Exception:
                 pass
             return result
+
         cache.set_many = patched_set_many
-    
+
     # Patch delete_many() if available
     if original_delete_many is not None:
+
         @functools.wraps(original_delete_many)
         def patched_delete_many(keys, version=None):
             start_time = time.perf_counter()
             result = original_delete_many(keys, version=version)
             duration_ms = (time.perf_counter() - start_time) * 1000
-            
+
             keys_count = len(keys) if keys else 0
-            
+
             try:
                 record_cache_operation(
                     "delete_many",
@@ -519,10 +550,12 @@ def _patch_cache_backend(cache, alias: str):
             except Exception:
                 pass
             return result
+
         cache.delete_many = patched_delete_many
-    
+
     # Patch incr() if available
     if original_incr is not None:
+
         @functools.wraps(original_incr)
         def patched_incr(key, delta=1, version=None):
             start_time = time.perf_counter()
@@ -530,16 +563,21 @@ def _patch_cache_backend(cache, alias: str):
             duration_ms = (time.perf_counter() - start_time) * 1000
             try:
                 record_cache_operation(
-                    "incr", key, backend=alias, backend_type=backend_type,
-                    duration_ms=duration_ms
+                    "incr",
+                    key,
+                    backend=alias,
+                    backend_type=backend_type,
+                    duration_ms=duration_ms,
                 )
             except Exception:
                 pass
             return result
+
         cache.incr = patched_incr
-    
+
     # Patch decr() if available
     if original_decr is not None:
+
         @functools.wraps(original_decr)
         def patched_decr(key, delta=1, version=None):
             start_time = time.perf_counter()
@@ -547,12 +585,16 @@ def _patch_cache_backend(cache, alias: str):
             duration_ms = (time.perf_counter() - start_time) * 1000
             try:
                 record_cache_operation(
-                    "decr", key, backend=alias, backend_type=backend_type,
-                    duration_ms=duration_ms
+                    "decr",
+                    key,
+                    backend=alias,
+                    backend_type=backend_type,
+                    duration_ms=duration_ms,
                 )
             except Exception:
                 pass
             return result
+
         cache.decr = patched_decr
 
 
@@ -855,12 +897,16 @@ def record_mail(message):
         if isinstance(attachment, tuple) and len(attachment) >= 2:
             name = attachment[0]
             content = attachment[1]
-            content_type = attachment[2] if len(attachment) > 2 else "application/octet-stream"
-            attachments.append({
-                "name": name,
-                "size": len(content) if content else 0,
-                "content_type": content_type,
-            })
+            content_type = (
+                attachment[2] if len(attachment) > 2 else "application/octet-stream"
+            )
+            attachments.append(
+                {
+                    "name": name,
+                    "size": len(content) if content else 0,
+                    "content_type": content_type,
+                }
+            )
 
     payload = {
         "subject": getattr(message, "subject", ""),
@@ -885,7 +931,7 @@ def record_mail(message):
             OrbitEntry.objects.create(
                 type=OrbitEntry.TYPE_MAIL,
                 payload=payload,
-        )
+            )
     except Exception:
         pass
 
@@ -951,10 +997,10 @@ def record_signal(signal, sender, **kwargs):
         # Try to get a cleaner name from the signal object
         signal_str = str(signal)
         if "Signal" in signal_str and "object at" in signal_str:
-            # It's a raw signal object like <django.dispatch.dispatcher.Signal object at 0x...>
+            # A raw Signal object representation has no useful dispatch name.
             # Try to extract module path
-            if hasattr(signal, '__module__'):
-                module = getattr(signal, '__module__', '')
+            if hasattr(signal, "__module__"):
+                module = getattr(signal, "__module__", "")
                 if module:
                     signal_name = f"{module}.signal"
                 else:
@@ -987,7 +1033,11 @@ def record_signal(signal, sender, **kwargs):
             receiver = receiver_ref[1]
             if callable(receiver):
                 try:
-                    receivers.append(receiver().__name__ if hasattr(receiver, '__call__') else str(receiver))
+                    receivers.append(
+                        receiver().__name__
+                        if hasattr(receiver, "__call__")
+                        else str(receiver)
+                    )
                 except Exception:
                     receivers.append(str(receiver))
 
@@ -1022,23 +1072,37 @@ def install_signal_watcher():
     """
     Install the signal watcher by patching Signal.send.
     """
-    global _signal_patched, _signal_registry
+    global _signal_patched
 
     if _signal_patched:
         return
 
     try:
-        from django.dispatch import Signal
-
         # Build signal registry for friendly names
         from django.db.models import signals as model_signals
-        _signal_registry[id(model_signals.pre_save)] = "django.db.models.signals.pre_save"
-        _signal_registry[id(model_signals.post_save)] = "django.db.models.signals.post_save"
-        _signal_registry[id(model_signals.pre_delete)] = "django.db.models.signals.pre_delete"
-        _signal_registry[id(model_signals.post_delete)] = "django.db.models.signals.post_delete"
-        _signal_registry[id(model_signals.pre_init)] = "django.db.models.signals.pre_init"
-        _signal_registry[id(model_signals.post_init)] = "django.db.models.signals.post_init"
-        _signal_registry[id(model_signals.m2m_changed)] = "django.db.models.signals.m2m_changed"
+        from django.dispatch import Signal
+
+        _signal_registry[id(model_signals.pre_save)] = (
+            "django.db.models.signals.pre_save"
+        )
+        _signal_registry[id(model_signals.post_save)] = (
+            "django.db.models.signals.post_save"
+        )
+        _signal_registry[id(model_signals.pre_delete)] = (
+            "django.db.models.signals.pre_delete"
+        )
+        _signal_registry[id(model_signals.post_delete)] = (
+            "django.db.models.signals.post_delete"
+        )
+        _signal_registry[id(model_signals.pre_init)] = (
+            "django.db.models.signals.pre_init"
+        )
+        _signal_registry[id(model_signals.post_init)] = (
+            "django.db.models.signals.post_init"
+        )
+        _signal_registry[id(model_signals.m2m_changed)] = (
+            "django.db.models.signals.m2m_changed"
+        )
 
         original_send = Signal.send
 
@@ -1108,7 +1172,7 @@ def record_celery_task(
         serialized_args = repr(args)[:500]
     except Exception:
         serialized_args = "<unserializable>"
-    
+
     try:
         serialized_kwargs = repr(kwargs)[:500]
     except Exception:
@@ -1153,21 +1217,21 @@ def install_celery_watcher():
         return
 
     try:
-        from celery import signals
-        from celery import current_task
         import threading
+
+        from celery import signals
 
         # Track task start times
         _task_start_times = threading.local()
 
         @signals.task_prerun.connect
         def task_prerun_handler(task_id, task, args, kwargs, **kw):
-            _task_start_times.times = getattr(_task_start_times, 'times', {})
+            _task_start_times.times = getattr(_task_start_times, "times", {})
             _task_start_times.times[task_id] = time.time()
 
         @signals.task_postrun.connect
         def task_postrun_handler(task_id, task, args, kwargs, retval, state, **kw):
-            start_time = getattr(_task_start_times, 'times', {}).get(task_id)
+            start_time = getattr(_task_start_times, "times", {}).get(task_id)
             duration_ms = 0
             if start_time:
                 duration_ms = (time.time() - start_time) * 1000
@@ -1182,12 +1246,14 @@ def install_celery_watcher():
                 status=status,
                 result=retval if state == "SUCCESS" else None,
                 duration_ms=duration_ms,
-                retries=getattr(task.request, 'retries', 0),
+                retries=getattr(task.request, "retries", 0),
             )
 
         @signals.task_failure.connect
-        def task_failure_handler(task_id, exception, args, kwargs, traceback, einfo, **kw):
-            start_time = getattr(_task_start_times, 'times', {}).get(task_id)
+        def task_failure_handler(
+            task_id, exception, args, kwargs, traceback, einfo, **kw
+        ):
+            start_time = getattr(_task_start_times, "times", {}).get(task_id)
             duration_ms = 0
             if start_time:
                 duration_ms = (time.time() - start_time) * 1000
@@ -1195,7 +1261,11 @@ def install_celery_watcher():
 
             record_celery_task(
                 task_id=task_id,
-                task_name=kw.get('sender', {}).name if hasattr(kw.get('sender'), 'name') else 'unknown',
+                task_name=(
+                    kw.get("sender", {}).name
+                    if hasattr(kw.get("sender"), "name")
+                    else "unknown"
+                ),
                 args=args,
                 kwargs=kwargs,
                 status="failure",
@@ -1284,13 +1354,34 @@ def install_redis_watcher():
 
         # Commands to track
         tracked_commands = [
-            'get', 'set', 'setex', 'setnx', 'delete', 'del',
-            'hget', 'hset', 'hdel', 'hgetall',
-            'lpush', 'rpush', 'lpop', 'rpop', 'lrange',
-            'sadd', 'srem', 'smembers',
-            'zadd', 'zrem', 'zrange',
-            'incr', 'decr', 'expire', 'ttl',
-            'exists', 'keys', 'scan',
+            "get",
+            "set",
+            "setex",
+            "setnx",
+            "delete",
+            "del",
+            "hget",
+            "hset",
+            "hdel",
+            "hgetall",
+            "lpush",
+            "rpush",
+            "lpop",
+            "rpop",
+            "lrange",
+            "sadd",
+            "srem",
+            "smembers",
+            "zadd",
+            "zrem",
+            "zrange",
+            "incr",
+            "decr",
+            "expire",
+            "ttl",
+            "exists",
+            "keys",
+            "scan",
         ]
 
         original_execute_command = redis.Redis.execute_command
@@ -1300,10 +1391,12 @@ def install_redis_watcher():
             if not args:
                 return original_execute_command(self, *args, **options)
 
-            command = args[0].lower() if isinstance(args[0], str) else str(args[0]).lower()
+            command = (
+                args[0].lower() if isinstance(args[0], str) else str(args[0]).lower()
+            )
             key = args[1] if len(args) > 1 else None
             if isinstance(key, bytes):
-                key = key.decode('utf-8', errors='replace')
+                key = key.decode("utf-8", errors="replace")
 
             start_time = time.time()
             error = None
@@ -1426,7 +1519,7 @@ def install_gates_watcher():
             result = original_has_perm(self, user_obj, perm, obj)
 
             try:
-                user_str = str(getattr(user_obj, 'username', user_obj))
+                user_str = str(getattr(user_obj, "username", user_obj))
                 obj_str = None
                 if obj:
                     obj_str = f"{type(obj).__name__}:{getattr(obj, 'pk', obj)}"
@@ -1468,15 +1561,17 @@ def install_djangoq_watcher():
         return
 
     try:
-        from django_q.signals import pre_execute, post_execute
-        from orbit.models import OrbitEntry
         import threading
+
+        from django_q.signals import post_execute, pre_execute
+
+        from orbit.models import OrbitEntry
 
         _task_start_times = threading.local()
 
         def pre_execute_handler(sender, func, task, **kwargs):
-            _task_start_times.times = getattr(_task_start_times, 'times', {})
-            _task_start_times.times[task.get('id', '')] = time.time()
+            _task_start_times.times = getattr(_task_start_times, "times", {})
+            _task_start_times.times[task.get("id", "")] = time.time()
 
         def post_execute_handler(sender, task, **kwargs):
             config = get_config()
@@ -1486,8 +1581,8 @@ def install_djangoq_watcher():
             if not _table_exists():
                 return
 
-            task_id = task.get('id', '')
-            start_time = getattr(_task_start_times, 'times', {}).get(task_id)
+            task_id = task.get("id", "")
+            start_time = getattr(_task_start_times, "times", {}).get(task_id)
             duration_ms = 0
             if start_time:
                 duration_ms = (time.time() - start_time) * 1000
@@ -1495,15 +1590,15 @@ def install_djangoq_watcher():
 
             payload = {
                 "task_id": task_id,
-                "name": task.get('name', 'unknown'),
-                "status": "success" if task.get('success') else "failure",
+                "name": task.get("name", "unknown"),
+                "status": "success" if task.get("success") else "failure",
                 "queue": "django-q",
-                "args": repr(task.get('args', []))[:500],
-                "kwargs": repr(task.get('kwargs', {}))[:500],
+                "args": repr(task.get("args", []))[:500],
+                "kwargs": repr(task.get("kwargs", {}))[:500],
             }
 
-            if not task.get('success'):
-                payload["error"] = task.get('result', 'Unknown error')
+            if not task.get("success"):
+                payload["error"] = task.get("result", "Unknown error")
 
             try:
                 with cachalot_disabled():
@@ -1544,7 +1639,7 @@ def install_rq_watcher():
 
     try:
         from rq import Worker
-        from rq.job import Job
+
         from orbit.models import OrbitEntry
 
         original_perform_job = Worker.perform_job
@@ -1566,7 +1661,7 @@ def install_rq_watcher():
 
             payload = {
                 "task_id": job.id,
-                "name": job.func_name or 'unknown',
+                "name": job.func_name or "unknown",
                 "status": job.get_status() or "unknown",
                 "queue": queue.name,
                 "args": repr(job.args)[:500],
@@ -1575,7 +1670,9 @@ def install_rq_watcher():
 
             if job.is_failed:
                 payload["status"] = "failure"
-                payload["error"] = str(job.exc_info) if job.exc_info else "Unknown error"
+                payload["error"] = (
+                    str(job.exc_info) if job.exc_info else "Unknown error"
+                )
 
             try:
                 with cachalot_disabled():
@@ -1617,9 +1714,10 @@ def install_apscheduler_watcher():
 
     try:
         from apscheduler.events import (
-            EVENT_JOB_EXECUTED, EVENT_JOB_ERROR, EVENT_JOB_MISSED,
-            JobExecutionEvent
+            EVENT_JOB_MISSED,
+            JobExecutionEvent,
         )
+
         from orbit.models import OrbitEntry
 
         def job_listener(event):
@@ -1639,12 +1737,12 @@ def install_apscheduler_watcher():
             if event.exception:
                 status = "failure"
                 error = str(event.exception)
-            elif hasattr(event, 'code'):
+            elif hasattr(event, "code"):
                 if event.code == EVENT_JOB_MISSED:
                     status = "missed"
 
             duration_ms = 0
-            if hasattr(event, 'run_time') and event.run_time:
+            if hasattr(event, "run_time") and event.run_time:
                 duration_ms = event.run_time * 1000
 
             payload = {
@@ -1652,7 +1750,11 @@ def install_apscheduler_watcher():
                 "name": event.job_id,
                 "status": status,
                 "queue": "apscheduler",
-                "scheduled_time": event.scheduled_run_time.isoformat() if event.scheduled_run_time else None,
+                "scheduled_time": (
+                    event.scheduled_run_time.isoformat()
+                    if event.scheduled_run_time
+                    else None
+                ),
             }
 
             if error:
@@ -1671,7 +1773,9 @@ def install_apscheduler_watcher():
         # Store listener reference for later use
         install_apscheduler_watcher.listener = job_listener
         _apscheduler_patched = True
-        logger.debug("Orbit APScheduler watcher prepared (call add_listener on your scheduler)")
+        logger.debug(
+            "Orbit APScheduler watcher prepared (call add_listener on your scheduler)"
+        )
 
     except ImportError:
         logger.debug("APScheduler not installed, skipping APScheduler watcher")
@@ -1682,23 +1786,27 @@ def install_apscheduler_watcher():
 def register_apscheduler(scheduler):
     """
     Register the APScheduler listener with a scheduler instance.
-    
+
     Usage:
         from apscheduler.schedulers.background import BackgroundScheduler
         from orbit.watchers import register_apscheduler
-        
+
         scheduler = BackgroundScheduler()
         register_apscheduler(scheduler)
     """
     try:
-        from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR, EVENT_JOB_MISSED
-        
+        from apscheduler.events import (
+            EVENT_JOB_ERROR,
+            EVENT_JOB_EXECUTED,
+            EVENT_JOB_MISSED,
+        )
+
         install_apscheduler_watcher()
-        
-        if hasattr(install_apscheduler_watcher, 'listener'):
+
+        if hasattr(install_apscheduler_watcher, "listener"):
             scheduler.add_listener(
                 install_apscheduler_watcher.listener,
-                EVENT_JOB_EXECUTED | EVENT_JOB_ERROR | EVENT_JOB_MISSED
+                EVENT_JOB_EXECUTED | EVENT_JOB_ERROR | EVENT_JOB_MISSED,
             )
             logger.debug("Orbit APScheduler listener registered")
     except Exception as e:
@@ -1715,7 +1823,7 @@ _celerybeat_patched = False
 def install_celerybeat_watcher():
     """
     Install django-celery-beat watcher to track periodic task configurations.
-    Note: This monitors task scheduling, not execution (use install_celery_watcher for execution).
+    This monitors scheduling; install_celery_watcher monitors execution.
     """
     global _celerybeat_patched
 
@@ -1723,8 +1831,10 @@ def install_celerybeat_watcher():
         return
 
     try:
-        from django.db.models.signals import post_save, post_delete
+        from django.db.models.signals import post_delete, post_save
+
         from django_celery_beat.models import PeriodicTask
+
         from orbit.models import OrbitEntry
 
         def periodic_task_changed(sender, instance, created, **kwargs):
@@ -1736,7 +1846,7 @@ def install_celerybeat_watcher():
                 return
 
             action = "created" if created else "updated"
-            
+
             payload = {
                 "task_id": f"periodic-{instance.id}",
                 "name": instance.name,
@@ -1744,7 +1854,12 @@ def install_celerybeat_watcher():
                 "queue": "celery-beat",
                 "task": instance.task,
                 "enabled": instance.enabled,
-                "schedule": str(instance.interval or instance.crontab or instance.solar or instance.clocked),
+                "schedule": str(
+                    instance.interval
+                    or instance.crontab
+                    or instance.solar
+                    or instance.clocked
+                ),
             }
 
             try:
@@ -1837,7 +1952,7 @@ def record_transaction(
 
     if savepoint_id:
         payload["savepoint_id"] = savepoint_id
-    
+
     if exception:
         payload["exception"] = exception
 
@@ -1862,21 +1977,23 @@ def install_transaction_watcher():
         return
 
     try:
-        import django.db.transaction
         import threading
-        
+
+        import django.db.transaction
+
         original_atomic = django.db.transaction.atomic
-        
+
         class OrbitAtomicWrapper:
-            """Wrapper for Django's Atomic context manager to track duration and status."""
+            """Track the duration and status of Django's Atomic context manager."""
+
             def __init__(self, context_manager, using):
                 self.ctx = context_manager
                 self.using = using
-                # Use thread-local storage for start times to support recursion and concurrency
+                # Isolate nested start times between threads.
                 self._local = threading.local()
 
             def _get_stack(self):
-                if not hasattr(self._local, 'stack'):
+                if not hasattr(self._local, "stack"):
                     self._local.stack = []
                 return self._local.stack
 
@@ -1888,37 +2005,39 @@ def install_transaction_watcher():
             def __exit__(self, exc_type, exc_value, traceback):
                 # Call original exit first
                 result = self.ctx.__exit__(exc_type, exc_value, traceback)
-                
+
                 # Pop start time
                 stack = self._get_stack()
                 if stack:
                     start_time = stack.pop()
                     duration_ms = (time.perf_counter() - start_time) * 1000
                     status = "rolled_back" if exc_type else "committed"
-                    
+
                     try:
                         record_transaction(
                             using=self.using or "default",
                             duration_ms=duration_ms,
                             status=status,
-                            exception=str(exc_value) if exc_value else None
+                            exception=str(exc_value) if exc_value else None,
                         )
                     except Exception:
                         pass
-                
+
                 return result
-            
+
             def __call__(self, func):
                 """Support usage as a decorator (@transaction.atomic)."""
+
                 @functools.wraps(func)
                 def wrapper(*args, **kwargs):
                     with self:
                         return func(*args, **kwargs)
+
                 return wrapper
 
             def __getattr__(self, name):
                 return getattr(self.ctx, name)
-        
+
         @functools.wraps(original_atomic)
         def patched_atomic(using=None, savepoint=True, durable=False):
             # Check if used as bare decorator: @transaction.atomic (without parens)
@@ -1927,24 +2046,28 @@ def install_transaction_watcher():
                 # Create the context manager (default db) by calling original with None
                 try:
                     if durable:
-                         ctx = original_atomic(using=None, savepoint=savepoint, durable=durable)
+                        ctx = original_atomic(
+                            using=None, savepoint=savepoint, durable=durable
+                        )
                     else:
-                         ctx = original_atomic(using=None, savepoint=savepoint)
+                        ctx = original_atomic(using=None, savepoint=savepoint)
                 except TypeError:
-                     ctx = original_atomic(using=None, savepoint=savepoint)
-                
+                    ctx = original_atomic(using=None, savepoint=savepoint)
+
                 # Wrap the context manager and immediately decorate the function
                 return OrbitAtomicWrapper(ctx, None)(func)
 
             # Standard usage: atomic(), atomic(using='db'), or context manager
             try:
                 if durable:
-                    ctx = original_atomic(using=using, savepoint=savepoint, durable=durable)
+                    ctx = original_atomic(
+                        using=using, savepoint=savepoint, durable=durable
+                    )
                 else:
                     ctx = original_atomic(using=using, savepoint=savepoint)
             except TypeError:
-                 ctx = original_atomic(using=using, savepoint=savepoint)
-            
+                ctx = original_atomic(using=using, savepoint=savepoint)
+
             return OrbitAtomicWrapper(ctx, using)
 
         django.db.transaction.atomic = patched_atomic
@@ -1990,7 +2113,7 @@ def record_storage_operation(
 
     if size is not None:
         payload["size"] = size
-        
+
     if exists is not None:
         payload["exists"] = exists
 
@@ -2008,8 +2131,8 @@ def record_storage_operation(
 def install_storage_watcher(force: bool = False):
     """
     Install the storage watcher by patching Storage classes methods.
-    Patches base Storage (for save/open) and specific backends for methods that don't call super() (delete/exists).
-    
+    Patch base save/open and backend delete/exists methods that bypass super().
+
     Args:
         force: If True, re-patch even if already patched (useful for testing)
     """
@@ -2019,15 +2142,16 @@ def install_storage_watcher(force: bool = False):
         return
 
     try:
-        from django.core.files.storage import Storage, FileSystemStorage
-        
+        from django.core.files.storage import FileSystemStorage, Storage
+
         classes_to_patch = [Storage, FileSystemStorage]
-        
+
         # Try to include django-storages S3 backend if available
-        # Note: storages raises ImproperlyConfigured (not ImportError) when boto3 is missing,
+        # storages can raise ImproperlyConfigured when boto3 is missing,
         # so we catch any Exception here to avoid killing the entire storage watcher.
         try:
             from storages.backends.s3boto3 import S3Boto3Storage
+
             classes_to_patch.append(S3Boto3Storage)
         except Exception:
             pass
@@ -2035,81 +2159,80 @@ def install_storage_watcher(force: bool = False):
         # Try to include Google Cloud Storage if available
         try:
             from storages.backends.gcloud import GoogleCloudStorage
+
             classes_to_patch.append(GoogleCloudStorage)
         except Exception:
             pass
-        
+
         # Helper to patch a class
         def patch_class(cls):
-            # We only patch methods if they exist in the class __dict__ or are inherited but we want to intercept base calls
+            # Intercept inherited methods as well as concrete backend methods.
             # For save/open, they are usually on Storage base.
             # For delete/exists, they are usually on subclasses.
-            
-            # Patch save (usually inherited from Storage, so patching Storage is enough, but double patching is safe-ish if we check)
-            # Actually, better to patch only if it's the specific implementation or base.
-            
-            # Let's simplify: wrapping the method on the class works. 
-            # If Child.delete calls Super.delete (which is patched), we get double log? 
+
+            # Patch save on Storage unless a backend overrides the implementation.
+
+            # Let's simplify: wrapping the method on the class works.
+            # If Child.delete calls Super.delete (which is patched), we get double log?
             # Storage.delete raises NotImplemented, so Child probably doesn't call it.
-            # Storage.save CALLS _save. We patched Storage.save. Child inherits Storage.save. So patching Storage is enough for save.
-            
+            # Storage.save calls _save, so the base patch covers inherited save.
+
             # BUT, delete and exists are different.
-            
+
             # We iterate methods we want to patch
-            methods = ['delete', 'exists']
-            
+            methods = ["delete", "exists"]
+
             for method_name in methods:
                 if not hasattr(cls, method_name):
                     continue
-                
+
                 original_method = getattr(cls, method_name)
-                
+
                 # Avoid double patching
-                if getattr(original_method, '_orbit_patched', False):
+                if getattr(original_method, "_orbit_patched", False):
                     continue
-                
-                # Use a factory function to capture method_name and original_method by value
-                # This avoids the classic Python closure bug where loop variables are captured by reference
+
+                # Capture the method and name by value, not the loop's next values.
                 def create_patched_method(orig_method, meth_name):
                     @functools.wraps(orig_method)
                     def patched_method(self, *args, **kwargs):
                         start_time = time.perf_counter()
-                        
+
                         # Call original
                         try:
                             result = orig_method(self, *args, **kwargs)
                         except Exception as e:
                             # Log errors too? For now just propagate
                             raise e
-                            
+
                         duration_ms = (time.perf_counter() - start_time) * 1000
-                        
+
                         try:
                             # Extract path from first arg if possible
                             path = args[0] if len(args) > 0 else "?"
                             backend_name = self.__class__.__name__
-                            
+
                             record_storage_operation(
-                                meth_name, 
+                                meth_name,
                                 path=str(path),
-                                backend=backend_name, 
+                                backend=backend_name,
                                 duration_ms=duration_ms,
-                                exists=result if meth_name == 'exists' else None
+                                exists=result if meth_name == "exists" else None,
                             )
                         except Exception:
                             pass
                         return result
+
                     return patched_method
-                
+
                 patched = create_patched_method(original_method, method_name)
                 patched._orbit_patched = True
                 setattr(cls, method_name, patched)
 
         # Apply patching
         # 1. Patch Storage.save and Storage.open (base methods)
-        # These are template methods that call _save/_open, so patching base is usually sufficient
-        # providing subclasses don't override the public save/open (which is rare, they override _save/_open)
-        
+        # Base patches cover backends that override only _save/_open.
+
         # 1. Patch Storage.save and Storage.open (base methods)
         def create_patched_base(original, method_name):
             @functools.wraps(original)
@@ -2117,37 +2240,40 @@ def install_storage_watcher(force: bool = False):
                 start_time = time.perf_counter()
                 # Capture size for save
                 size = None
-                if method_name == 'save' and len(args) > 1:
+                if method_name == "save" and len(args) > 1:
                     content = args[1]
                     try:
-                        if hasattr(content, 'size'):
+                        if hasattr(content, "size"):
                             size = content.size
-                        elif hasattr(content, '__len__'):
+                        elif hasattr(content, "__len__"):
                             size = len(content)
                     except Exception:
                         pass
-                        
+
                 result = original(self, *args, **kwargs)
                 duration_ms = (time.perf_counter() - start_time) * 1000
-                
+
                 try:
-                    path = result if method_name == 'save' else (args[0] if args else '?')
+                    path = (
+                        result if method_name == "save" else (args[0] if args else "?")
+                    )
                     record_storage_operation(
-                        method_name, 
+                        method_name,
                         path=path,
-                        backend=self.__class__.__name__, 
+                        backend=self.__class__.__name__,
                         duration_ms=duration_ms,
-                        size=size
+                        size=size,
                     )
                 except Exception:
                     pass
                 return result
+
             return patched_base
 
-        for method_name in ['save', 'open']:
+        for method_name in ["save", "open"]:
             if hasattr(Storage, method_name):
                 original = getattr(Storage, method_name)
-                if not getattr(original, '_orbit_patched', False):
+                if not getattr(original, "_orbit_patched", False):
                     patched_base = create_patched_base(original, method_name)
                     patched_base._orbit_patched = True
                     setattr(Storage, method_name, patched_base)
@@ -2155,7 +2281,7 @@ def install_storage_watcher(force: bool = False):
         # 2. Patch delete/exists/listdir on specific classes
         for cls in classes_to_patch:
             patch_class(cls)
-        
+
         _storage_patched = True
         logger.debug("Orbit storage watcher installed")
 
@@ -2174,24 +2300,24 @@ _watcher_registry = {}
 def _install_watcher_safely(name: str, installer_func, config_key: str = None):
     """
     Install a single watcher with error isolation.
-    
+
     Args:
         name: Human-readable name of the watcher
         installer_func: Function to call to install the watcher
         config_key: Optional config key to check (e.g., "RECORD_CACHE")
-    
+
     Returns:
         bool: True if installed successfully, False otherwise
     """
     config = get_config()
     fail_silently = config.get("WATCHER_FAIL_SILENTLY", True)
-    
+
     # Check if this watcher type is enabled
     if config_key and not config.get(config_key, True):
         _watcher_registry[name] = {"installed": False, "error": None, "disabled": True}
         logger.debug(f"Orbit watcher '{name}' is disabled via config")
         return False
-    
+
     try:
         installer_func()
         _watcher_registry[name] = {"installed": True, "error": None, "disabled": False}
@@ -2199,34 +2325,39 @@ def _install_watcher_safely(name: str, installer_func, config_key: str = None):
         return True
     except Exception as e:
         error_msg = f"{type(e).__name__}: {str(e)}"
-        _watcher_registry[name] = {"installed": False, "error": error_msg, "disabled": False}
-        
+        _watcher_registry[name] = {
+            "installed": False,
+            "error": error_msg,
+            "disabled": False,
+        }
+
         if fail_silently:
             logger.warning(f"Orbit watcher '{name}' failed to install: {error_msg}")
         else:
             logger.error(f"Orbit watcher '{name}' failed to install: {error_msg}")
             raise
-        
+
         return False
 
 
 def get_watcher_status() -> Dict[str, Dict[str, Any]]:
     """
     Get the status of all watchers.
-    
+
     Returns:
         Dict with watcher names as keys and status dicts as values.
         Each status dict contains:
             - installed: bool - whether the watcher is active
             - error: str|None - error message if installation failed
             - disabled: bool - whether the watcher is disabled via config
-    
+
     Example:
         >>> get_watcher_status()
         {
             'command': {'installed': True, 'error': None, 'disabled': False},
             'cache': {'installed': True, 'error': None, 'disabled': False},
-            'celery': {'installed': False, 'error': 'ModuleNotFoundError: No module named celery', 'disabled': False},
+            'celery': {'installed': False, 'error': 'celery missing',
+                       'disabled': False},
             ...
         }
     """
@@ -2235,7 +2366,9 @@ def get_watcher_status() -> Dict[str, Dict[str, Any]]:
 
 def get_installed_watchers() -> list:
     """Get list of successfully installed watcher names."""
-    return [name for name, status in _watcher_registry.items() if status.get("installed")]
+    return [
+        name for name, status in _watcher_registry.items() if status.get("installed")
+    ]
 
 
 def get_failed_watchers() -> Dict[str, str]:
@@ -2243,7 +2376,9 @@ def get_failed_watchers() -> Dict[str, str]:
     return {
         name: status.get("error", "Unknown error")
         for name, status in _watcher_registry.items()
-        if not status.get("installed") and not status.get("disabled") and status.get("error")
+        if not status.get("installed")
+        and not status.get("disabled")
+        and status.get("error")
     }
 
 
@@ -2256,23 +2391,28 @@ def _install_llm_watcher():
 def install_all_watchers():
     """
     Install all watchers with plug-and-play error isolation.
-    
+
     Each watcher is installed independently. If one fails, the others continue.
     Use get_watcher_status() to check which watchers are active.
     """
     global _watcher_registry
     _watcher_registry = {}  # Reset registry
-    
+
+    # Schema safety must remain active even when command telemetry is disabled.
+    install_command_watcher()
+
     # Core watchers
     _install_watcher_safely("command", install_command_watcher, "RECORD_COMMANDS")
     _install_watcher_safely("cache", install_cache_watcher, "RECORD_CACHE")
     _install_watcher_safely("model", install_model_watcher, "RECORD_MODELS")
-    _install_watcher_safely("http_client", install_http_client_watcher, "RECORD_HTTP_CLIENT")
-    
+    _install_watcher_safely(
+        "http_client", install_http_client_watcher, "RECORD_HTTP_CLIENT"
+    )
+
     # Communication watchers
     _install_watcher_safely("mail", install_mail_watcher, "RECORD_MAIL")
     _install_watcher_safely("signal", install_signal_watcher, "RECORD_SIGNALS")
-    
+
     # Job/Task watchers (these often fail if libraries aren't installed - that's OK)
     config = get_config()
     if config.get("RECORD_JOBS", True):
@@ -2281,20 +2421,21 @@ def install_all_watchers():
         _install_watcher_safely("rq", install_rq_watcher)
         _install_watcher_safely("celerybeat", install_celerybeat_watcher)
         _install_watcher_safely("apscheduler", install_apscheduler_watcher)
-    
+
     # Data watchers
     _install_watcher_safely("redis", install_redis_watcher, "RECORD_REDIS")
     _install_watcher_safely("gates", install_gates_watcher, "RECORD_GATES")
-    _install_watcher_safely("transaction", install_transaction_watcher, "RECORD_TRANSACTIONS")
+    _install_watcher_safely(
+        "transaction", install_transaction_watcher, "RECORD_TRANSACTIONS"
+    )
     _install_watcher_safely("storage", install_storage_watcher, "RECORD_STORAGE")
     _install_watcher_safely("llm", _install_llm_watcher, "RECORD_LLM")
-    
+
     # Log summary
     installed = get_installed_watchers()
     failed = get_failed_watchers()
-    
+
     if installed:
         logger.debug(f"Orbit watchers installed: {', '.join(installed)}")
     if failed:
         logger.warning(f"Orbit watchers failed: {', '.join(failed.keys())}")
-
