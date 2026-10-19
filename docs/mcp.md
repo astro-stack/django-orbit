@@ -11,7 +11,22 @@ Django Orbit exposes your app's telemetry as an [MCP (Model Context Protocol)](h
 pip install django-orbit[mcp]
 ```
 
-The `[mcp]` extra installs the `mcp>=1.0` package. The core `django-orbit` package has no dependency on it.
+The `[mcp]` extra installs the official `mcp` Python SDK (`mcp>=1.0,<3.0`). The core `django-orbit` package has no dependency on it.
+
+### Supported SDK versions
+
+Orbit works with both major versions of the MCP Python SDK and picks the right server class at runtime:
+
+| SDK | Server class used |
+| --- | --- |
+| `mcp` 1.x | `mcp.server.fastmcp.FastMCP` |
+| `mcp` 2.x | `mcp.server.mcpserver.MCPServer` (renamed from `FastMCP`) |
+
+CI runs the full test suite, including in-process protocol tests (`initialize`, `tools/list`, `tools/call`), against both. Pin `mcp<2` or `mcp<3` yourself if you need to hold a version.
+
+### Tool annotations
+
+Every Orbit tool only reads telemetry, so each one is advertised with MCP tool annotations `readOnlyHint=true`, `destructiveHint=false`, `idempotentHint=true` and `openWorldHint=false`. Clients can use these hints to skip confirmation prompts. Annotations are only sent when the installed SDK provides `ToolAnnotations`.
 
 ## Setup
 
@@ -220,7 +235,7 @@ This starts the server in stdio mode. It reads JSON-RPC messages from stdin and 
 
 ## How It Works
 
-The `orbit_mcp` management command calls `create_mcp_server()` from `orbit/mcp_server.py`, which builds a `FastMCP` instance with the raw telemetry and agentic investigation tools. Payload-based tools query `OrbitEntry`; Evidence-backed tools read through `orbit.evidence`, with `summarize_request_family` consuming only family evidence metadata.
+The `orbit_mcp` management command calls `create_mcp_server()` from `orbit/mcp_server.py`, which builds a `FastMCP` (mcp 1.x) or `MCPServer` (mcp 2.x) instance with the raw telemetry and agentic investigation tools. Payload-based tools query `OrbitEntry`; Evidence-backed tools read through `orbit.evidence`, with `summarize_request_family` consuming only family evidence metadata.
 
 The server is stateless and read-only — it never modifies your data.
 

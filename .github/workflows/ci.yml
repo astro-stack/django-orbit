@@ -83,6 +83,39 @@ jobs:
       - name: Run tests
         run: ${{ matrix.test-command }}
 
+  mcp-compat:
+    name: MCP SDK / ${{ matrix.mcp-label }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - mcp-label: "mcp 1.x"
+            mcp-version: "mcp>=1.0,<2.0"
+          - mcp-label: "mcp 2.x"
+            mcp-version: "mcp>=2.3,<3.0"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+          python -m pip install "${{ matrix.mcp-version }}"
+          python -m pip freeze
+
+      - name: Run tests
+        run: python -m pytest --tb=short -q
+
   release-metadata:
     name: Release metadata
     runs-on: ubuntu-latest

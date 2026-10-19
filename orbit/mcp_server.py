@@ -44,6 +44,45 @@ def _mcp_disabled_output() -> str:
     )
 
 
+def _import_server_class():
+    """
+    Return the high-level MCP server class for the installed SDK.
+
+    mcp 2.x renamed ``FastMCP`` to ``MCPServer`` (``mcp.server.mcpserver``) and
+    ``mcp.server.fastmcp`` raises ``ModuleNotFoundError`` there; mcp 1.x only
+    has ``mcp.server.fastmcp.FastMCP``. Both expose the same ``@tool()`` API.
+    """
+    try:
+        from mcp.server.mcpserver import MCPServer
+
+        return MCPServer
+    except ImportError:
+        from mcp.server.fastmcp import FastMCP
+
+        return FastMCP
+
+
+def _read_only_annotations() -> dict:
+    """
+    Return ``{"annotations": ToolAnnotations(readOnlyHint=True)}`` when supported.
+
+    Every Orbit tool only reads telemetry. Returns an empty dict when the SDK
+    lacks ``ToolAnnotations`` so registration still works on old releases.
+    """
+    try:
+        from mcp.types import ToolAnnotations
+    except ImportError:
+        return {}
+    return {
+        "annotations": ToolAnnotations(
+            readOnlyHint=True,
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=False,
+        )
+    }
+
+
 def create_mcp_server():
     """
     Build and return the FastMCP server instance.
@@ -55,7 +94,7 @@ def create_mcp_server():
 
         if sys.modules.get("mcp") is None and "mcp" in sys.modules:
             raise ImportError
-        from mcp.server.fastmcp import FastMCP
+        FastMCP = _import_server_class()
         from pydantic import StrictInt
     except ImportError:
         raise ImportError(
@@ -66,6 +105,7 @@ def create_mcp_server():
     from orbit.conf import get_config
     from orbit.models import OrbitEntry
 
+    _tool_kwargs = _read_only_annotations()
     config = get_config()
     slow_threshold = config.get("SLOW_QUERY_THRESHOLD_MS", 500)
 
@@ -83,7 +123,7 @@ def create_mcp_server():
     # -------------------------------------------------------------------------
     # Tool: get_recent_requests
     # -------------------------------------------------------------------------
-    @mcp.tool()
+    @mcp.tool(**_tool_kwargs)
     def get_recent_requests(limit: int = 20) -> str:
         """
         Get the most recent HTTP requests captured by Orbit.
@@ -106,7 +146,7 @@ def create_mcp_server():
     # -------------------------------------------------------------------------
     # Tool: get_slow_queries
     # -------------------------------------------------------------------------
-    @mcp.tool()
+    @mcp.tool(**_tool_kwargs)
     def get_slow_queries(threshold_ms: float = None, limit: int = 20) -> str:
         """
         Get SQL queries that exceeded the slow query threshold.
@@ -142,7 +182,7 @@ def create_mcp_server():
     # -------------------------------------------------------------------------
     # Tool: get_exceptions
     # -------------------------------------------------------------------------
-    @mcp.tool()
+    @mcp.tool(**_tool_kwargs)
     def get_exceptions(hours: int = 24, limit: int = 20) -> str:
         """
         Get exceptions captured by Orbit within the specified time window.
@@ -177,7 +217,7 @@ def create_mcp_server():
     # -------------------------------------------------------------------------
     # Tool: get_n1_patterns
     # -------------------------------------------------------------------------
-    @mcp.tool()
+    @mcp.tool(**_tool_kwargs)
     def get_n1_patterns(limit: int = 20) -> str:
         """
         Find HTTP requests that triggered N+1 query patterns.
@@ -222,7 +262,7 @@ def create_mcp_server():
     # -------------------------------------------------------------------------
     # Tool: search_entries
     # -------------------------------------------------------------------------
-    @mcp.tool()
+    @mcp.tool(**_tool_kwargs)
     def search_entries(query: str, entry_type: str = None, limit: int = 20) -> str:
         """
         Search Orbit entries by keyword across all payload fields.
@@ -265,7 +305,7 @@ def create_mcp_server():
     # -------------------------------------------------------------------------
     # Tool: get_request_detail
     # -------------------------------------------------------------------------
-    @mcp.tool()
+    @mcp.tool(**_tool_kwargs)
     def get_request_detail(family_hash: str) -> str:
         """Get normalized, metadata-only evidence for one request family."""
         if not get_config().get("MCP_ENABLED", True):
@@ -311,7 +351,7 @@ def create_mcp_server():
     # -------------------------------------------------------------------------
     # Tool: get_capture_health
     # -------------------------------------------------------------------------
-    @mcp.tool()
+    @mcp.tool(**_tool_kwargs)
     def get_capture_health() -> str:
         """Read safe metadata about Orbit capture readiness and coverage."""
         if not get_config().get("MCP_ENABLED", True):
@@ -324,7 +364,7 @@ def create_mcp_server():
     # -------------------------------------------------------------------------
     # Tool: get_stats_summary
     # -------------------------------------------------------------------------
-    @mcp.tool()
+    @mcp.tool(**_tool_kwargs)
     def get_stats_summary(hours: int = 24) -> str:
         """
         Get a high-level summary of application health over the given time window.
@@ -412,7 +452,7 @@ def create_mcp_server():
     # -------------------------------------------------------------------------
     from orbit import agentic as agentic_tools
 
-    @mcp.tool(name="audit_mcp_exposure")
+    @mcp.tool(name="audit_mcp_exposure", **_tool_kwargs)
     def audit_mcp_exposure_tool() -> str:
         """
         Report the effective MCP exposure and safety policy.
@@ -424,7 +464,7 @@ def create_mcp_server():
             return _mcp_disabled_output()
         return _format_output(agentic_tools.audit_mcp_exposure())
 
-    @mcp.tool()
+    @mcp.tool(**_tool_kwargs)
     def preview_masked_entry(entry_id: str) -> str:
         """
         Preview one Orbit entry exactly as an agent will receive it.
@@ -436,7 +476,7 @@ def create_mcp_server():
             return _mcp_disabled_output()
         return _format_output(agentic_tools.preview_masked_entry(entry_id))
 
-    @mcp.tool()
+    @mcp.tool(**_tool_kwargs)
     def find_sensitive_payload_risks(limit: int = 20) -> str:
         """
         Find recent entries whose payload keys look sensitive.
@@ -448,7 +488,7 @@ def create_mcp_server():
             return _mcp_disabled_output()
         return _format_output(agentic_tools.find_sensitive_payload_risks(limit=limit))
 
-    @mcp.tool()
+    @mcp.tool(**_tool_kwargs)
     def list_agent_safe_fields(entry_type: str) -> str:
         """
         List the fields and payload policy exposed to AI coding agents.
@@ -460,7 +500,7 @@ def create_mcp_server():
             return _mcp_disabled_output()
         return _format_output(agentic_tools.list_agent_safe_fields(entry_type))
 
-    @mcp.tool()
+    @mcp.tool(**_tool_kwargs)
     def investigate_request(family_hash: str, limit: int = None) -> str:
         """
         Build a high-level diagnosis for one request family.
@@ -474,7 +514,7 @@ def create_mcp_server():
             agentic_tools.investigate_request(family_hash, limit=limit)
         )
 
-    @mcp.tool()
+    @mcp.tool(**_tool_kwargs)
     def summarize_request_family(
         family_hash: str, limit: Optional[StrictInt] = None
     ) -> str:
@@ -493,7 +533,7 @@ def create_mcp_server():
 
         return _format_output(summarize(family_hash, limit=limit))
 
-    @mcp.tool()
+    @mcp.tool(**_tool_kwargs)
     def investigate_exception_group(fingerprint: str, limit: int = None) -> str:
         """
         Summarize one exception fingerprint with blast-radius context.
@@ -507,7 +547,7 @@ def create_mcp_server():
             agentic_tools.investigate_exception_group(fingerprint, limit=limit)
         )
 
-    @mcp.tool()
+    @mcp.tool(**_tool_kwargs)
     def create_incident_bundle(
         source_type: str, source_value: str, hours: int = 72, format: str = "json"
     ) -> str:
@@ -526,7 +566,7 @@ def create_mcp_server():
             return result
         return _format_output(result)
 
-    @mcp.tool()
+    @mcp.tool(**_tool_kwargs)
     def build_debug_brief(query: str, hours: int = 72, limit: int = None) -> str:
         """
         Match ticket/error text to recent Orbit evidence.
@@ -540,7 +580,7 @@ def create_mcp_server():
             agentic_tools.build_debug_brief(query, hours=hours, limit=limit)
         )
 
-    @mcp.tool()
+    @mcp.tool(**_tool_kwargs)
     def investigate_endpoint(
         path: str, method: str = None, hours: int = 24, limit: int = None
     ) -> str:
@@ -558,7 +598,7 @@ def create_mcp_server():
             )
         )
 
-    @mcp.tool()
+    @mcp.tool(**_tool_kwargs)
     def compare_endpoint_windows(
         path: str,
         method: str = None,
@@ -582,7 +622,7 @@ def create_mcp_server():
             )
         )
 
-    @mcp.tool()
+    @mcp.tool(**_tool_kwargs)
     def find_n_plus_one_candidates(hours: int = 24, limit: int = None) -> str:
         """
         Rank recent requests that show duplicate-query/N+1 evidence.
@@ -596,7 +636,7 @@ def create_mcp_server():
             agentic_tools.find_n_plus_one_candidates(hours=hours, limit=limit)
         )
 
-    @mcp.tool()
+    @mcp.tool(**_tool_kwargs)
     def summarize_exception_groups(hours: int = 24, limit: int = None) -> str:
         """
         Summarize recent exception fingerprints for agent triage.
@@ -610,7 +650,7 @@ def create_mcp_server():
             agentic_tools.summarize_exception_groups(hours=hours, limit=limit)
         )
 
-    @mcp.tool()
+    @mcp.tool(**_tool_kwargs)
     def daily_health_brief(hours: int = 24, limit: int = None) -> str:
         """
         Generate a local daily debugging brief.
@@ -624,7 +664,7 @@ def create_mcp_server():
             agentic_tools.daily_health_brief(hours=hours, limit=limit)
         )
 
-    @mcp.tool()
+    @mcp.tool(**_tool_kwargs)
     def generate_release_risk_brief(hours: int = 24, limit: int = None) -> str:
         """
         Generate a release risk brief from recent Orbit runtime signals.
@@ -638,7 +678,7 @@ def create_mcp_server():
             agentic_tools.generate_release_risk_brief(hours=hours, limit=limit)
         )
 
-    @mcp.tool()
+    @mcp.tool(**_tool_kwargs)
     def generate_pr_context(
         source_type: str, source_value: str, hours: int = 72, format: str = "json"
     ) -> str:
@@ -658,7 +698,7 @@ def create_mcp_server():
             return result
         return _format_output(result)
 
-    @mcp.tool()
+    @mcp.tool(**_tool_kwargs)
     def propose_fix_hypotheses(
         source_type: str, source_value: str, hours: int = 72
     ) -> str:
@@ -673,7 +713,7 @@ def create_mcp_server():
             agentic_tools.propose_fix_hypotheses(source_type, source_value, hours=hours)
         )
 
-    @mcp.tool()
+    @mcp.tool(**_tool_kwargs)
     def propose_test_plan(source_type: str, source_value: str, hours: int = 72) -> str:
         """
         Suggest tests that should cover the observed runtime failure.
