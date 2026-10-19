@@ -157,3 +157,6 @@ PLANNING.md
 .claude/settings.local.json
 .claude/workspace/
 .orbit-staging-*/
+
+# Frontend build tooling
+frontend/node_modules/

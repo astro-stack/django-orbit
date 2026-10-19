@@ -4,6 +4,7 @@ include CHANGELOG.md
 include CONTRIBUTING.md
 
 recursive-include orbit/templates *
+recursive-include orbit/static *
 recursive-include orbit/migrations *.py
 
 global-exclude __pycache__

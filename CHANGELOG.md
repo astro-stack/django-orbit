@@ -7,8 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- Serve all dashboard JavaScript, CSS, icons and fonts from Orbit's own package
+  static files instead of unpinned, integrity-less CDNs (`cdn.tailwindcss.com`,
+  `unpkg.com`, `cdn.jsdelivr.net`, Google Fonts). The dashboard now works
+  offline and in air-gapped environments, and no third party can inject script
+  into a page that displays request, SQL and exception data. Vendored versions
+  are pinned: htmx 1.9.10, Alpine.js and `@alpinejs/collapse` 3.17.4,
+  ApexCharts 3.44.0, Lucide 1.59.0 (icon subset) and self-hosted Inter and
+  JetBrains Mono. See `orbit/static/orbit/vendor/LICENSES.md`.
+
 ### Changed
 
+- The Tailwind Play CDN is replaced by a compiled, minified
+  `orbit/static/orbit/css/orbit.css` built from `frontend/`. Host projects must
+  have `django.contrib.staticfiles` configured (and run `collectstatic` in
+  production) so Orbit's assets are served; maintainers rebuild assets with
+  `npm run build` in `frontend/`.
 - Drop support for Python < 3.11 and Django < 5.2, all of which are end-of-life.
   The test matrix now covers Django 5.2 LTS, 6.0 and 6.1 on Python 3.11-3.14,
   plus an allowed-failure job against Django `main`.
@@ -23,6 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The health page footer GitHub icon rendered blank with current Lucide
+  releases (brand icons were removed); it now uses a generic icon.
 - Load grouped exception feed representatives in a single query instead of one
   query per group.
 - Initialize dashboard event listeners once so selecting an event cannot
