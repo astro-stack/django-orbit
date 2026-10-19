@@ -18,28 +18,48 @@ jobs:
   tests:
     name: Tests / Python ${{ matrix.python-version }} / ${{ matrix.django-label }} / ${{ matrix.scope }}
     runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.experimental == true }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - python-version: "3.9"
-            django-label: "Django 4.2"
-            django-version: "Django>=4.2,<4.3"
+          - python-version: "3.11"
+            django-label: "Django 5.2"
+            django-version: "Django>=5.2,<5.3"
             scope: "core"
             install-target: "."
             test-command: "python -m pytest --tb=short -q --ignore=tests/test_mcp.py -k 'not mcp'"
-          - python-version: "3.10"
-            django-label: "Django 4.2"
-            django-version: "Django>=4.2,<4.3"
+          - python-version: "3.12"
+            django-label: "Django 5.2"
+            django-version: "Django>=5.2,<5.3"
             scope: "full+mcp"
             install-target: ".[dev]"
             test-command: "python -m pytest --tb=short -q"
           - python-version: "3.12"
-            django-label: "Django 5.0"
-            django-version: "Django>=5.0,<5.1"
+            django-label: "Django 6.0"
+            django-version: "Django>=6.0,<6.1"
             scope: "full+mcp"
             install-target: ".[dev]"
             test-command: "python -m pytest --tb=short -q"
+          - python-version: "3.13"
+            django-label: "Django 6.1"
+            django-version: "Django>=6.1,<6.2"
+            scope: "full+mcp"
+            install-target: ".[dev]"
+            test-command: "python -m pytest --tb=short -q"
+          - python-version: "3.14"
+            django-label: "Django 6.1"
+            django-version: "Django>=6.1,<6.2"
+            scope: "core"
+            install-target: "."
+            test-command: "python -m pytest --tb=short -q --ignore=tests/test_mcp.py -k 'not mcp'"
+          - python-version: "3.14"
+            django-label: "Django main"
+            django-version: "django @ git+https://github.com/django/django.git@main"
+            scope: "full+mcp"
+            install-target: ".[dev]"
+            test-command: "python -m pytest --tb=short -q"
+            experimental: true
 
     steps:
       - name: Checkout
