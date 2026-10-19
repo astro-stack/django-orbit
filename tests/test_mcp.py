@@ -3,10 +3,9 @@ Tests for the Django Orbit MCP server.
 
 These tests verify that each MCP tool returns valid JSON and handles
 edge cases gracefully (empty database, invalid inputs, etc.).
-The actual MCP transport is not tested here â€” only the tool logic.
+Protocol-level behavior is covered in test_mcp_protocol.py.
 """
 
-import asyncio
 import json
 
 from django.test import override_settings
@@ -493,22 +492,6 @@ def test_disabled_request_summary_does_not_read_evidence(mcp_server, monkeypatch
     data = _call_tool(mcp_server, "summarize_request_family", family_hash="abc123")
 
     assert data["disabled"] is True
-
-
-@pytest.mark.django_db
-@pytest.mark.parametrize("limit", [True, "2", 2.0])
-def test_request_summary_sdk_rejects_coerced_limits(mcp_server, monkeypatch, limit):
-    from mcp.server.fastmcp.exceptions import ToolError
-
-    from orbit import evidence
-
-    monkeypatch.setattr(
-        evidence, "read_family_evidence", lambda *a, **kw: pytest.fail("No read")
-    )
-    tool = mcp_server._tool_manager._tools["summarize_request_family"]
-
-    with pytest.raises(ToolError, match="valid integer"):
-        asyncio.run(tool.run({"family_hash": "abc123", "limit": limit}))
 
 
 @pytest.mark.django_db

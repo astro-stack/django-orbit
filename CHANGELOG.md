@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Support the MCP Python SDK 2.x alongside 1.x (`mcp>=1.0,<3.0`): the server uses
+  `MCPServer` on 2.x (renamed from `FastMCP`) and falls back to `FastMCP` on 1.x.
+  Every tool now advertises read-only MCP tool annotations. Protocol-level tests
+  exercise the server over the SDK's in-memory client, and CI tests both SDK
+  majors (#66).
 - Add structured Explorer filters and server-scoped metrics with atomic feed,
   metrics and URL updates. Request-view aggregation and workspace views remain
   planned.
