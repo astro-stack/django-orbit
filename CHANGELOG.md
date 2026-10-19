@@ -18,6 +18,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ApexCharts 3.44.0, Lucide 1.59.0 (icon subset) and self-hosted Inter and
   JetBrains Mono. See `orbit/static/orbit/vendor/LICENSES.md`.
 
+### Added
+
+- Support Content Security Policy nonces. Orbit's `<script>` and stylesheet
+  tags carry `nonce="..."` when Django 6.0+ built-in CSP or django-csp provides
+  one, via the new `{% orbit_nonce %}` / `{% orbit_nonce_attr %}` template
+  tags (nothing is rendered without CSP, including on Django 5.2). htmx is
+  configured without eval or injected styles and ApexCharts' stylesheet is
+  served as a file, so the dashboard runs under `script-src 'self'` and
+  `style-src 'self'`. Alpine.js (standard build) still needs `'unsafe-eval'`;
+  see `docs/security.md` for the full directive list.
+
 ### Changed
 
 - Dashboard, shell and stats JavaScript moved from inline `<script>` blocks to

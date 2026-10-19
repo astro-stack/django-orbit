@@ -14,6 +14,8 @@ const files = [
   ['alpinejs/dist/cdn.min.js', 'vendor/alpine.min.js'],
   ['@alpinejs/collapse/dist/cdn.min.js', 'vendor/alpine-collapse.min.js'],
   ['apexcharts/dist/apexcharts.min.js', 'vendor/apexcharts.min.js'],
+  // Served as <link id="apexcharts-css">; ApexCharts then skips injecting an inline <style>.
+  ['apexcharts/dist/apexcharts.css', 'vendor/apexcharts.css'],
   [
     '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2',
     'fonts/inter-latin-wght-normal.woff2',

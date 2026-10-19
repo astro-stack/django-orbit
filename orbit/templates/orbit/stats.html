@@ -1,11 +1,13 @@
 {% extends 'orbit/base.html' %}
-{% load static %}
+{% load static orbit_tags %}
 
 {% block title %}Stats Dashboard - Django Orbit{% endblock %}
 
 {% block extra_head %}
-<!-- ApexCharts -->
-<script src="{% static 'orbit/vendor/apexcharts.min.js' %}"></script>
+<!-- ApexCharts. Its stylesheet is served as a file with the id ApexCharts looks
+     for, so the library does not inject an inline style element (CSP-friendly). -->
+<link rel="stylesheet" id="apexcharts-css" href="{% static 'orbit/vendor/apexcharts.css' %}" {% orbit_nonce_attr %}>
+<script src="{% static 'orbit/vendor/apexcharts.min.js' %}" {% orbit_nonce_attr %}></script>
 {% endblock %}
 
 {% block body %}
@@ -205,5 +207,5 @@
     </div>
 </div>
 
-<script src="{% static 'orbit/js/stats.js' %}"></script>
+<script src="{% static 'orbit/js/stats.js' %}" {% orbit_nonce_attr %}></script>
 {% endblock %}

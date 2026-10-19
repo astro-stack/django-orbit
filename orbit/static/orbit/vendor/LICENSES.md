@@ -11,6 +11,7 @@ data it displays. Exact versions are pinned in `frontend/package.json`; run
 | `vendor/alpine.min.js` | Alpine.js | 3.17.4 | MIT | https://github.com/alpinejs/alpine |
 | `vendor/alpine-collapse.min.js` | @alpinejs/collapse | 3.17.4 | MIT | https://github.com/alpinejs/alpine |
 | `vendor/apexcharts.min.js` | ApexCharts | 3.44.0 | MIT | https://github.com/apexcharts/apexcharts.js |
+| `vendor/apexcharts.css` | ApexCharts stylesheet (same release) | 3.44.0 | MIT | https://github.com/apexcharts/apexcharts.js |
 | `vendor/lucide.min.js` | Lucide (icon subset only) | 1.59.0 | ISC (some icons also MIT, Feather) | https://github.com/lucide-icons/lucide |
 | `fonts/inter-latin-wght-normal.woff2` | Inter (variable, latin subset, via Fontsource) | 5.3.0 | SIL OFL 1.1 | https://github.com/rsms/inter |
 | `fonts/jetbrains-mono-latin-wght-normal.woff2` | JetBrains Mono (variable, latin subset, via Fontsource) | 5.3.0 | SIL OFL 1.1 | https://github.com/JetBrains/JetBrainsMono |

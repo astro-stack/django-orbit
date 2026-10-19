@@ -1,4 +1,4 @@
-{% load static %}<!DOCTYPE html>
+{% load static orbit_tags %}<!DOCTYPE html>
 <html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
@@ -7,24 +7,27 @@
     
     <!-- Styles: compiled Tailwind CSS + Orbit design system + self-hosted fonts
          (built from frontend/, see CONTRIBUTING.md) -->
-    <link rel="stylesheet" href="{% static 'orbit/css/orbit.css' %}">
+    <link rel="stylesheet" href="{% static 'orbit/css/orbit.css' %}" {% orbit_nonce_attr %}>
 
-    <!-- HTMX -->
-    <script src="{% static 'orbit/vendor/htmx.min.js' %}"></script>
+    <!-- HTMX. Orbit never uses hx-on/hx-vals/trigger filters, so eval is disabled
+         (no 'unsafe-eval' needed for htmx), and htmx's injected indicator stylesheet
+         is skipped (Orbit's stylesheet already defines .htmx-indicator). -->
+    <meta name="htmx-config" content='{"allowEval": false, "includeIndicatorStyles": false}'>
+    <script src="{% static 'orbit/vendor/htmx.min.js' %}" {% orbit_nonce_attr %}></script>
 
     <!-- Alpine.js (+ collapse plugin for smooth nav group toggles) -->
-    <script defer src="{% static 'orbit/vendor/alpine-collapse.min.js' %}"></script>
-    <script defer src="{% static 'orbit/vendor/alpine.min.js' %}"></script>
+    <script defer src="{% static 'orbit/vendor/alpine-collapse.min.js' %}" {% orbit_nonce_attr %}></script>
+    <script defer src="{% static 'orbit/vendor/alpine.min.js' %}" {% orbit_nonce_attr %}></script>
 
     <!-- Lucide Icons (subset bundle of the icons Orbit uses) -->
-    <script src="{% static 'orbit/vendor/lucide.min.js' %}"></script>
+    <script src="{% static 'orbit/vendor/lucide.min.js' %}" {% orbit_nonce_attr %}></script>
 
     {% block extra_head %}{% endblock %}
 </head>
 <body class="h-full bg-orbit-bg-primary text-orbit-text-primary font-sans antialiased">
     {% block body %}{% endblock %}
     
-    <script src="{% static 'orbit/js/orbit-common.js' %}"></script>
+    <script src="{% static 'orbit/js/orbit-common.js' %}" {% orbit_nonce_attr %}></script>
     
     {% block extra_js %}{% endblock %}
 </body>

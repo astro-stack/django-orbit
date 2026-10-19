@@ -3,8 +3,68 @@ Django Orbit Template Tags
 """
 
 from django import template
+from django.utils.html import format_html
 
 register = template.Library()
+
+
+def _resolve_csp_nonce(context):
+    """
+    Return the current request's Content Security Policy nonce, or "".
+
+    Supported sources, in order:
+
+    1. Django 6.0+ built-in CSP
+       (``django.middleware.csp.ContentSecurityPolicyMiddleware``), read through
+       ``django.middleware.csp.get_nonce``.
+    2. django-csp, which exposes ``request.csp_nonce``.
+    3. A ``csp_nonce`` template variable (Django's or django-csp's context
+       processor), for hosts that render Orbit with those processors.
+
+    Never raises: without CSP (including on Django 5.2, which has no CSP
+    support) the result is an empty string and no attribute is rendered.
+    """
+    try:
+        request = getattr(context, "request", None) or context.get("request")
+        candidates = []
+        if request is not None:
+            try:
+                from django.middleware.csp import get_nonce
+            except ImportError:  # Django < 6.0
+                get_nonce = None
+            if get_nonce is not None:
+                candidates.append(get_nonce(request))
+            candidates.append(getattr(request, "csp_nonce", None))
+        candidates.append(context.get("csp_nonce"))
+        for candidate in candidates:
+            # str() forces lazy nonces to be generated, which also tells the
+            # CSP middleware to add 'nonce-...' to the response header.
+            if candidate is not None and (value := str(candidate)):
+                return value
+    except Exception:
+        pass
+    return ""
+
+
+@register.simple_tag(takes_context=True)
+def orbit_nonce(context):
+    """
+    Output the request's CSP nonce value (empty when there is none).
+
+    Usage: <script nonce="{% orbit_nonce %}">
+    """
+    return _resolve_csp_nonce(context)
+
+
+@register.simple_tag(takes_context=True)
+def orbit_nonce_attr(context):
+    """
+    Output ``nonce="..."`` when the request has a CSP nonce, otherwise nothing.
+
+    Usage: <script src="..." {% orbit_nonce_attr %}></script>
+    """
+    nonce = _resolve_csp_nonce(context)
+    return format_html('nonce="{}"', nonce) if nonce else ""
 
 
 @register.filter

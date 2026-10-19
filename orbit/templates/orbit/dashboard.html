@@ -1,5 +1,5 @@
 {% extends "orbit/base.html" %}
-{% load static %}
+{% load static orbit_tags %}
 
 {% block title %}Django Orbit{% endblock %}
 
@@ -382,5 +382,5 @@
     </div>
 </div>
 
-<script src="{% static 'orbit/js/dashboard.js' %}"></script>
+<script src="{% static 'orbit/js/dashboard.js' %}" {% orbit_nonce_attr %}></script>
 {% endblock %}

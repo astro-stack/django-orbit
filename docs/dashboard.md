@@ -5,7 +5,8 @@ The Django Orbit dashboard is your mission control center, available at `/orbit/
 !!! info "Works offline"
     The dashboard is fully self-contained. Scripts, styles, icons and fonts are
     bundled with the package and served from your own static files, so it needs
-    no CDN or internet access (run `collectstatic` in production).
+    no CDN or internet access (run `collectstatic` in production). It also works under a strict
+    [Content Security Policy](security.md#content-security-policy).
 
 ## Navigation & Filtering
 
