@@ -28,6 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   served as a file, so the dashboard runs under `script-src 'self'` and
   `style-src 'self'`. Alpine.js (standard build) still needs `'unsafe-eval'`;
   see `docs/security.md` for the full directive list.
+- Add structured Explorer filters and server-scoped metrics with atomic feed,
+  metrics and URL updates. Request-view aggregation and workspace views remain
+  planned.
 
 ### Changed
 
@@ -48,12 +51,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   plus an allowed-failure job against Django `main`.
 - `agent_safe_serialize_entry(include_payload=True)` can no longer override
   `MCP_INCLUDE_PAYLOADS=False`; the configuration now always wins (safer default).
-
-### Added
-
-- Add structured Explorer filters and server-scoped metrics with atomic feed,
-  metrics and URL updates. Request-view aggregation and workspace views remain
-  planned.
 
 ### Fixed
 
