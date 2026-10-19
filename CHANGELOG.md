@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Load grouped exception feed representatives in a single query instead of one
+  query per group.
 - Initialize dashboard event listeners once so selecting an event cannot
   immediately toggle its detail closed through duplicate click handlers.
 - Switch directly between event details with one click while the panel is open.
