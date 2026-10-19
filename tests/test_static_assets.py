@@ -52,3 +52,56 @@ def test_vendor_licenses_document_every_vendored_file():
     licenses = (vendor / "LICENSES.md").read_text()
     for asset in vendor.glob("*.js"):
         assert f"vendor/{asset.name}" in licenses
+
+
+INLINE_SCRIPT = re.compile(r"<script\b(?![^>]*\bsrc=)([^>]*)>", re.I)
+INLINE_HANDLER = re.compile(
+    r"""\son(?:click|change|input|submit|load|error)\s*=""", re.I
+)
+
+
+def _assert_no_executable_inline_js(html):
+    for attrs in INLINE_SCRIPT.findall(html):
+        assert 'type="application/json"' in attrs, f"inline script: <script{attrs}>"
+    assert not INLINE_HANDLER.search(html)
+    assert "<style" not in html
+    assert 'style="' not in html
+
+
+@pytest.mark.parametrize("name", PAGES)
+def test_pages_have_no_executable_inline_javascript(client, name):
+    _assert_no_executable_inline_js(client.get(reverse(name)).content.decode())
+
+
+@pytest.mark.parametrize("section", ["trends", "database", "cache", "jobs", "security"])
+def test_stats_sections_have_no_executable_inline_javascript(client, section):
+    url = reverse("orbit:stats_section", args=[section])
+    _assert_no_executable_inline_js(client.get(url).content.decode())
+
+
+def test_detail_partial_uses_data_attributes_not_inline_handlers(client):
+    from orbit.models import OrbitEntry
+
+    entry = OrbitEntry.objects.create(
+        type=OrbitEntry.TYPE_MAIL,
+        payload={
+            "subject": "Hi",
+            "from_email": "a@example.com",
+            "to": ["b@example.com"],
+            "body": "plain",
+            "html_body": "<h1>Hello</h1>",
+        },
+        tags=",alpha,",
+    )
+    html = client.get(reverse("orbit:detail", args=[entry.id])).content.decode()
+    _assert_no_executable_inline_js(html)
+    assert 'data-orbit-mail-tab="html"' in html
+    assert 'data-orbit-tag="alpha"' in html
+    assert 'id="mail-html-body"' in html
+
+
+def test_dashboard_config_is_passed_via_data_attributes(client):
+    html = client.get(reverse("orbit:dashboard")).content.decode()
+    assert 'id="orbit-dashboard-config"' in html
+    assert f'data-feed-url="{reverse("orbit:feed")}"' in html
+    assert 'data-current-type="all"' in html

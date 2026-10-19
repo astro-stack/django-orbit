@@ -4,12 +4,9 @@ const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
 
-const templatePath = path.resolve(__dirname, '../../orbit/templates/orbit/base.html');
-const template = readFileSync(templatePath, 'utf8');
-const script = [...template.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)]
-    .map((match) => match[1])
-    .find((source) => source.includes('function copyRemoteText('));
-assert.ok(script, 'The persistent shell must contain the remote clipboard handler');
+const scriptPath = path.resolve(__dirname, '../../orbit/static/orbit/js/orbit-common.js');
+const script = readFileSync(scriptPath, 'utf8');
+assert.ok(script.includes('function copyRemoteText('), 'The shared shell script must contain the remote clipboard handler');
 
 const handoff = 'Masked evidence\n## Fix hypotheses\nDo not infer a root cause.\n';
 
@@ -115,7 +112,7 @@ function harness(options = {}) {
             return { ok: options.httpOk ?? true, text: async () => handoff };
         },
     });
-    vm.runInContext(script, context, { filename: templatePath, timeout: 1000 });
+    vm.runInContext(script, context, { filename: scriptPath, timeout: 1000 });
 
     function button(url = '/orbit/entries/current/agent-handoff/') {
         const element = new Element('BUTTON', 'orbit-copy-remote-btn');

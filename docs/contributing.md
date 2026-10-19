@@ -30,11 +30,14 @@ pytest
 
 Pull requests also run GitHub Actions CI on supported Python/Django combinations, release metadata, documentation builds, package builds and Twine metadata checks.
 
-Dashboard clipboard behavior is also checked with Node.js 24 and its built-in
-test runner (no npm dependencies):
+Dashboard JavaScript lives in `orbit/static/orbit/js/` (`orbit-common.js`,
+`dashboard.js`, `stats.js`); templates only pass data to it through
+`json_script` blocks and `data-*` attributes. It is checked with Node.js 24 and
+its built-in test runner (no npm dependencies), which loads those files
+directly:
 
 ```bash
-node --test tests/js/handoff_clipboard.test.cjs
+node --test tests/js/*.test.cjs
 ```
 
 Before pushing a release PR, run the same local preflight used by maintainers:

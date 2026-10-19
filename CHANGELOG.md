@@ -20,6 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Dashboard, shell and stats JavaScript moved from inline `<script>` blocks to
+  `orbit/static/orbit/js/` (`orbit-common.js`, `dashboard.js`, `stats.js`).
+  Server data reaches it through `json_script` and `data-*` attributes, inline
+  `onclick` handlers became delegated listeners, the dashboard `<style>` moved
+  into the compiled stylesheet and the last inline `style` attributes were
+  removed, so no executable inline code remains in the templates. The JS tests
+  load the static files directly.
 - The Tailwind Play CDN is replaced by a compiled, minified
   `orbit/static/orbit/css/orbit.css` built from `frontend/`. Host projects must
   have `django.contrib.staticfiles` configured (and run `collectstatic` in
@@ -39,6 +46,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The mail HTML preview tab and JSON payload highlighting in the dashboard
+  detail panel did not work because inline scripts never run in content
+  inserted with `innerHTML`; the behavior now lives in the shared static
+  script, and the stats-page detail panel gets the same treatment.
 - The health page footer GitHub icon rendered blank with current Lucide
   releases (brand icons were removed); it now uses a generic icon.
 - Load grouped exception feed representatives in a single query instead of one

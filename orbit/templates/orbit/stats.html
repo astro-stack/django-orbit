@@ -9,7 +9,9 @@
 {% endblock %}
 
 {% block body %}
-<div class="min-h-screen bg-orbit-bg-primary" x-data="statsPage()">
+<div class="min-h-screen bg-orbit-bg-primary" x-data="statsPage()"
+     id="orbit-stats-config"
+     data-detail-url-template="{% url 'orbit:detail' entry_id='00000000-0000-0000-0000-000000000000' %}">
     <!-- Header -->
     <header class="h-14 border-b border-orbit-border bg-orbit-bg-secondary/50 backdrop-blur sticky top-0 z-20 flex items-center justify-between px-6">
         <div class="flex items-center gap-4">
@@ -203,37 +205,5 @@
     </div>
 </div>
 
-<script>
-// Shared ApexCharts defaults for lazily-loaded chart sections (see DESIGN.md).
-window.ORBIT_CHART_DEFAULTS = {
-    chart: { background: 'transparent', toolbar: { show: false }, zoom: { enabled: false }, fontFamily: 'inherit' },
-    theme: { mode: 'dark' },
-    grid: { borderColor: 'rgba(255,255,255,0.05)', strokeDashArray: 4 },
-    tooltip: { theme: 'dark', style: { fontSize: '12px' } },
-};
-
-// Alpine.js component for the stats page
-function statsPage() {
-    return {
-        detailOpen: false,
-        detailLoading: false,
-
-        async openDetail(entryId) {
-            this.detailLoading = true;
-            this.detailOpen = true;
-            const base = `{% url 'orbit:detail' entry_id='00000000-0000-0000-0000-000000000000' %}`;
-            try {
-                const response = await fetch(base.replace('00000000-0000-0000-0000-000000000000', entryId));
-                document.getElementById('stats-detail-content').innerHTML = await response.text();
-                if (typeof lucide !== 'undefined') lucide.createIcons();
-            } catch (error) {
-                document.getElementById('stats-detail-content').innerHTML =
-                    `<div class="p-4 bg-rose-500/10 rounded-lg text-rose-400">Error loading entry details: ${error.message}</div>`;
-            } finally {
-                this.detailLoading = false;
-            }
-        }
-    };
-}
-</script>
+<script src="{% static 'orbit/js/stats.js' %}"></script>
 {% endblock %}

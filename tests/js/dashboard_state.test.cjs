@@ -5,8 +5,12 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const template = readFileSync(path.resolve(__dirname, '../../orbit/templates/orbit/dashboard.html'), 'utf8');
-const script = [...template.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)]
-    .map((match) => match[1]).find((source) => source.includes('function orbitDashboard('));
+const scriptPath = path.resolve(__dirname, '../../orbit/static/orbit/js/dashboard.js');
+const script = readFileSync(scriptPath, 'utf8');
+assert.ok(script.includes('function orbitDashboard('), 'dashboard.js must define orbitDashboard()');
+const dashboardConfig = {
+    dataset: { feedUrl: '/orbit/feed/', detailUrl: '/orbit/entry/', clearUrl: '/orbit/clear/', currentType: 'all' },
+};
 
 function deferred() {
     let resolve, reject;
@@ -72,7 +76,7 @@ function harness(search = '') {
         },
         document: {
             body: { addEventListener }, addEventListener,
-            getElementById: (id) => ({ 'feed-container': feed, 'detail-container': detail, 'orbit-metrics-container': metrics }[id] || null),
+            getElementById: (id) => ({ 'feed-container': feed, 'detail-container': detail, 'orbit-metrics-container': metrics, 'orbit-dashboard-config': dashboardConfig }[id] || null),
             querySelectorAll: () => [], querySelector: () => null,
         },
         fetch(url) {
@@ -85,7 +89,7 @@ function harness(search = '') {
         setInterval(fn) { timers.push(fn); return timers.length; }, clearInterval() {},
         setTimeout(fn) { fn(); }, console: { error(error) { errors.push(error); } },
     });
-    vm.runInContext(script.replace('{{ current_type }}', 'all').replace('{{ orbit_urls.feed }}', '/orbit/feed/').replace('{{ orbit_urls.detail_base }}', '/orbit/entry/').replace('{{ orbit_urls.clear }}', '/orbit/clear/'), context);
+    vm.runInContext(script, context, { filename: scriptPath });
     const state = context.orbitDashboard();
     state.$nextTick = (fn) => fn();
     const emit = (type, event) => (listeners.get(type) || []).forEach((fn) => fn(event));

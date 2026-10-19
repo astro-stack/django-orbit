@@ -101,6 +101,11 @@
     color: #94a3b8;
 }
 
+/* Dashboard: collapsible filter controls on small screens */
+@media (max-width: 767px) {
+    .orbit-filter-controls:not(.is-expanded) { display: none; }
+}
+
 /* Hide Alpine-controlled elements until Alpine initializes (prevents the
    detail slide-over from flashing open on page load) */
 [x-cloak] { display: none !important; }
