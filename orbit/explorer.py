@@ -247,16 +247,12 @@ def exception_group_page(queryset, page, per_page, total_count=None):
     if total_count is None:
         total_count = aggregates.count()
     page_rows = list(aggregates[(page - 1) * per_page : page * per_page])
-    scoped = queryset.filter(type=OrbitEntry.TYPE_EXCEPTION).annotate(
-        group_key=OrbitEntry.objects._exception_group_key()
+    latest = OrbitEntry.objects.latest_for_groups(
+        [aggregate["group_key"] for aggregate in page_rows], queryset
     )
-    output = []
-    for aggregate in page_rows:
-        representative = (
-            scoped.filter(group_key=aggregate["group_key"])
-            .order_by("-created_at", "-id")
-            .first()
-        )
-        if representative is not None:
-            output.append({"entry": representative, **aggregate})
+    output = [
+        {"entry": latest[aggregate["group_key"]], **aggregate}
+        for aggregate in page_rows
+        if aggregate["group_key"] in latest
+    ]
     return output, total_count

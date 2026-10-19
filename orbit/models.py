@@ -32,9 +32,10 @@ class OrbitEntryManager(models.Manager):
         """
         Coalesced grouping key: the fingerprint when present, else the entry id.
 
-        Guarantees *no exception is ever hidden* — a fingerprint-less exception (e.g. legacy
-        data, or an event recorded outside the request middleware) groups on its own id
-        (count 1) instead of being excluded. Portable across SQLite / MySQL / PostgreSQL.
+        Guarantees *no exception is ever hidden* — a fingerprint-less exception
+        (e.g. legacy data, or an event recorded outside the request middleware)
+        groups on its own id (count 1) instead of being excluded. Portable across
+        SQLite / MySQL / PostgreSQL.
         """
         from django.db.models import CharField, Value
         from django.db.models.functions import Cast, Coalesce, NullIf
@@ -45,10 +46,11 @@ class OrbitEntryManager(models.Manager):
         """
         Aggregate exceptions by group key entirely in the database.
 
-        Returns one row per distinct error (``group_key``, ``count``, ``first_seen``,
-        ``last_seen``) ordered by recency. Grouping/counting is done by the DB (never by
-        loading rows into Python). The representative (latest) occurrence for each group is
-        fetched separately and only for the current page (see ``latest_for_groups``).
+        Returns one row per distinct error (``group_key``, ``count``,
+        ``first_seen``, ``last_seen``) ordered by recency. Grouping/counting is
+        done by the DB (never by loading rows into Python). The representative
+        (latest) occurrence for each group is fetched separately and only for
+        the current page (see ``latest_for_groups``).
         """
         from django.db.models import Count, Max, Min
 
@@ -64,23 +66,36 @@ class OrbitEntryManager(models.Manager):
             .order_by("-last_seen")
         )
 
-    def latest_for_groups(self, group_keys):
+    def latest_for_groups(self, group_keys, queryset=None):
         """
         Return {group_key: latest OrbitEntry} for the given group keys.
 
         Attaches a representative (most recent) occurrence to each group on the *current
-        page* only — one bounded lookup per key. Works for both fingerprint keys and the id
-        fallback. Portable (no DISTINCT ON / window-function dependency).
+        page* only, in a single query (``ROW_NUMBER()`` per group). Works for both
+        fingerprint keys and the id fallback. ``queryset`` optionally narrows the rows
+        considered (e.g. an Explorer scope); it defaults to this manager's rows.
         """
-        latest = {}
-        base = self.filter(type=OrbitEntry.TYPE_EXCEPTION).annotate(
-            group_key=self._exception_group_key()
+        from django.db.models import F, Window
+        from django.db.models.functions import RowNumber
+
+        group_keys = list(group_keys)
+        if not group_keys:
+            return {}
+        base = self if queryset is None else queryset
+        ranked = (
+            base.filter(type=OrbitEntry.TYPE_EXCEPTION)
+            .annotate(group_key=self._exception_group_key())
+            .filter(group_key__in=group_keys)
+            .annotate(
+                rank=Window(
+                    expression=RowNumber(),
+                    partition_by=[F("group_key")],
+                    order_by=[F("created_at").desc(), F("id").desc()],
+                )
+            )
+            .filter(rank=1)
         )
-        for key in group_keys:
-            entry = base.filter(group_key=key).order_by("-created_at", "-id").first()
-            if entry is not None:
-                latest[key] = entry
-        return latest
+        return {entry.group_key: entry for entry in ranked}
 
     def jobs(self):
         """Get all job/task entries."""
@@ -318,7 +333,7 @@ class OrbitEntry(models.Model):
 
     @staticmethod
     def prepare_payload_for_storage(payload):
-        """Apply storage-time payload protections used by save() and bulk_create paths."""
+        """Apply storage-time payload protections (save() and bulk_create paths)."""
         if not payload:
             return payload
         try:

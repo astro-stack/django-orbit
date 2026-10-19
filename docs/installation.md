@@ -2,8 +2,8 @@
 
 ## Requirements
 
-- Python 3.9 or higher
-- Django 4.0 or higher
+- Python 3.11 or higher (3.11, 3.12, 3.13 and 3.14 are tested)
+- Django 5.2 or higher (5.2 LTS, 6.0 and 6.1 are tested; Django 6.x requires Python 3.12+)
 
 ## Install from PyPI
 

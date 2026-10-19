@@ -6,8 +6,8 @@ Thank you for your interest in contributing to Django Orbit! This document provi
 
 ### Prerequisites
 
-- Python 3.9 or higher
-- Django 4.0 or higher
+- Python 3.11 or higher
+- Django 5.2 or higher
 - Git
 
 ### Setting Up Your Development Environment
@@ -101,9 +101,11 @@ Types:
 The `.github/CODEOWNERS` file identifies the default maintainer for review. The `main` branch is maintained through pull requests. Maintainers should keep these checks required in GitHub branch protection:
 
 - `Release metadata`
-- `Tests / Python 3.9 / Django 4.2 / core`
-- `Tests / Python 3.10 / Django 4.2 / full+mcp`
-- `Tests / Python 3.12 / Django 5.0 / full+mcp`
+- `Tests / Python 3.11 / Django 5.2 / core`
+- `Tests / Python 3.12 / Django 5.2 / full+mcp`
+- `Tests / Python 3.12 / Django 6.0 / full+mcp`
+- `Tests / Python 3.13 / Django 6.1 / full+mcp`
+- `Tests / Python 3.14 / Django 6.1 / core`
 - `Documentation`
 - `Package build`
 - `Quality / static checks`

@@ -32,6 +32,7 @@ __all__ = [
 
 from orbit import __version__ as ORBIT_VERSION
 from orbit.explorer import (
+    RANGES,
     ExplorerFilters,
     calculate_metrics,
     exception_group_page,
@@ -572,13 +573,17 @@ class OrbitFeedPartial(OrbitProtectedView, View):
             and not filters.min_duration_ms
         ):
             return self._exception_groups_response(request, per_page, page)
+        return self._explorer_response(request, filters, per_page, page, grouped)
+
+    def _explorer_response(self, request, filters, per_page, page, grouped):
+        """Build the Explorer feed response for already-validated filters."""
+        entry_type = filters.type
         now = timezone.now()
         queryset = scoped_entries(filters, now)
         total_entries = queryset.count()
         metrics = calculate_metrics(queryset)
-        range_minutes = {"15m": 15, "1h": 60, "24h": 1440}
         window_start = (
-            now - timedelta(minutes=range_minutes[filters.range])
+            now - timedelta(minutes=RANGES[filters.range])
             if filters.range != "all"
             else None
         )
@@ -620,72 +625,19 @@ class OrbitFeedPartial(OrbitProtectedView, View):
                 request, entry_type, page, per_page, total_count
             ),
             "total_entries": total_entries,
-            "stats": {
-                "requests_per_hour": metrics["request_count"],
-                "queries_per_hour": metrics["query_count"],
-                "avg_response_time": metrics["avg_response_time"],
-                "duplicate_queries": metrics["duplicate_query_count"],
-            },
-            "error_count": metrics["failed_request_count"] + metrics["exception_count"],
-            "slow_query_count": metrics["slow_query_count"],
         }
         return TemplateResponse(
             request, "orbit/partials/explorer_response.html", context
         )
 
     def _exception_groups_response(self, request, per_page, page):
-        """Compatibility entry point using the Explorer response shape."""
+        """Compatibility entry point for the grouped exceptions feed."""
         filters, errors = ExplorerFilters.parse(request.GET)
         if errors:
             return JsonResponse(
                 {"error": "invalid_filters", "fields": errors}, status=400
             )
-        now = timezone.now()
-        queryset = scoped_entries(filters, now)
-        total_entries = queryset.count()
-        total_count = exception_groups(queryset).count()
-        total_pages = (total_count + per_page - 1) // per_page
-        page = max(1, min(page, total_pages)) if total_pages else 1
-        groups, _ = exception_group_page(queryset, page, per_page, total_count)
-        metrics = calculate_metrics(queryset)
-        window_start = (
-            now - timedelta(minutes={"15m": 15, "1h": 60, "24h": 1440}[filters.range])
-            if filters.range != "all"
-            else None
-        )
-        context = {
-            "entries": [],
-            "groups": groups,
-            "feed_template": "orbit/partials/feed_exception_groups.html",
-            "explorer_metrics": metrics,
-            "explorer_state": {
-                "filters": filters.canonical,
-                "page": page,
-                "per_page": per_page,
-                "total_count": total_count,
-                "total_entries": total_entries,
-                "grouped": True,
-                "window": {
-                    "start": window_start.isoformat() if window_start else None,
-                    "end": now.isoformat() if window_start else None,
-                },
-            },
-            **self._pagination_context(
-                request, OrbitEntry.TYPE_EXCEPTION, page, per_page, total_count
-            ),
-            "total_entries": total_entries,
-            "stats": {
-                "requests_per_hour": metrics["request_count"],
-                "queries_per_hour": metrics["query_count"],
-                "avg_response_time": metrics["avg_response_time"],
-                "duplicate_queries": metrics["duplicate_query_count"],
-            },
-            "error_count": metrics["failed_request_count"] + metrics["exception_count"],
-            "slow_query_count": metrics["slow_query_count"],
-        }
-        return TemplateResponse(
-            request, "orbit/partials/explorer_response.html", context
-        )
+        return self._explorer_response(request, filters, per_page, page, True)
 
 
 class OrbitDetailPartial(OrbitProtectedView, View):

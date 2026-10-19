@@ -125,9 +125,11 @@ Expected files for version `X.Y.Z`:
 Release PRs must have these GitHub checks green before merge:
 
 - `Release metadata`
-- `Tests / Python 3.9 / Django 4.2 / core`
-- `Tests / Python 3.10 / Django 4.2 / full+mcp`
-- `Tests / Python 3.12 / Django 5.0 / full+mcp`
+- `Tests / Python 3.11 / Django 5.2 / core`
+- `Tests / Python 3.12 / Django 5.2 / full+mcp`
+- `Tests / Python 3.12 / Django 6.0 / full+mcp`
+- `Tests / Python 3.13 / Django 6.1 / full+mcp`
+- `Tests / Python 3.14 / Django 6.1 / core`
 - `Documentation`
 - `Package build`
 - `Quality / static checks`
