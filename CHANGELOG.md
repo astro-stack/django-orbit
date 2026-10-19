@@ -19,6 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   metrics and URL updates. Request-view aggregation and workspace views remain
   planned.
 
+### Changed
+
+- `agent_safe_serialize_entry(include_payload=True)` can no longer override
+  `MCP_INCLUDE_PAYLOADS=False`; the configuration now always wins (safer default).
+
 ### Fixed
 
 - Load grouped exception feed representatives in a single query instead of one
