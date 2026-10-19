@@ -28,7 +28,7 @@ from orbit.utils import (
     sanitize_headers,
     serialize_for_json,
 )
-from orbit.watchers import cachalot_disabled
+from orbit.watchers import _recording_suspended, cachalot_disabled
 
 
 class OrbitMiddleware:
@@ -56,9 +56,14 @@ class OrbitMiddleware:
         if not config.get("ENABLED", True):
             return self.get_response(request)
 
-        # Check if we should ignore this path
+        # Ignored paths (Orbit's own dashboard, static files) record nothing,
+        # including watcher events such as staticfiles storage lookups.
         if should_ignore_path(request.path):
-            return self.get_response(request)
+            token = _recording_suspended.set(True)
+            try:
+                return self.get_response(request)
+            finally:
+                _recording_suspended.reset(token)
 
         # Generate family hash for this request
         family_hash = generate_family_hash()

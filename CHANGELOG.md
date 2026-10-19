@@ -57,6 +57,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Record no watcher events (for example staticfiles storage lookups) while
+  serving ignored paths such as `/orbit/` and `/static/`, so the dashboard's own
+  assets no longer flood the feed. Storage writes now also check that Orbit's
+  table exists.
 - The mail HTML preview tab and JSON payload highlighting in the dashboard
   detail panel did not work because inline scripts never run in content
   inserted with `innerHTML`; the behavior now lives in the shared static
