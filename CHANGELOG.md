@@ -12,17 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Drop support for Python < 3.11 and Django < 5.2, all of which are end-of-life.
   The test matrix now covers Django 5.2 LTS, 6.0 and 6.1 on Python 3.11-3.14,
   plus an allowed-failure job against Django `main`.
+- `agent_safe_serialize_entry(include_payload=True)` can no longer override
+  `MCP_INCLUDE_PAYLOADS=False`; the configuration now always wins (safer default).
 
 ### Added
 
 - Add structured Explorer filters and server-scoped metrics with atomic feed,
   metrics and URL updates. Request-view aggregation and workspace views remain
   planned.
-
-### Changed
-
-- `agent_safe_serialize_entry(include_payload=True)` can no longer override
-  `MCP_INCLUDE_PAYLOADS=False`; the configuration now always wins (safer default).
 
 ### Fixed
 
