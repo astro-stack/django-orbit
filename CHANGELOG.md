@@ -7,27 +7,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- Serve all dashboard JavaScript, CSS, icons and fonts from Orbit's own package
+  static files instead of unpinned, integrity-less CDNs (`cdn.tailwindcss.com`,
+  `unpkg.com`, `cdn.jsdelivr.net`, Google Fonts). The dashboard now works
+  offline and in air-gapped environments, and no third party can inject script
+  into a page that displays request, SQL and exception data. Vendored versions
+  are pinned: htmx 1.9.10, Alpine.js and `@alpinejs/collapse` 3.17.4,
+  ApexCharts 3.44.0, Lucide 1.59.0 (icon subset) and self-hosted Inter and
+  JetBrains Mono. See `orbit/static/orbit/vendor/LICENSES.md`.
+
+### Added
+
+- Support Content Security Policy nonces. Orbit's `<script>` and stylesheet
+  tags carry `nonce="..."` when Django 6.0+ built-in CSP or django-csp provides
+  one, via the new `{% orbit_nonce %}` / `{% orbit_nonce_attr %}` template
+  tags (nothing is rendered without CSP, including on Django 5.2). htmx is
+  configured without eval or injected styles and ApexCharts' stylesheet is
+  served as a file, so the dashboard runs under `script-src 'self'` and
+  `style-src 'self'`. Alpine.js (standard build) still needs `'unsafe-eval'`;
+  see `docs/security.md` for the full directive list.
+- Add structured Explorer filters and server-scoped metrics with atomic feed,
+  metrics and URL updates. Request-view aggregation and workspace views remain
+  planned.
+- Support the MCP Python SDK 2.x alongside 1.x (`mcp>=1.0,<3.0`): the server uses
+  `MCPServer` on 2.x (renamed from `FastMCP`) and falls back to `FastMCP` on 1.x.
+  Every tool now advertises read-only MCP tool annotations. Protocol-level tests
+  exercise the server over the SDK's in-memory client, and CI tests both SDK
+  majors (#66).
+
 ### Changed
 
+- Dashboard, shell and stats JavaScript moved from inline `<script>` blocks to
+  `orbit/static/orbit/js/` (`orbit-common.js`, `dashboard.js`, `stats.js`).
+  Server data reaches it through `json_script` and `data-*` attributes, inline
+  `onclick` handlers became delegated listeners, the dashboard `<style>` moved
+  into the compiled stylesheet and the last inline `style` attributes were
+  removed, so no executable inline code remains in the templates. The JS tests
+  load the static files directly.
+- The Tailwind Play CDN is replaced by a compiled, minified
+  `orbit/static/orbit/css/orbit.css` built from `frontend/`. Host projects must
+  have `django.contrib.staticfiles` configured (and run `collectstatic` in
+  production) so Orbit's assets are served; maintainers rebuild assets with
+  `npm run build` in `frontend/`.
 - Drop support for Python < 3.11 and Django < 5.2, all of which are end-of-life.
   The test matrix now covers Django 5.2 LTS, 6.0 and 6.1 on Python 3.11-3.14,
   plus an allowed-failure job against Django `main`.
 - `agent_safe_serialize_entry(include_payload=True)` can no longer override
   `MCP_INCLUDE_PAYLOADS=False`; the configuration now always wins (safer default).
 
-### Added
-
-- Support the MCP Python SDK 2.x alongside 1.x (`mcp>=1.0,<3.0`): the server uses
-  `MCPServer` on 2.x (renamed from `FastMCP`) and falls back to `FastMCP` on 1.x.
-  Every tool now advertises read-only MCP tool annotations. Protocol-level tests
-  exercise the server over the SDK's in-memory client, and CI tests both SDK
-  majors (#66).
-- Add structured Explorer filters and server-scoped metrics with atomic feed,
-  metrics and URL updates. Request-view aggregation and workspace views remain
-  planned.
-
 ### Fixed
 
+- Fix a flaky LLM watcher install that keyed on `id(owner)`: once a patched
+  class was garbage-collected, a new class reusing its id was wrongly treated as
+  already patched and left unwrapped, so its calls recorded nothing. Patching now
+  depends only on the live method's marker.
+- Record no watcher events (for example staticfiles storage lookups) while
+  serving ignored paths such as `/orbit/` and `/static/`, so the dashboard's own
+  assets no longer flood the feed. Storage writes now also check that Orbit's
+  table exists.
+- The mail HTML preview tab and JSON payload highlighting in the dashboard
+  detail panel did not work because inline scripts never run in content
+  inserted with `innerHTML`; the behavior now lives in the shared static
+  script, and the stats-page detail panel gets the same treatment.
+- The health page footer GitHub icon rendered blank with current Lucide
+  releases (brand icons were removed); it now uses a generic icon.
 - Load grouped exception feed representatives in a single query instead of one
   query per group.
 - Initialize dashboard event listeners once so selecting an event cannot

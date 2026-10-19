@@ -85,6 +85,7 @@ namespaces = true
 [tool.setuptools.package-data]
 orbit = [
     "templates/**/*.html",
+    "static/**/*",
 ]
 
 [tool.black]

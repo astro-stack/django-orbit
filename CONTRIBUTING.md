@@ -38,6 +38,28 @@ pip install -e ".[dev]"
 pytest
 ```
 
+## Rebuilding dashboard assets
+
+The dashboard ships compiled assets in `orbit/static/orbit/` (CSS, vendored
+libraries, icon bundle and fonts). Their sources and build tooling live in
+`frontend/`. You only need Node.js 20+ when you change Tailwind classes, icons
+or a vendored library version:
+
+```bash
+cd frontend
+npm ci
+npm run build:css     # compile orbit.css (Tailwind CSS 3.4) from input.css
+npm run build:icons   # bundle only the Lucide icons listed in build-icons.mjs
+npm run vendor        # copy pinned htmx/Alpine/ApexCharts/fonts from node_modules
+npm run build         # all of the above
+```
+
+Commit the regenerated files under `orbit/static/orbit/`; never commit
+`frontend/node_modules`. Add new icon names to `frontend/build-icons.mjs`, bump
+versions in `frontend/package.json` and `orbit/static/orbit/vendor/LICENSES.md`
+together, and keep dynamically built Tailwind class names in the `safelist` in
+`frontend/tailwind.config.js`.
+
 ## Code Style
 
 We use several tools to maintain code quality:

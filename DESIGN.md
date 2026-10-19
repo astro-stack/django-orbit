@@ -18,8 +18,8 @@ way and surface signal fast. Three rules govern every decision:
 
 ## Color
 
-Dark-only. Tokens are declared in `tailwind.config` inside
-`orbit/templates/orbit/base.html` and referenced as `orbit-*` utility classes.
+Dark-only. Tokens are declared in `frontend/tailwind.config.js` (compiled into
+`orbit/static/orbit/css/orbit.css`) and referenced as `orbit-*` utility classes.
 
 ### Neutrals (surfaces & text)
 

@@ -3,6 +3,9 @@ Smoke tests for the v0.9.0 UX overhaul: grouped navigation, lazy Stats sections,
 version sourcing, and the Export-button removal.
 """
 
+from pathlib import Path
+
+from django.contrib.staticfiles import finders
 from django.test import override_settings
 from django.urls import reverse
 
@@ -37,7 +40,10 @@ def test_dashboard_has_responsive_mobile_explorer_controls(client):
     assert '<option value="request">Requests</option>' in html
     assert "min-w-0" in html
     assert ':aria-expanded="filtersExpanded.toString()"' in html
-    assert "orbit-filter-controls:not(.is-expanded)" in html
+    assert 'class="orbit-filter-controls' in html
+    # The collapse rule now ships in the compiled stylesheet, not inline.
+    css = Path(finders.find("orbit/css/orbit.css")).read_text()
+    assert ".orbit-filter-controls:not(.is-expanded){display:none}" in css
     assert "max-h-[70vh] overflow-y-auto" in html
     assert "xl:w-[600px]" in html
     assert "md:w-[600px]" not in html
@@ -140,9 +146,12 @@ def test_detail_panel_exposes_copy_agent_handoff_button(client):
 def test_dashboard_owns_remote_handoff_copy_handler(client):
     html = client.get(reverse("orbit:dashboard")).content.decode()
 
-    assert "function copyRemoteText(button)" in html
-    assert "function copyTextWithFallback(text)" in html
-    assert ".orbit-copy-remote-btn" in html
+    # The handler ships in the shared static script loaded by the shell.
+    assert "orbit/js/orbit-common.js" in html
+    script = Path(finders.find("orbit/js/orbit-common.js")).read_text()
+    assert "function copyRemoteText(button)" in script
+    assert "function copyTextWithFallback(text)" in script
+    assert ".orbit-copy-remote-btn" in script
 
 
 @pytest.mark.django_db

@@ -2103,6 +2103,9 @@ def record_storage_operation(
     if not config.get("RECORD_STORAGE", True):
         return
 
+    if not _table_exists():
+        return
+
     from orbit.models import OrbitEntry
 
     payload = {

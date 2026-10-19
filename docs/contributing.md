@@ -30,11 +30,14 @@ pytest
 
 Pull requests also run GitHub Actions CI on supported Python/Django combinations, release metadata, documentation builds, package builds and Twine metadata checks.
 
-Dashboard clipboard behavior is also checked with Node.js 24 and its built-in
-test runner (no npm dependencies):
+Dashboard JavaScript lives in `orbit/static/orbit/js/` (`orbit-common.js`,
+`dashboard.js`, `stats.js`); templates only pass data to it through
+`json_script` blocks and `data-*` attributes. It is checked with Node.js 24 and
+its built-in test runner (no npm dependencies), which loads those files
+directly:
 
 ```bash
-node --test tests/js/handoff_clipboard.test.cjs
+node --test tests/js/*.test.cjs
 ```
 
 Before pushing a release PR, run the same local preflight used by maintainers:
@@ -66,3 +69,25 @@ isort orbit/
 ---
 
 *Thank you for contributing! 🚀*
+
+## Rebuilding dashboard assets
+
+The dashboard ships compiled assets in `orbit/static/orbit/` (CSS, vendored
+libraries, icon bundle and fonts). Their sources and build tooling live in
+`frontend/`. You only need Node.js 20+ when you change Tailwind classes, icons
+or a vendored library version:
+
+```bash
+cd frontend
+npm ci
+npm run build:css     # compile orbit.css (Tailwind CSS 3.4) from input.css
+npm run build:icons   # bundle only the Lucide icons listed in build-icons.mjs
+npm run vendor        # copy pinned htmx/Alpine/ApexCharts/fonts from node_modules
+npm run build         # all of the above
+```
+
+Commit the regenerated files under `orbit/static/orbit/`; never commit
+`frontend/node_modules`. Add new icon names to `frontend/build-icons.mjs`, bump
+versions in `frontend/package.json` and `orbit/static/orbit/vendor/LICENSES.md`
+together, and keep dynamically built Tailwind class names in the `safelist` in
+`frontend/tailwind.config.js`.

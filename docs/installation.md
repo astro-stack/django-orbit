@@ -44,6 +44,14 @@ INSTALLED_APPS = [
 ]
 ```
 
+!!! note "Static files"
+    The dashboard serves its JavaScript, CSS, icons and fonts from Orbit's own
+    static files (`orbit/static/orbit/`). **No CDN or internet access is needed**,
+    so it works offline and in air-gapped environments. Keep
+    `django.contrib.staticfiles` installed and, in production, run
+    `python manage.py collectstatic` so these files are served with the rest of
+    your static assets.
+
 ### 2. Add Middleware
 
 Add `OrbitMiddleware` early in your middleware stack to capture the full request lifecycle:

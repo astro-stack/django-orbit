@@ -46,7 +46,12 @@ LOGGING = {
 
 ### Dashboard CSS not loading
 
-**Solution:** Run collectstatic:
+Orbit ships its CSS, JavaScript, icons and fonts as package static files under
+`orbit/static/orbit/` and loads nothing from a CDN. If the dashboard looks
+unstyled, those files are not being served.
+
+**Solution:** Make sure `django.contrib.staticfiles` is in `INSTALLED_APPS`,
+`STATIC_URL` is set, and run collectstatic:
 
 ```bash
 python manage.py collectstatic
