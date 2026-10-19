@@ -2,8 +2,9 @@ import sys
 import types
 from types import SimpleNamespace
 
-import pytest
 from django.test import override_settings
+
+import pytest
 
 from orbit.handlers import set_current_family_hash
 from orbit.models import OrbitEntry
@@ -130,6 +131,30 @@ def test_install_llm_watcher_patches_openai_chat_completions(monkeypatch):
     entry = OrbitEntry.objects.get(type=OrbitEntry.TYPE_LLM)
     assert entry.payload["provider"] == "openai"
     assert entry.payload["operation"] == "chat.completions"
+
+
+def test_patch_method_keys_on_live_method_not_owner_id():
+    # Regression: installation used to be skipped when id(owner) matched an owner
+    # patched earlier. Python reuses ids after an object is collected, so a fresh
+    # class landing on a freed id went unwrapped and recorded nothing. Patching
+    # must depend only on the live method's marker, so a second, distinct owner is
+    # always wrapped and re-patching the same owner stays idempotent.
+    from orbit.llm import _patch_method
+
+    class First:
+        def create(self, **kwargs):
+            return _openai_response()
+
+    class Second:
+        def create(self, **kwargs):
+            return _openai_response()
+
+    assert _patch_method(First, "create", "openai", "chat.completions") is True
+    assert _patch_method(Second, "create", "openai", "chat.completions") is True
+    assert getattr(First.create, "_orbit_llm_patched", False) is True
+    assert getattr(Second.create, "_orbit_llm_patched", False) is True
+    # Re-patching an already-wrapped method is a no-op.
+    assert _patch_method(Second, "create", "openai", "chat.completions") is False
 
 
 def test_llm_watcher_records_errors_and_reraises(monkeypatch):

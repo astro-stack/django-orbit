@@ -13,12 +13,10 @@ import importlib
 import inspect
 import json
 import time
-from typing import Any, Callable
+from typing import Any
 
 from orbit.conf import get_config
 from orbit.utils import mask_sensitive_data, normalize_tags, serialize_for_json
-
-_PATCHED: set[tuple[int, str]] = set()
 
 
 def _get_value(obj: Any, key: str, default: Any = None) -> Any:
@@ -253,10 +251,6 @@ def _patch_method(owner: Any, method_name: str, provider: str, operation: str) -
     if original is None or getattr(original, "_orbit_llm_patched", False):
         return False
 
-    key = (id(owner), method_name)
-    if key in _PATCHED:
-        return False
-
     if inspect.iscoroutinefunction(original):
 
         @functools.wraps(original)
@@ -318,7 +312,6 @@ def _patch_method(owner: Any, method_name: str, provider: str, operation: str) -
         wrapper._orbit_llm_patched = True
         setattr(owner, method_name, wrapper)
 
-    _PATCHED.add(key)
     return True
 
 

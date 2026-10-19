@@ -59,6 +59,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fix a flaky LLM watcher install that keyed on `id(owner)`: once a patched
+  class was garbage-collected, a new class reusing its id was wrongly treated as
+  already patched and left unwrapped, so its calls recorded nothing. Patching now
+  depends only on the live method's marker.
 - Record no watcher events (for example staticfiles storage lookups) while
   serving ignored paths such as `/orbit/` and `/static/`, so the dashboard's own
   assets no longer flood the feed. Storage writes now also check that Orbit's
