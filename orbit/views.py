@@ -625,14 +625,6 @@ class OrbitFeedPartial(OrbitProtectedView, View):
                 request, entry_type, page, per_page, total_count
             ),
             "total_entries": total_entries,
-            "stats": {
-                "requests_per_hour": metrics["request_count"],
-                "queries_per_hour": metrics["query_count"],
-                "avg_response_time": metrics["avg_response_time"],
-                "duplicate_queries": metrics["duplicate_query_count"],
-            },
-            "error_count": metrics["failed_request_count"] + metrics["exception_count"],
-            "slow_query_count": metrics["slow_query_count"],
         }
         return TemplateResponse(
             request, "orbit/partials/explorer_response.html", context
