@@ -22,18 +22,19 @@ def _fingerprint(payload):
 
 
 def backfill(apps, schema_editor):
+    db_alias = db_alias = schema_editor.connection.alias
     OrbitEntry = apps.get_model("orbit", "OrbitEntry")
-    qs = OrbitEntry.objects.filter(type="exception", fingerprint="").only("id", "payload")
+    qs = OrbitEntry.objects.using(db_alias).filter(type="exception", fingerprint="").only("id", "payload")
 
     batch = []
     for entry in qs.iterator(chunk_size=500):
         entry.fingerprint = _fingerprint(entry.payload)
         batch.append(entry)
         if len(batch) >= 500:
-            OrbitEntry.objects.bulk_update(batch, ["fingerprint"])
+            OrbitEntry.objects.using(db_alias).bulk_update(batch, ["fingerprint"])
             batch = []
     if batch:
-        OrbitEntry.objects.bulk_update(batch, ["fingerprint"])
+        OrbitEntry.objects.using(db_alias).bulk_update(batch, ["fingerprint"])
 
 
 def noop(apps, schema_editor):
