@@ -7,30 +7,34 @@ Tests the storage watcher that tracks:
 - File deletion
 - File existence checks
 """
-import pytest
-import os
+
 import io
-from django.test import TestCase, override_settings
-from django.core.files.storage import FileSystemStorage
+import os
+
 from django.core.files.base import ContentFile
+from django.core.files.storage import FileSystemStorage
+from django.test import TestCase, override_settings
+
+import pytest
+
 from orbit.models import OrbitEntry
-import orbit.watchers as watchers
+
 
 class TestStorageWatcher(TestCase):
     """Test storage operation recording."""
-    
+
     def setUp(self):
         OrbitEntry.objects.all().delete()
         self.storage = FileSystemStorage(location=".")
-        
+
     def tearDown(self):
         pass
-        
+
     @override_settings(ORBIT_CONFIG={"ENABLED": True, "RECORD_STORAGE": True})
     def test_record_save_operation(self):
         """Test recording a file save."""
-        from orbit.watchers import install_storage_watcher, _storage_patched
-        
+        from orbit.watchers import _storage_patched, install_storage_watcher
+
         if not _storage_patched:
             install_storage_watcher()
 
@@ -38,8 +42,10 @@ class TestStorageWatcher(TestCase):
             mp.setattr(self.storage, "exists", lambda name: False)
             mp.setattr(self.storage, "_save", lambda name, content: name)
             file_name = self.storage.save("test_file.txt", ContentFile(b"hello world"))
-        
-        entry = OrbitEntry.objects.filter(type="storage", payload__operation="save").last()
+
+        entry = OrbitEntry.objects.filter(
+            type="storage", payload__operation="save"
+        ).last()
         assert entry is not None
         assert entry.payload["path"] == file_name
         assert entry.payload["size"] == 11
@@ -50,18 +56,23 @@ class TestStorageWatcher(TestCase):
     def test_record_open_operation(self):
         """Test recording a file open."""
         from orbit.watchers import install_storage_watcher
+
         install_storage_watcher()
 
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(self.storage, "exists", lambda name: False)
             mp.setattr(self.storage, "_save", lambda name, content: name)
-            mp.setattr(self.storage, "_open", lambda name, mode="rb": io.BytesIO(b"content"))
+            mp.setattr(
+                self.storage, "_open", lambda name, mode="rb": io.BytesIO(b"content")
+            )
             file_name = self.storage.save("to_open.txt", ContentFile(b"content"))
             with self.storage.open(file_name) as f:
                 content = f.read()
             assert content == b"content"
-            
-        entry = OrbitEntry.objects.filter(type="storage", payload__operation="open").last()
+
+        entry = OrbitEntry.objects.filter(
+            type="storage", payload__operation="open"
+        ).last()
         assert entry is not None
         assert entry.payload["path"] == file_name
         assert "FileSystemStorage" in entry.payload["backend"]
@@ -70,6 +81,7 @@ class TestStorageWatcher(TestCase):
     def test_record_delete_operation(self):
         """Test recording a file deletion."""
         from orbit.watchers import install_storage_watcher
+
         install_storage_watcher()
 
         with pytest.MonkeyPatch.context() as mp:
@@ -80,8 +92,10 @@ class TestStorageWatcher(TestCase):
             mp.setattr(os.path, "isdir", lambda path: False)
             mp.setattr(os, "remove", lambda path: None)
             self.storage.delete(file_name)
-        
-        entry = OrbitEntry.objects.filter(type="storage", payload__operation="delete").last()
+
+        entry = OrbitEntry.objects.filter(
+            type="storage", payload__operation="delete"
+        ).last()
         assert entry is not None
         assert entry.payload["path"] == file_name
 
@@ -89,21 +103,28 @@ class TestStorageWatcher(TestCase):
     def test_record_exists_operation(self):
         """Test recording an exists check."""
         from orbit.watchers import install_storage_watcher
-        install_storage_watcher(force=True)  # Force re-patch to ensure latest code is applied
+
+        install_storage_watcher(
+            force=True
+        )  # Force re-patch to ensure latest code is applied
 
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(self.storage, "exists", lambda name: False)
             mp.setattr(self.storage, "_save", lambda name, content: name)
             file_name = self.storage.save("exists.txt", ContentFile(b"exist"))
-            del self.storage.__dict__["exists"]
+            mp.delattr(self.storage, "exists")
             mp.setattr(self.storage, "path", lambda name: name)
             mp.setattr(os.path, "lexists", lambda path: True)
             exists = self.storage.exists(file_name)
             assert exists is True
-        
-        # Note: save() internally calls exists() first, so we need to get the LAST exists entry chronologically
-        # which is the explicit exists() call we made after saving
-        entry = OrbitEntry.objects.filter(type="storage", payload__operation="exists").order_by('-created_at').first()
+
+        # save() calls exists() first, so take the last exists entry chronologically:
+        # the explicit exists() call we made after saving.
+        entry = (
+            OrbitEntry.objects.filter(type="storage", payload__operation="exists")
+            .order_by("-created_at")
+            .first()
+        )
         assert entry is not None
         assert entry.payload["path"] == file_name
         assert entry.payload["exists"] is True
