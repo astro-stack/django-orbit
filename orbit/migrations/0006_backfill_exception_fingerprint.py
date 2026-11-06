@@ -22,9 +22,13 @@ def _fingerprint(payload):
 
 
 def backfill(apps, schema_editor):
-    db_alias = db_alias = schema_editor.connection.alias
+    db_alias = schema_editor.connection.alias
     OrbitEntry = apps.get_model("orbit", "OrbitEntry")
-    qs = OrbitEntry.objects.using(db_alias).filter(type="exception", fingerprint="").only("id", "payload")
+    qs = (
+        OrbitEntry.objects.using(db_alias)
+        .filter(type="exception", fingerprint="")
+        .only("id", "payload")
+    )
 
     batch = []
     for entry in qs.iterator(chunk_size=500):
