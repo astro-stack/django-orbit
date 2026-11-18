@@ -227,13 +227,18 @@ Run <code>python demo.py reset</code> to restore the curated demo corpus.
 See [Running the Demo](https://astro-stack.github.io/django-orbit/running-demo/)
 for the complete walkthrough and the [Codex/Claude debugging demo](https://astro-stack.github.io/django-orbit/codex-debug-demo/).
 
-## Current Release: v0.14.0
+## Current Release: v0.15.0
 
-The 0.14 release improves everyday agent debugging:
+The 0.15 release hardens the dashboard and makes Orbit usable in locked-down
+environments:
 
-- compact metadata-only request summaries through `summarize_request_family`;
-- reliable handoff copying from dynamically loaded event details, with a preview and clipboard fallback;
-- less default feed noise: signal capture is now opt-in.
+- Orbit now serves every dashboard asset from its own package instead of
+  third-party CDNs, with optional CSP nonces for Django 6.0+;
+- structured Explorer filters drive the feed and metrics from one
+  server-confirmed scope;
+- the MCP server supports both Python SDK 1.x and 2.x;
+- Python 3.11+ and Django 5.2+ are required; the multi-database migration bug
+  is fixed.
 
 The Evidence API, async-safe correlation, investigation tools and local
 dashboard remain available. See the [MCP reference](https://astro-stack.github.io/django-orbit/mcp/)

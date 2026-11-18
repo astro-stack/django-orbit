@@ -1,6 +1,6 @@
 # Django Orbit Documentation
 
-Current release: **v0.14.0**.
+Current release: **v0.15.0**.
 
 Welcome to the Django Orbit documentation. This guide covers installation, configuration, usage, and customization.
 
@@ -48,9 +48,14 @@ Django Orbit is an AI agent-native observability and debugging tool for Django a
 | Agent-native MCP tools | No | Yes |
 | Ticket-to-fix handoff bundles | No | Yes |
 
-## Unreleased
+## What's New in v0.15.0
 
+- **Self-hosted dashboard assets**: htmx, Alpine.js, ApexCharts, Lucide, fonts and the compiled stylesheet ship inside the package, so the dashboard works offline and no third party can inject script into pages that display request, SQL and exception data. Host projects need `django.contrib.staticfiles` configured and must run `collectstatic`.
+- **CSP nonce support**: `<script>` and stylesheet tags carry `nonce="..."` when Django 6.0+ built-in CSP or django-csp provides one, via the new `{% orbit_nonce %}` / `{% orbit_nonce_attr %}` tags. See the [Security guide](security.md).
 - **Explorer filters and scoped metrics**: structured time and request filters update the feed and metrics from one server-confirmed scope; see the [Dashboard Guide](dashboard.md). Request-view aggregation and a workspace view remain planned.
+- **MCP Python SDK 2.x**: the server uses `MCPServer` on 2.x and falls back to `FastMCP` on 1.x, with read-only tool annotations and protocol tests for both majors.
+- **Supported versions**: Python 3.11+ and Django 5.2+ only; Python 3.9/3.10 and Django 4.2/5.0/5.1 are no longer supported.
+- **Multi-database fix**: the exception fingerprint backfill now runs on the connection selected by `migrate --database=...`.
 
 ## What's New in v0.14.0
 

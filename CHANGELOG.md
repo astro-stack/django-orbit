@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.15.0] - 2026-11-18
 
 ### Security
 
@@ -59,6 +59,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Run the exception fingerprint backfill against the database selected by
+  `migrate --database=...` instead of always reading and writing the `default`
+  connection, so multi-database installs no longer fail with a missing
+  `orbit_orbitentry` table during that migration (#81).
 - Fix a flaky LLM watcher install that keyed on `id(owner)`: once a patched
   class was garbage-collected, a new class reusing its id was wrongly treated as
   already patched and left unwrapped, so its calls recorded nothing. Patching now
